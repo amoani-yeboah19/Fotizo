@@ -1,0 +1,62 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "3CUDQjNwnBOVgy6-41WP8"
+uri = "file://artifacts/fotizo/public/images/hero.png"
+type = "image"
+title = "Hero editorial composition"
+
+[[generated]]
+id = "GGtBUwGRzy4nqg5AVEhwe"
+uri = "file://artifacts/fotizo/public/images/product-1.png"
+type = "image"
+title = "Sony wireless headphones"
+
+[[generated]]
+id = "cKYr29B5q7tEUbilrMS4W"
+uri = "file://artifacts/fotizo/public/images/product-2.png"
+type = "image"
+title = "Ceramic pour-over coffee"
+
+[[generated]]
+id = "aYMtlOVYjnHCngkJYL3cP"
+uri = "file://artifacts/fotizo/public/images/product-3.png"
+type = "image"
+title = "Minimalist mechanical keyboard"
+
+[[generated]]
+id = "Zqu56BVbeZSnQHuSjkR6b"
+uri = "file://artifacts/fotizo/public/images/product-4.png"
+type = "image"
+title = "Designer leather tote bag"
+
+[[generated]]
+id = "s2peyGltFIpAZjKcLxmIj"
+uri = "file://artifacts/fotizo/public/images/product-5.png"
+type = "image"
+title = "Modern smart watch"
+
+[[generated]]
+id = "moLHB8axUkI4v1rOrmZBs"
+uri = "file://artifacts/fotizo/public/images/avatar-1.png"
+type = "image"
+title = "Professional web designer"
+
+[[generated]]
+id = "SjZ0_Nn9wx4-aKqfJ34UJ"
+uri = "file://artifacts/fotizo/public/images/avatar-2.png"
+type = "image"
+title = "Professional photographer"
+
+[[generated]]
+id = "SiS-YuAGmf4E_PkLMq2xf"
+uri = "file://artifacts/fotizo/public/images/avatar-3.png"
+type = "image"
+title = "Business consultant"
+
+[[generated]]
+id = "ppbS_uRWLYTX0Z-CV2dD_"
+uri = "file://artifacts/fotizo/public/images/avatar-4.png"
+type = "image"
+title = "Marketing expert"

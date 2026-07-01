@@ -1,0 +1,392 @@
+You are a Senior Product Designer, UX Architect, Brand Designer, and Senior Frontend Engineer.
+
+Your mission is to completely redesign the Fotizo platform into a premium, world-class marketplace.
+
+IMPORTANT:
+Do NOT rebuild the backend.
+Do NOT modify APIs.
+Do NOT change authentication.
+Do NOT change business logic.
+Do NOT change the database.
+Only redesign the frontend and improve the user experience.
+
+=================================================
+ABOUT FOTIZO
+=================================================
+
+Fotizo is not just an e-commerce website.
+
+Fotizo is a modern global marketplace where users can:
+
+• Buy Products
+• Sell Products
+• Hire Professionals
+• Offer Services
+• Grow Businesses
+
+The design must communicate this clearly within the first 5 seconds.
+
+=================================================
+DESIGN VISION
+=================================================
+
+Design as if you were working for:
+
+• Apple
+• Stripe
+• Shopify
+• Airbnb
+• Notion
+• Linear
+• Vercel
+
+The website must feel:
+
+Premium
+Elegant
+Modern
+Minimal
+Fast
+Trustworthy
+Professional
+Timeless
+
+Do NOT create an AI-generated looking interface.
+
+=================================================
+DESIGN PRINCIPLES
+=================================================
+
+Less is more.
+
+Every component must have a purpose.
+
+Prioritize:
+
+• Typography
+• Whitespace
+• Visual hierarchy
+• Accessibility
+• Consistency
+• Simplicity
+
+Avoid visual clutter.
+
+=================================================
+DO NOT USE
+=================================================
+
+❌ Random floating cards
+
+❌ Dashboard mockups inside the hero
+
+❌ Generic AI illustrations
+
+❌ Heavy gradients
+
+❌ Glassmorphism everywhere
+
+❌ Decorative blobs
+
+❌ Overly rounded everything
+
+❌ Excessive shadows
+
+❌ Stock-template layouts
+
+❌ Fake company logos
+
+❌ Fake statistics
+
+=================================================
+COLOR SYSTEM
+=================================================
+
+Primary Navy:
+#08275B
+
+Accent Orange:
+#FF6A00
+
+Background:
+#F8FAFC
+
+Surface:
+#FFFFFF
+
+Primary Text:
+#111827
+
+Secondary Text:
+#6B7280
+
+Borders:
+#E5E7EB
+
+Orange should be used only for emphasis.
+
+=================================================
+TYPOGRAPHY
+=================================================
+
+Use:
+
+Inter
+OR
+Plus Jakarta Sans
+
+Large bold headings.
+
+Generous spacing.
+
+Clear hierarchy.
+
+=================================================
+SPACING
+=================================================
+
+Use an 8-point spacing system.
+
+The interface should breathe.
+
+Do not try to fill every empty space.
+
+=================================================
+HOMEPAGE
+=================================================
+
+Redesign every section.
+
+1. Navigation
+
+Simple.
+
+Premium.
+
+Sticky.
+
+Mega menu for categories.
+
+Large search.
+
+Clean spacing.
+
+2. Hero
+
+Avoid generic AI hero layouts.
+
+Use one beautiful editorial composition.
+
+Strong headline.
+
+Strong CTA.
+
+Search bar.
+
+No floating dashboard cards.
+
+3. Categories
+
+Modern grid.
+
+Beautiful icons.
+
+Interactive hover effects.
+
+4. Featured Products
+
+Premium cards.
+
+Large product images.
+
+Excellent spacing.
+
+Quick actions.
+
+5. Featured Services
+
+Different visual style from products.
+
+Provider information.
+
+Ratings.
+
+Pricing.
+
+6. Why Fotizo
+
+Modern feature cards.
+
+Minimal icons.
+
+7. Testimonials
+
+Authentic.
+
+Professional.
+
+8. Newsletter
+
+Simple.
+
+Elegant.
+
+9. Footer
+
+Multi-column.
+
+Professional.
+
+=================================================
+PRODUCT CARDS
+=================================================
+
+Large images.
+
+Beautiful typography.
+
+Excellent spacing.
+
+Modern hover effects.
+
+Quick Add to Cart.
+
+Wishlist.
+
+Ratings.
+
+Seller information.
+
+=================================================
+SERVICE CARDS
+=================================================
+
+Different from products.
+
+Show:
+
+Provider avatar
+
+Rating
+
+Experience
+
+Price
+
+Category
+
+Availability
+
+=================================================
+SEARCH
+=================================================
+
+Premium search experience.
+
+Large search input.
+
+Category selector.
+
+Suggestions.
+
+Clean animations.
+
+=================================================
+BUTTONS
+=================================================
+
+One primary style.
+
+One secondary style.
+
+Consistent throughout the site.
+
+=================================================
+ANIMATIONS
+=================================================
+
+Very subtle.
+
+Fade.
+
+Scale.
+
+Slide.
+
+200-300ms.
+
+Nothing flashy.
+
+=================================================
+RESPONSIVE
+=================================================
+
+Mobile-first.
+
+Tablet.
+
+Desktop.
+
+Everything must adapt beautifully.
+
+=================================================
+PERFORMANCE
+=================================================
+
+Lazy load images.
+
+Optimize rendering.
+
+Reduce layout shift.
+
+Accessible HTML.
+
+Semantic structure.
+
+=================================================
+DESIGN SYSTEM
+=================================================
+
+Create reusable components.
+
+Button
+
+Input
+
+Search
+
+Card
+
+Product Card
+
+Service Card
+
+Category Card
+
+Badge
+
+Modal
+
+Avatar
+
+Rating
+
+Navbar
+
+Footer
+
+Section Header
+
+Everything should be reusable.
+
+=================================================
+FINAL GOAL
+=================================================
+
+When a visitor lands on Fotizo, they should immediately think:
+
+"This feels like a premium global marketplace built by a serious technology company."
+
+The design should be timeless, clean, trustworthy, and handcrafted—not AI-generated or template-based.
+
+Preserve all existing functionality while dramatically improving the visual design, user experience, and consistency across the platform.
