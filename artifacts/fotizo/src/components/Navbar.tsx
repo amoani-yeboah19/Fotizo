@@ -46,10 +46,12 @@ export function Navbar() {
       <div className="container mx-auto px-4 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-primary tracking-tight">
-              Fotizo
-            </span>
+          <Link href="/" className="flex items-center gap-2 shrink-0">
+            <img
+              src="/fotizo-logo.jpg"
+              alt="Fotizo"
+              className="h-8 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop Nav */}

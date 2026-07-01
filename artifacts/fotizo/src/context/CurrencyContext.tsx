@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 
-export type CurrencyCode = "GBP" | "USD" | "CAD";
+export type CurrencyCode = "GBP" | "USD" | "GHS";
 
 export interface Currency {
   code: CurrencyCode;
@@ -13,7 +13,7 @@ export interface Currency {
 export const CURRENCIES: Currency[] = [
   { code: "GBP", symbol: "£", name: "British Pound", flag: "🇬🇧", rate: 1 },
   { code: "USD", symbol: "$", name: "US Dollar", flag: "🇺🇸", rate: 1.27 },
-  { code: "CAD", symbol: "CA$", name: "Canadian Dollar", flag: "🇨🇦", rate: 1.72 },
+  { code: "GHS", symbol: "₵", name: "Ghana Cedi", flag: "🇬🇭", rate: 18.5 },
 ];
 
 interface CurrencyContextType {
