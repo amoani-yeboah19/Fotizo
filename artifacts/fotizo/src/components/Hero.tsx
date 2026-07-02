@@ -306,32 +306,6 @@ export function Hero() {
         </div>
       </div>
 
-      {/* ── Trusted By bar ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.55 }}
-        className="relative z-10 border-t border-border/60 bg-white/80 backdrop-blur-sm"
-      >
-        <div className="container mx-auto px-4 lg:px-8 py-6">
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest whitespace-nowrap shrink-0">
-              Trusted by
-            </p>
-            <div className="w-px h-5 bg-border hidden sm:block shrink-0" />
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-6 lg:gap-10">
-              {TRUSTED_LOGOS.map((name) => (
-                <span
-                  key={name}
-                  className="text-sm font-bold text-foreground/30 tracking-wider hover:text-foreground/50 transition-colors cursor-default select-none"
-                >
-                  {name.toUpperCase()}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </motion.div>
 
     </section>
   );
