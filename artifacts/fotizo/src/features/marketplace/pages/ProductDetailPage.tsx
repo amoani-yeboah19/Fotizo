@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRoute, Link, useLocation } from "wouter";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { ProductCard } from "@/components/common/ProductCard";
+import { ProductCard } from "@/features/marketplace/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { useProduct, useRelatedProducts } from "@/features/marketplace/hooks";
 import { Loading } from "@/components/common/QueryStates";
@@ -86,8 +86,8 @@ export default function ProductDetail() {
             {product.images && product.images.length > 1 && (
               <div className="flex gap-4 overflow-x-auto pb-2">
                 {product.images.map((img, i) => (
-                  <button key={i} className="w-24 h-24 shrink-0 bg-white border border-border rounded-xl p-2 hover:border-primary transition-colors">
-                    <img loading="lazy" decoding="async" src={img} alt="" className="w-full h-full object-contain" />
+                  <button key={i} aria-label={`View image ${i + 1}`} className="w-24 h-24 shrink-0 bg-white border border-border rounded-xl p-2 hover:border-primary transition-colors">
+                    <img loading="lazy" decoding="async" src={img} alt={`${product.title} view ${i + 1}`} className="w-full h-full object-contain" />
                   </button>
                 ))}
               </div>
@@ -138,14 +138,16 @@ export default function ProductDetail() {
 
             <div className="flex items-center gap-6 mb-8">
               <div className="flex items-center border border-border rounded-full bg-white h-12">
-                <button 
+                <button
+                  aria-label="Decrease quantity"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   className="w-12 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
                 >
                   <Minus className="w-4 h-4" />
                 </button>
                 <span className="w-8 text-center font-medium">{quantity}</span>
-                <button 
+                <button
+                  aria-label="Increase quantity"
                   onClick={() => setQuantity(Math.min(product.stockCount, quantity + 1))}
                   className="w-12 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
                 >
@@ -157,7 +159,7 @@ export default function ProductDetail() {
                 Add to Cart
               </Button>
               
-              <Button variant="outline" size="icon" className="w-12 h-12 rounded-full shrink-0">
+              <Button aria-label="Add to wishlist" variant="outline" size="icon" className="w-12 h-12 rounded-full shrink-0">
                 <Heart className="w-5 h-5" />
               </Button>
             </div>

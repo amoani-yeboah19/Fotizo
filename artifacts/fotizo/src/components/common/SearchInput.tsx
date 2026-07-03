@@ -19,12 +19,13 @@ export function SearchInput({
 }: SearchInputProps) {
   return (
     <div className={cn("relative w-full", className)}>
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <Search aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
       <input
         type="text"
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
         placeholder={placeholder}
+        aria-label={placeholder}
         className={cn(
           "w-full pl-10 pr-4 py-2.5 rounded-full text-sm outline-none transition-all",
           inputClassName,

@@ -74,6 +74,7 @@ export default function CartPage() {
                     <div className="col-span-2 flex justify-center w-full sm:w-auto">
                       <div className="flex items-center border border-border rounded-full bg-white">
                         <button
+                          aria-label="Decrease quantity"
                           onClick={() => updateQuantity(item.productId, item.quantity - 1)}
                           className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
                         >
@@ -81,6 +82,7 @@ export default function CartPage() {
                         </button>
                         <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
                         <button
+                          aria-label="Increase quantity"
                           onClick={() => updateQuantity(item.productId, item.quantity + 1)}
                           className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
                         >
@@ -92,6 +94,7 @@ export default function CartPage() {
                     <div className="col-span-2 hidden sm:flex items-center justify-end gap-4 w-full">
                       <Price amount={item.price * item.quantity} className="font-bold" />
                       <button
+                        aria-label="Remove item"
                         onClick={() => removeItem(item.productId)}
                         className="text-muted-foreground hover:text-destructive transition-colors"
                       >

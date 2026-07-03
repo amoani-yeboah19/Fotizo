@@ -52,20 +52,16 @@ export function Navbar() {
                 Services
               </span>
             </Link>
-            <Link href="/sellers">
-              <span className="text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer">
-                Sellers
-              </span>
-            </Link>
           </nav>
 
           {/* Search Bar (Desktop) */}
           <div className="hidden lg:flex flex-1 max-w-md mx-8 relative">
             <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search products, services..."
+                aria-label="Search products and services"
                 className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-transparent focus:bg-white focus:border-primary/30 rounded-full text-sm outline-none transition-all"
               />
             </div>
@@ -78,7 +74,7 @@ export function Navbar() {
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
                 <Link href="/messages">
-                  <button className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer">
+                  <button aria-label="Messages" className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer">
                     <MessageSquare className="w-5 h-5" />
                     {totalUnread > 0 && (
                       <span className="absolute top-0 right-0 w-4 h-4 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -88,7 +84,7 @@ export function Navbar() {
                   </button>
                 </Link>
                 <Link href="/cart">
-                  <button className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer">
+                  <button aria-label="Cart" className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer">
                     <ShoppingCart className="w-5 h-5" />
                     {count > 0 && (
                       <span className="absolute top-0 right-0 w-4 h-4 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -116,7 +112,7 @@ export function Navbar() {
           {/* Mobile Toggle */}
           <div className="flex md:hidden items-center gap-4">
             <Link href="/cart">
-              <button className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer">
+              <button aria-label="Cart" className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer">
                 <ShoppingCart className="w-5 h-5" />
                 {count > 0 && (
                   <span className="absolute top-0 right-0 w-4 h-4 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -127,6 +123,8 @@ export function Navbar() {
             </Link>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
               className="p-2 text-foreground hover:text-primary transition-colors"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}

@@ -7,7 +7,7 @@ import {
   useMemo,
   ReactNode,
 } from "react";
-import { authService } from "@/services";
+import { authService } from "@/features/auth/services";
 import type { User, SignupData } from "@/types";
 
 // Re-exported so existing consumers can keep importing these from the context.

@@ -18,17 +18,17 @@ export function NavbarMobileMenu() {
   return (
     <div className="md:hidden border-t border-border bg-white absolute top-full left-0 w-full p-4 flex flex-col gap-4 shadow-lg h-[calc(100vh-80px)] overflow-y-auto">
       <div className="relative w-full">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Search aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
           type="text"
           placeholder="Search..."
+          aria-label="Search"
           className="w-full pl-10 pr-4 py-3 bg-muted border border-transparent rounded-lg text-sm outline-none"
         />
       </div>
       <nav className="flex flex-col gap-2">
         <Link href="/products"><span className="block px-4 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg cursor-pointer">Products</span></Link>
         <Link href="/services"><span className="block px-4 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg cursor-pointer">Services</span></Link>
-        <Link href="/sellers"><span className="block px-4 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg cursor-pointer">Sellers</span></Link>
       </nav>
       <div className="h-px bg-border my-2" />
 
@@ -49,7 +49,7 @@ export function NavbarMobileMenu() {
           </div>
           <Link href={dashboardLink}><span className="block px-4 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg cursor-pointer">Dashboard</span></Link>
           <Link href="/messages">
-            <span className="block px-4 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg cursor-pointer flex justify-between">
+            <span className="flex justify-between px-4 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg cursor-pointer">
               Messages {totalUnread > 0 && <span className="bg-accent text-white px-2 py-0.5 rounded-full text-xs">{totalUnread}</span>}
             </span>
           </Link>

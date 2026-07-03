@@ -1,9 +1,1 @@
-export { catalogService } from "./catalog.service";
-export { artisansService } from "./artisans.service";
-export { contentService } from "./content.service";
-export { ordersService } from "./orders.service";
-export { bookingsService } from "./bookings.service";
-export { dashboardService } from "./dashboard.service";
-export { authService } from "./auth.service";
 export { currencyService } from "./currency.service";
-export { messagesService } from "./messages.service";

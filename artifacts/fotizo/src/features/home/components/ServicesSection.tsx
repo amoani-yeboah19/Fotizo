@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import { ServiceCard } from "@/components/common/ServiceCard";
+import { ServiceCard } from "@/features/artisans/components/ServiceCard";
 import { useServices } from "@/features/artisans/hooks";
 import { SectionHeader } from "@/components/common/SectionHeader";
 

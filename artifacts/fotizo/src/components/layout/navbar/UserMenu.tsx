@@ -15,7 +15,10 @@ export function UserMenu() {
 
   return (
     <div className="relative group ml-2">
-      <button className="flex items-center gap-2 focus:outline-none">
+      <button
+        aria-label="Account menu"
+        className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      >
         <img
           loading="lazy"
           decoding="async"

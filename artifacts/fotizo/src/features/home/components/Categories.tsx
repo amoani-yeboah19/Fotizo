@@ -168,6 +168,7 @@ export function Categories() {
           {/* Arrow controls */}
           <div className="hidden md:flex items-center gap-2 shrink-0">
             <button
+              aria-label="Scroll categories left"
               onClick={() => scroll("left")}
               disabled={!canScrollLeft}
               className="w-10 h-10 rounded-full border border-border bg-white flex items-center justify-center shadow-sm hover:bg-primary hover:text-white hover:border-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed"
@@ -175,6 +176,7 @@ export function Categories() {
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
+              aria-label="Scroll categories right"
               onClick={() => scroll("right")}
               disabled={!canScrollRight}
               className="w-10 h-10 rounded-full border border-border bg-white flex items-center justify-center shadow-sm hover:bg-primary hover:text-white hover:border-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed"

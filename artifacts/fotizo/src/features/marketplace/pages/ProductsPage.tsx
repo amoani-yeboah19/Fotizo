@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { ProductCard } from "@/components/common/ProductCard";
+import { ProductCard } from "@/features/marketplace/components/ProductCard";
 import { FilterSidebar } from "@/components/common/FilterSidebar";
 import { SearchInput } from "@/components/common/SearchInput";
 import { useProducts, useCategories } from "@/features/marketplace/hooks";

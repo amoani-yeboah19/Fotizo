@@ -7,7 +7,7 @@ import {
   useMemo,
   ReactNode,
 } from "react";
-import { messagesService } from "@/services";
+import { messagesService } from "@/features/messaging/services";
 import type { Conversation } from "@/types";
 
 // Re-exported so existing consumers can keep importing these from the context.

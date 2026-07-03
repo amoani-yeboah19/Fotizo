@@ -121,6 +121,7 @@ export function Hero() {
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                     placeholder="Search products, services, professionals…"
+                    aria-label="Search products, services and professionals"
                     data-testid="input-hero-search"
                     className="w-full bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground py-4"
                   />

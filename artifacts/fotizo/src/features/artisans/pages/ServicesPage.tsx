@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { ServiceCard } from "@/components/common/ServiceCard";
+import { ServiceCard } from "@/features/artisans/components/ServiceCard";
 import { FilterSidebar } from "@/components/common/FilterSidebar";
 import { SearchInput } from "@/components/common/SearchInput";
 import { useServices } from "@/features/artisans/hooks";
