@@ -14,6 +14,8 @@ import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { StatCard } from "@/components/common/StatCard";
 import { SurfaceCard } from "@/components/common/SurfaceCard";
 import { Loading } from "@/components/common/QueryStates";
+import { StatusBadge } from "@/components/common/StatusBadge";
+import { chartColors, chartAxisTick, chartTooltipStyle } from "@/constants/chart";
 import { Button } from "@/components/ui/button";
 
 const activityData = [
@@ -57,7 +59,7 @@ export default function DashboardManager() {
       ) : (
         <>
           <header className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground">Platform Manager</h1>
+            <h1 className="heading-page text-foreground">Platform Manager</h1>
             <p className="text-muted-foreground mt-1">System overview and moderation tools.</p>
           </header>
 
@@ -93,11 +95,11 @@ export default function DashboardManager() {
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={activityData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 12 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 12 }} dx={-10} />
-                    <RechartsTooltip cursor={{ stroke: "#E2E8F0" }} contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }} />
-                    <Line type="monotone" dataKey="signups" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: "white", strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartColors.grid} />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={chartAxisTick} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={chartAxisTick} dx={-10} />
+                    <RechartsTooltip cursor={{ stroke: chartColors.grid }} contentStyle={chartTooltipStyle} />
+                    <Line type="monotone" dataKey="signups" stroke={chartColors.primary} strokeWidth={3} dot={{ r: 4, fill: "white", strokeWidth: 2 }} activeDot={{ r: 6 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -162,17 +164,13 @@ export default function DashboardManager() {
                       </td>
                       <td className="px-6 py-4 text-muted-foreground">{u.date}</td>
                       <td className="px-6 py-4">
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                            u.status === "active"
-                              ? "bg-green-100 text-green-700"
-                              : u.status === "pending"
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-red-100 text-red-700"
-                          }`}
+                        <StatusBadge
+                          tone={
+                            u.status === "active" ? "success" : u.status === "pending" ? "warning" : "danger"
+                          }
                         >
                           {u.status}
-                        </span>
+                        </StatusBadge>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <Button variant="ghost" size="sm">Manage</Button>

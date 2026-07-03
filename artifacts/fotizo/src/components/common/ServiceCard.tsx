@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { CheckCircle2, Clock, Briefcase } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ interface Service {
   availability: string;
 }
 
-export function ServiceCard({ service }: { service: Service }) {
+export const ServiceCard = memo(function ServiceCard({ service }: { service: Service }) {
   const isAvailableNow = service.availability.toLowerCase().includes("now");
 
   return (
@@ -26,7 +27,7 @@ export function ServiceCard({ service }: { service: Service }) {
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-4">
             <div className="relative">
-              <img 
+              <img loading="lazy" decoding="async" 
                 src={service.avatar} 
                 alt={service.provider} 
                 className="w-16 h-16 rounded-full object-cover border border-border"
@@ -75,4 +76,4 @@ export function ServiceCard({ service }: { service: Service }) {
       </div>
     </Link>
   );
-}
+});

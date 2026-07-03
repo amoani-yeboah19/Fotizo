@@ -9,7 +9,7 @@ export function ServicesSection() {
 
   return (
     <section className="py-20 bg-white">
-      <div className="container mx-auto px-4 lg:px-8">
+      <div className="container-app">
         <SectionHeader
           title="Top Professionals"
           subtitle="Hire vetted experts for your next project."

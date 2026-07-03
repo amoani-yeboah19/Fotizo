@@ -8,7 +8,14 @@ import { CartProvider } from "@/contexts/CartContext";
 import { MessagesProvider } from "@/contexts/MessagesContext";
 import { AppRoutes } from "@/routes/AppRoutes";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function App() {
   return (

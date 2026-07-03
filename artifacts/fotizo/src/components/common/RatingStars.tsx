@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +11,13 @@ interface RatingStarsProps {
   className?: string;
 }
 
-export function RatingStars({ value, reviewCount, count, starClassName, className }: RatingStarsProps) {
+export const RatingStars = memo(function RatingStars({
+  value,
+  reviewCount,
+  count,
+  starClassName,
+  className,
+}: RatingStarsProps) {
   if (count != null) {
     return (
       <span className={cn("inline-flex gap-1", className)}>
@@ -30,4 +37,4 @@ export function RatingStars({ value, reviewCount, count, starClassName, classNam
       )}
     </span>
   );
-}
+});

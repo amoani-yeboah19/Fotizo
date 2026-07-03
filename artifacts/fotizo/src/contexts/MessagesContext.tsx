@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  ReactNode,
+} from "react";
 import { messagesService } from "@/services";
 import type { Conversation } from "@/types";
 
@@ -31,50 +39,51 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const totalUnread = conversations.reduce((s, c) => s + c.unreadCount, 0);
+  const totalUnread = useMemo(
+    () => conversations.reduce((s, c) => s + c.unreadCount, 0),
+    [conversations],
+  );
 
-  const sendMessage = (
-    conversationId: string,
-    content: string,
-    senderId: string,
-    senderName: string,
-  ) => {
-    messagesService.sendMessage(conversationId, content, senderId, senderName).then((newMsg) => {
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === conversationId
-            ? {
-                ...c,
-                messages: [...c.messages, newMsg],
-                lastMessage: content,
-                lastMessageTime: newMsg.timestamp,
-              }
-            : c,
-        ),
-      );
-    });
+  const sendMessage = useCallback(
+    (conversationId: string, content: string, senderId: string, senderName: string) => {
+      messagesService.sendMessage(conversationId, content, senderId, senderName).then((newMsg) => {
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === conversationId
+              ? {
+                  ...c,
+                  messages: [...c.messages, newMsg],
+                  lastMessage: content,
+                  lastMessageTime: newMsg.timestamp,
+                }
+              : c,
+          ),
+        );
+      });
 
-    // The counterpart reply is a backend concern; on mocks it resolves after a delay,
-    // against a real API it resolves to null and nothing happens here.
-    messagesService.getAutoReply().then((reply) => {
-      if (!reply) return;
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === conversationId
-            ? {
-                ...c,
-                messages: [...c.messages, reply],
-                lastMessage: reply.content,
-                lastMessageTime: reply.timestamp,
-                unreadCount: c.unreadCount + 1,
-              }
-            : c,
-        ),
-      );
-    });
-  };
+      // The counterpart reply is a backend concern; on mocks it resolves after a delay,
+      // against a real API it resolves to null and nothing happens here.
+      messagesService.getAutoReply().then((reply) => {
+        if (!reply) return;
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === conversationId
+              ? {
+                  ...c,
+                  messages: [...c.messages, reply],
+                  lastMessage: reply.content,
+                  lastMessageTime: reply.timestamp,
+                  unreadCount: c.unreadCount + 1,
+                }
+              : c,
+          ),
+        );
+      });
+    },
+    [],
+  );
 
-  const markAsRead = (conversationId: string) => {
+  const markAsRead = useCallback((conversationId: string) => {
     void messagesService.markAsRead(conversationId);
     setConversations((prev) =>
       prev.map((c) =>
@@ -83,39 +92,41 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
           : c,
       ),
     );
-  };
+  }, []);
 
-  const startConversation = (
-    participant: { id: string; name: string; avatar?: string; role: string },
-    subject: string,
-  ) => {
-    const existing = conversations.find(
-      (c) => c.participantId === participant.id && c.subject === subject,
-    );
-    if (existing) return existing.id;
-    const newConv: Conversation = {
-      id: `conv${Date.now()}`,
-      participantId: participant.id,
-      participantName: participant.name,
-      participantAvatar: participant.avatar,
-      participantRole: participant.role,
-      subject,
-      messages: [],
-      lastMessage: "",
-      lastMessageTime: new Date().toISOString(),
-      unreadCount: 0,
-    };
-    setConversations((prev) => [newConv, ...prev]);
-    return newConv.id;
-  };
-
-  return (
-    <MessagesContext.Provider
-      value={{ conversations, sendMessage, markAsRead, startConversation, totalUnread }}
-    >
-      {children}
-    </MessagesContext.Provider>
+  const startConversation = useCallback(
+    (
+      participant: { id: string; name: string; avatar?: string; role: string },
+      subject: string,
+    ) => {
+      const existing = conversations.find(
+        (c) => c.participantId === participant.id && c.subject === subject,
+      );
+      if (existing) return existing.id;
+      const newConv: Conversation = {
+        id: `conv${Date.now()}`,
+        participantId: participant.id,
+        participantName: participant.name,
+        participantAvatar: participant.avatar,
+        participantRole: participant.role,
+        subject,
+        messages: [],
+        lastMessage: "",
+        lastMessageTime: new Date().toISOString(),
+        unreadCount: 0,
+      };
+      setConversations((prev) => [newConv, ...prev]);
+      return newConv.id;
+    },
+    [conversations],
   );
+
+  const value = useMemo(
+    () => ({ conversations, sendMessage, markAsRead, startConversation, totalUnread }),
+    [conversations, sendMessage, markAsRead, startConversation, totalUnread],
+  );
+
+  return <MessagesContext.Provider value={value}>{children}</MessagesContext.Provider>;
 }
 
 export function useMessages() {

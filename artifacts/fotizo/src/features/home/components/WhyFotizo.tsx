@@ -52,7 +52,7 @@ const item = {
 export function WhyFotizo() {
   return (
     <section className="py-24 bg-primary text-white overflow-hidden">
-      <div className="container mx-auto px-4 lg:px-8 relative z-10">
+      <div className="container-app relative z-10">
         <div className="text-center max-w-2xl mx-auto mb-16">
           <h2 className="text-3xl lg:text-4xl font-bold mb-4">Why choose Fotizo?</h2>
           <p className="text-primary-foreground/80 text-lg">

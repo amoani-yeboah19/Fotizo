@@ -39,7 +39,7 @@ export default function CheckoutPage() {
   };
 
   return (
-    <PageLayout mainClassName="container mx-auto px-4 lg:px-8 py-24">
+    <PageLayout mainClassName="container-app py-24">
         <h1 className="text-3xl font-bold mb-8 text-center">Checkout</h1>
 
         <div className="flex flex-col lg:flex-row gap-8 max-w-5xl mx-auto">

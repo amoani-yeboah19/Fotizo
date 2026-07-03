@@ -1,42 +1,55 @@
+import { lazy, Suspense } from "react";
 import { Switch, Route } from "wouter";
-import Home from "@/features/home/HomePage";
-import Login from "@/features/auth/pages/LoginPage";
-import Signup from "@/features/auth/pages/SignupPage";
-import ProductsPage from "@/features/marketplace/pages/ProductsPage";
-import ProductDetail from "@/features/marketplace/pages/ProductDetailPage";
-import ServicesPage from "@/features/artisans/pages/ServicesPage";
-import ServiceDetail from "@/features/artisans/pages/ServiceDetailPage";
-import CartPage from "@/features/payments/pages/CartPage";
-import CheckoutPage from "@/features/payments/pages/CheckoutPage";
-import OrderConfirmation from "@/features/payments/pages/OrderConfirmationPage";
-import MessagesPage from "@/features/messages/pages/MessagesPage";
-import MessageThread from "@/features/messages/pages/MessageThreadPage";
-import DashboardBuyer from "@/features/profile/dashboards/BuyerDashboard";
-import DashboardSeller from "@/features/profile/dashboards/SellerDashboard";
-import DashboardManager from "@/features/profile/dashboards/ManagerDashboard";
-import DashboardDeveloper from "@/features/profile/dashboards/DeveloperDashboard";
+import { Loading } from "@/components/common/QueryStates";
 import NotFound from "@/routes/NotFound";
+
+// Route-level code splitting: each page (and its heavy deps like recharts on the
+// dashboards) loads only when its route is visited.
+const Home = lazy(() => import("@/features/home/HomePage"));
+const Login = lazy(() => import("@/features/auth/pages/LoginPage"));
+const Signup = lazy(() => import("@/features/auth/pages/SignupPage"));
+const ProductsPage = lazy(() => import("@/features/marketplace/pages/ProductsPage"));
+const ProductDetail = lazy(() => import("@/features/marketplace/pages/ProductDetailPage"));
+const ServicesPage = lazy(() => import("@/features/artisans/pages/ServicesPage"));
+const ServiceDetail = lazy(() => import("@/features/artisans/pages/ServiceDetailPage"));
+const CartPage = lazy(() => import("@/features/payments/pages/CartPage"));
+const CheckoutPage = lazy(() => import("@/features/payments/pages/CheckoutPage"));
+const OrderConfirmation = lazy(() => import("@/features/payments/pages/OrderConfirmationPage"));
+const MessagesPage = lazy(() => import("@/features/messages/pages/MessagesPage"));
+const MessageThread = lazy(() => import("@/features/messages/pages/MessageThreadPage"));
+const DashboardBuyer = lazy(() => import("@/features/profile/dashboards/BuyerDashboard"));
+const DashboardSeller = lazy(() => import("@/features/profile/dashboards/SellerDashboard"));
+const DashboardManager = lazy(() => import("@/features/profile/dashboards/ManagerDashboard"));
+const DashboardDeveloper = lazy(() => import("@/features/profile/dashboards/DeveloperDashboard"));
 
 export function AppRoutes() {
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/login" component={Login} />
-      <Route path="/signup" component={Signup} />
-      <Route path="/products" component={ProductsPage} />
-      <Route path="/products/:id" component={ProductDetail} />
-      <Route path="/services" component={ServicesPage} />
-      <Route path="/services/:id" component={ServiceDetail} />
-      <Route path="/cart" component={CartPage} />
-      <Route path="/checkout" component={CheckoutPage} />
-      <Route path="/order-confirmation" component={OrderConfirmation} />
-      <Route path="/messages" component={MessagesPage} />
-      <Route path="/messages/:id" component={MessageThread} />
-      <Route path="/dashboard/buyer" component={DashboardBuyer} />
-      <Route path="/dashboard/seller" component={DashboardSeller} />
-      <Route path="/dashboard/manager" component={DashboardManager} />
-      <Route path="/dashboard/developer" component={DashboardDeveloper} />
-      <Route component={NotFound} />
-    </Switch>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex flex-col bg-background">
+          <Loading label="Loading…" />
+        </div>
+      }
+    >
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/login" component={Login} />
+        <Route path="/signup" component={Signup} />
+        <Route path="/products" component={ProductsPage} />
+        <Route path="/products/:id" component={ProductDetail} />
+        <Route path="/services" component={ServicesPage} />
+        <Route path="/services/:id" component={ServiceDetail} />
+        <Route path="/cart" component={CartPage} />
+        <Route path="/checkout" component={CheckoutPage} />
+        <Route path="/order-confirmation" component={OrderConfirmation} />
+        <Route path="/messages" component={MessagesPage} />
+        <Route path="/messages/:id" component={MessageThread} />
+        <Route path="/dashboard/buyer" component={DashboardBuyer} />
+        <Route path="/dashboard/seller" component={DashboardSeller} />
+        <Route path="/dashboard/manager" component={DashboardManager} />
+        <Route path="/dashboard/developer" component={DashboardDeveloper} />
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }

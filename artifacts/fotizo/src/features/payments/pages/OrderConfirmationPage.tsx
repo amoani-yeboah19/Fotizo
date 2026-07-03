@@ -8,7 +8,7 @@ export default function OrderConfirmation() {
   const orderNumber = `FTZ-${Math.floor(100000 + Math.random() * 900000)}`;
 
   return (
-    <PageLayout mainClassName="container mx-auto px-4 lg:px-8 py-24 flex flex-col items-center justify-center">
+    <PageLayout mainClassName="container-app py-24 flex flex-col items-center justify-center">
         <div className="max-w-md w-full bg-white rounded-3xl border border-border p-10 text-center shadow-sm">
           
           <motion.div 

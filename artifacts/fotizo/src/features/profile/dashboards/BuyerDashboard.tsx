@@ -9,6 +9,7 @@ import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { StatCard } from "@/components/common/StatCard";
 import { SurfaceCard } from "@/components/common/SurfaceCard";
 import { Price } from "@/components/common/Price";
+import { StatusBadge } from "@/components/common/StatusBadge";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
@@ -43,7 +44,7 @@ export default function DashboardBuyer() {
   return (
     <DashboardLayout sidebar={sidebar}>
       <header className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">
+        <h1 className="heading-page text-foreground">
           Welcome back, {user?.name?.split(" ")[0]}
         </h1>
         <p className="text-muted-foreground mt-1">Here's what's happening with your account.</p>
@@ -68,24 +69,25 @@ export default function DashboardBuyer() {
             {orders.map((order) => (
               <div key={order.id} className="p-6 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <img src={order.productImage} alt="" className="w-12 h-12 rounded-lg bg-muted object-contain p-1" />
+                  <img loading="lazy" decoding="async" src={order.productImage} alt="" className="w-12 h-12 rounded-lg bg-muted object-contain p-1" />
                   <div>
                     <p className="font-medium text-sm line-clamp-1">{order.productTitle}</p>
                     <p className="text-xs text-muted-foreground">{order.seller}</p>
                   </div>
                 </div>
                 <div className="flex flex-col items-end shrink-0 pl-4">
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize mb-1 ${
+                  <StatusBadge
+                    tone={
                       order.status === "delivered"
-                        ? "bg-green-100 text-green-700"
+                        ? "success"
                         : order.status === "in_transit"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-amber-100 text-amber-700"
-                    }`}
+                          ? "info"
+                          : "warning"
+                    }
+                    className="mb-1"
                   >
                     {order.status.replace("_", " ")}
-                  </span>
+                  </StatusBadge>
                   <Price amount={order.price} className="text-sm font-bold" />
                 </div>
               </div>
@@ -111,7 +113,7 @@ export default function DashboardBuyer() {
                   </div>
                   <p className="font-medium text-sm">{booking.serviceTitle}</p>
                   <div className="flex items-center gap-2 mt-2">
-                    <img src={booking.providerAvatar} alt="" className="w-5 h-5 rounded-full object-cover" />
+                    <img loading="lazy" decoding="async" src={booking.providerAvatar} alt="" className="w-5 h-5 rounded-full object-cover" />
                     <span className="text-xs text-muted-foreground">{booking.provider}</span>
                   </div>
                 </div>

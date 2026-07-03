@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Heart, ShoppingCart } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -16,12 +17,12 @@ interface Product {
   image: string;
 }
 
-export function ProductCard({ product }: { product: Product }) {
+export const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
   return (
     <Link href={`/products/${product.id}`}>
       <div className="group flex flex-col bg-white rounded-2xl border border-border overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer h-full">
         <div className="relative aspect-square overflow-hidden bg-muted p-6 flex items-center justify-center">
-          <img 
+          <img loading="lazy" decoding="async" 
             src={product.image} 
             alt={product.title} 
             className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
@@ -78,4 +79,4 @@ export function ProductCard({ product }: { product: Product }) {
       </div>
     </Link>
   );
-}
+});

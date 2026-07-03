@@ -54,7 +54,7 @@ export default function ServiceDetail() {
   };
 
   return (
-    <PageLayout mainClassName="container mx-auto px-4 lg:px-8 py-24">
+    <PageLayout mainClassName="container-app py-24">
       {/* Breadcrumb */}
       <nav className="flex items-center text-sm text-muted-foreground mb-8">
         <Link href="/"><span className="hover:text-primary cursor-pointer">Home</span></Link>
@@ -73,7 +73,7 @@ export default function ServiceDetail() {
 
           <div className="flex flex-wrap items-center gap-4 border-b border-border pb-6">
             <div className="flex items-center gap-3">
-              <img src={service.avatar} alt={service.provider} className="w-12 h-12 rounded-full object-cover" />
+              <img loading="lazy" decoding="async" src={service.avatar} alt={service.provider} className="w-12 h-12 rounded-full object-cover" />
               <div>
                 <div className="flex items-center gap-1.5">
                   <p className="font-semibold">{service.provider}</p>

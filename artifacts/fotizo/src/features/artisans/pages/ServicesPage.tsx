@@ -15,7 +15,7 @@ export default function ServicesPage() {
   const displayedServices = services;
 
   return (
-    <PageLayout mainClassName="container mx-auto px-4 lg:px-8 py-24 md:py-32">
+    <PageLayout mainClassName="container-app py-24 md:py-32">
       <div className="flex flex-col md:flex-row gap-8">
         <FilterSidebar
           categories={categories}

@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  ReactNode,
+} from "react";
 import { authService } from "@/services";
 import type { User, SignupData } from "@/types";
 
@@ -29,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     try {
       const loggedIn = await authService.login(email, password);
       setUser(loggedIn);
@@ -38,9 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : "Login failed." };
     }
-  };
+  }, []);
 
-  const signup = async (data: SignupData) => {
+  const signup = useCallback(async (data: SignupData) => {
     try {
       const created = await authService.signup(data);
       setUser(created);
@@ -49,27 +57,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : "Sign up failed." };
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null);
     authService.clearSession();
-  };
+  }, []);
 
-  const updateUser = (updates: Partial<User>) => {
+  const updateUser = useCallback((updates: Partial<User>) => {
     setUser((prev) => {
       if (!prev) return prev;
       const updated = { ...prev, ...updates };
       authService.saveSession(updated);
       return updated;
     });
-  };
+  }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, signup, logout, updateUser }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ user, isAuthenticated: !!user, login, signup, logout, updateUser }),
+    [user, login, signup, logout, updateUser],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

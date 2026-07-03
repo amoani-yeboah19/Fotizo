@@ -28,7 +28,7 @@ export default function MessagesPage() {
                   onClick={() => setLocation(`/messages/${conv.id}`)}
                   className="flex items-start gap-3 p-4 border-b border-border hover:bg-muted/50 cursor-pointer transition-colors"
                 >
-                  <img src={conv.participantAvatar || "/images/avatar-1.png"} alt={conv.participantName} className="w-12 h-12 rounded-full object-cover shrink-0" />
+                  <img loading="lazy" decoding="async" src={conv.participantAvatar || "/images/avatar-1.webp"} alt={conv.participantName} className="w-12 h-12 rounded-full object-cover shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-1">
                       <h4 className="font-semibold text-sm truncate">{conv.participantName}</h4>

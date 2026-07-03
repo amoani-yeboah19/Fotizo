@@ -14,6 +14,8 @@ import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { StatCard } from "@/components/common/StatCard";
 import { SurfaceCard } from "@/components/common/SurfaceCard";
 import { Loading } from "@/components/common/QueryStates";
+import { StatusBadge } from "@/components/common/StatusBadge";
+import { chartColors, chartAxisTick, chartTooltipStyle } from "@/constants/chart";
 import { Button } from "@/components/ui/button";
 
 const apiData = Array.from({ length: 24 }).map((_, i) => ({
@@ -43,7 +45,7 @@ export default function DashboardDeveloper() {
         <>
           <div className="flex justify-between items-end mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">API Console</h1>
+              <h1 className="heading-page text-foreground">API Console</h1>
               <p className="text-muted-foreground mt-1">Manage your Fotizo API integration.</p>
             </div>
             <div className="flex gap-3">
@@ -73,10 +75,10 @@ export default function DashboardDeveloper() {
                       <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 12 }} dy={10} minTickGap={30} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 12 }} dx={-10} />
-                  <Tooltip cursor={{ stroke: "#cbd5e1" }} contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartColors.grid} />
+                  <XAxis dataKey="time" axisLine={false} tickLine={false} tick={chartAxisTick} dy={10} minTickGap={30} />
+                  <YAxis axisLine={false} tickLine={false} tick={chartAxisTick} dx={-10} />
+                  <Tooltip cursor={{ stroke: chartColors.cursor }} contentStyle={chartTooltipStyle} />
                   <Area type="monotone" dataKey="calls" stroke="hsl(var(--primary))" strokeWidth={2} fillOpacity={1} fill="url(#colorCalls)" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -125,7 +127,7 @@ export default function DashboardDeveloper() {
                       <p className="font-semibold text-sm truncate pr-4 flex items-center gap-2">
                         {w.url} <ExternalLink className="w-3 h-3 text-muted-foreground" />
                       </p>
-                      <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Healthy</span>
+                      <StatusBadge tone="success">Healthy</StatusBadge>
                     </div>
                     <p className="text-xs text-muted-foreground font-mono">{w.events}</p>
                   </div>

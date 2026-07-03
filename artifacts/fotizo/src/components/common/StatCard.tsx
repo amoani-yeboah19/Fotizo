@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { memo, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { SurfaceCard } from "./SurfaceCard";
 
@@ -14,7 +14,7 @@ interface StatCardProps {
   className?: string;
 }
 
-export function StatCard({
+export const StatCard = memo(function StatCard({
   label,
   value,
   sub,
@@ -51,4 +51,4 @@ export function StatCard({
       {sub}
     </SurfaceCard>
   );
-}
+});

@@ -62,7 +62,7 @@ export default function ProductDetail() {
   };
 
   return (
-    <PageLayout mainClassName="container mx-auto px-4 lg:px-8 py-24">
+    <PageLayout mainClassName="container-app py-24">
         {/* Breadcrumb */}
         <nav className="flex items-center text-sm text-muted-foreground mb-8">
           <Link href="/"><span className="hover:text-primary cursor-pointer">Home</span></Link>
@@ -76,7 +76,7 @@ export default function ProductDetail() {
           {/* Images */}
           <div className="space-y-4">
             <div className="aspect-square bg-white border border-border rounded-2xl p-8 flex items-center justify-center relative overflow-hidden">
-              <img src={product.image} alt={product.title} className="w-full h-full object-contain" />
+              <img loading="lazy" decoding="async" src={product.image} alt={product.title} className="w-full h-full object-contain" />
               {product.originalPrice && (
                 <div className="absolute top-6 left-6 px-3 py-1.5 bg-accent text-white text-sm font-bold rounded-full">
                   Sale
@@ -87,7 +87,7 @@ export default function ProductDetail() {
               <div className="flex gap-4 overflow-x-auto pb-2">
                 {product.images.map((img, i) => (
                   <button key={i} className="w-24 h-24 shrink-0 bg-white border border-border rounded-xl p-2 hover:border-primary transition-colors">
-                    <img src={img} alt="" className="w-full h-full object-contain" />
+                    <img loading="lazy" decoding="async" src={img} alt="" className="w-full h-full object-contain" />
                   </button>
                 ))}
               </div>

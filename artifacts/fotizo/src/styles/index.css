@@ -249,6 +249,39 @@
   }
 }
 
+@layer components {
+  /* Layout rhythm */
+  .container-app { @apply container mx-auto px-4 lg:px-8; }
+  .section       { @apply py-24; }
+  .surface       { @apply bg-white rounded-2xl border border-border shadow-sm; }
+
+  /* Typography scale */
+  .heading-page    { @apply text-3xl md:text-4xl font-bold leading-tight; }
+  .heading-section { @apply text-3xl font-bold text-foreground; }
+  .heading-sub     { @apply text-2xl font-bold; }
+  .heading-panel   { @apply text-xl font-bold; }
+
+  /* Status badges */
+  .badge-status  { @apply px-2.5 py-0.5 rounded-full text-xs font-medium capitalize; }
+  .badge-success { @apply bg-green-100 text-green-700; }
+  .badge-warning { @apply bg-amber-100 text-amber-700; }
+  .badge-danger  { @apply bg-red-100 text-red-700; }
+  .badge-info    { @apply bg-blue-100 text-blue-700; }
+  .badge-neutral { @apply bg-muted text-muted-foreground; }
+
+  /* Decorative backgrounds (theme-coloured; parent controls opacity) */
+  .bg-grid {
+    background-image:
+      linear-gradient(hsl(var(--primary)) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--primary)) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .bg-dots {
+    background-image: radial-gradient(circle, #fff 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+}
+
 /**
  * Using the elevate system.
  * Automatic contrast adjustment.

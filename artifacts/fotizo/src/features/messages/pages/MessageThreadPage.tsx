@@ -52,7 +52,7 @@ export default function MessageThread() {
                 onClick={() => setLocation(`/messages/${conv.id}`)}
                 className={`flex items-start gap-3 p-4 border-b border-border cursor-pointer transition-colors ${conv.id === conversation.id ? 'bg-primary/5 border-l-4 border-l-primary' : 'hover:bg-muted/50'}`}
               >
-                <img src={conv.participantAvatar || "/images/avatar-1.png"} alt={conv.participantName} className="w-12 h-12 rounded-full object-cover shrink-0" />
+                <img loading="lazy" decoding="async" src={conv.participantAvatar || "/images/avatar-1.webp"} alt={conv.participantName} className="w-12 h-12 rounded-full object-cover shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline mb-1">
                     <h4 className="font-semibold text-sm truncate">{conv.participantName}</h4>
@@ -73,7 +73,7 @@ export default function MessageThread() {
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setLocation("/messages")}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <img src={conversation.participantAvatar || "/images/avatar-1.png"} alt={conversation.participantName} className="w-10 h-10 rounded-full object-cover" />
+            <img loading="lazy" decoding="async" src={conversation.participantAvatar || "/images/avatar-1.webp"} alt={conversation.participantName} className="w-10 h-10 rounded-full object-cover" />
             <div>
               <h3 className="font-bold text-sm leading-tight">{conversation.participantName}</h3>
               <p className="text-xs text-muted-foreground">{conversation.participantRole}</p>
@@ -92,7 +92,7 @@ export default function MessageThread() {
                 <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                   <div className={`flex max-w-[75%] ${isMe ? 'flex-row-reverse' : 'flex-row'} gap-3`}>
                     {!isMe && (
-                      <img src={conversation.participantAvatar || "/images/avatar-1.png"} alt={msg.senderName} className="w-8 h-8 rounded-full mt-auto" />
+                      <img loading="lazy" decoding="async" src={conversation.participantAvatar || "/images/avatar-1.webp"} alt={msg.senderName} className="w-8 h-8 rounded-full mt-auto" />
                     )}
                     
                     <div className="flex flex-col">

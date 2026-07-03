@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 export function Newsletter() {
   return (
     <section className="py-20 bg-white border-t border-border/50">
-      <div className="container mx-auto px-4 lg:px-8">
+      <div className="container-app">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}

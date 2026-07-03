@@ -4,7 +4,7 @@ import { Facebook, Twitter, Instagram, Linkedin } from "lucide-react";
 export function Footer() {
   return (
     <footer className="bg-primary text-white pt-20 pb-10">
-      <div className="container mx-auto px-4 lg:px-8">
+      <div className="container-app">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
           <div className="lg:col-span-2">
             <Link href="/" className="inline-block mb-6">

@@ -8,7 +8,7 @@ export function Testimonials() {
 
   return (
     <section className="py-24 bg-background">
-      <div className="container mx-auto px-4 lg:px-8">
+      <div className="container-app">
         <div className="text-center max-w-2xl mx-auto mb-16">
           <h2 className="text-3xl font-bold text-foreground">Trusted by professionals</h2>
           <p className="text-muted-foreground mt-4">
@@ -32,7 +32,7 @@ export function Testimonials() {
                 "{testimonial.text}"
               </p>
               <div className="flex items-center gap-4 mt-auto">
-                <img 
+                <img loading="lazy" decoding="async" 
                   src={testimonial.avatar} 
                   alt={testimonial.name} 
                   className="w-12 h-12 rounded-full object-cover"

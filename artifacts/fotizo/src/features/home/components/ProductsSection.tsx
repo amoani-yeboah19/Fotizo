@@ -9,7 +9,7 @@ export function ProductsSection() {
 
   return (
     <section className="py-20 bg-background">
-      <div className="container mx-auto px-4 lg:px-8">
+      <div className="container-app">
         <SectionHeader
           title="Trending Products"
           subtitle="Discover premium items handpicked for you."

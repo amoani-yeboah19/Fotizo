@@ -14,6 +14,8 @@ import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { StatCard } from "@/components/common/StatCard";
 import { SurfaceCard } from "@/components/common/SurfaceCard";
 import { Price } from "@/components/common/Price";
+import { StatusBadge } from "@/components/common/StatusBadge";
+import { chartColors, chartAxisTick, chartTooltipStyle } from "@/constants/chart";
 import { Button } from "@/components/ui/button";
 
 const chartData = [
@@ -45,7 +47,7 @@ export default function DashboardSeller() {
     <DashboardLayout sidebar={sidebar}>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Seller Dashboard</h1>
+          <h1 className="heading-page text-foreground">Seller Dashboard</h1>
           <p className="text-muted-foreground mt-1">Manage your business on Fotizo.</p>
         </div>
         <div className="flex gap-3">
@@ -85,11 +87,11 @@ export default function DashboardSeller() {
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 12 }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 12 }} dx={-10} tickFormatter={(val) => `£${val}`} />
-                <RechartsTooltip cursor={{ fill: "#F1F5F9" }} contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }} />
-                <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartColors.grid} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={chartAxisTick} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={chartAxisTick} dx={-10} tickFormatter={(val) => `£${val}`} />
+                <RechartsTooltip cursor={{ fill: chartColors.cursor }} contentStyle={chartTooltipStyle} />
+                <Bar dataKey="revenue" fill={chartColors.primary} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -140,7 +142,7 @@ export default function DashboardSeller() {
                 <tr key={product.id} className="hover:bg-muted/30">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <img src={product.image} alt="" className="w-10 h-10 rounded bg-muted object-contain p-1" />
+                      <img loading="lazy" decoding="async" src={product.image} alt="" className="w-10 h-10 rounded bg-muted object-contain p-1" />
                       <span className="font-medium">{product.title}</span>
                     </div>
                   </td>
@@ -150,13 +152,9 @@ export default function DashboardSeller() {
                   <td className="px-6 py-4">{product.stock}</td>
                   <td className="px-6 py-4">{product.sales}</td>
                   <td className="px-6 py-4">
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                        product.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                      }`}
-                    >
+                    <StatusBadge tone={product.status === "active" ? "success" : "danger"}>
                       {product.status.replace("_", " ")}
-                    </span>
+                    </StatusBadge>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">

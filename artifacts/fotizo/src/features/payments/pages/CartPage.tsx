@@ -13,7 +13,7 @@ export default function CartPage() {
   const grandTotal = total + (items.length > 0 ? shipping : 0);
 
   return (
-    <PageLayout mainClassName="container mx-auto px-4 lg:px-8 py-24">
+    <PageLayout mainClassName="container-app py-24">
       <h1 className="text-3xl font-bold mb-8">Shopping Cart</h1>
 
       {items.length === 0 ? (
@@ -45,7 +45,7 @@ export default function CartPage() {
                   <div key={item.id} className="p-4 sm:p-6 flex flex-col sm:grid sm:grid-cols-12 gap-4 items-center">
                     <div className="col-span-6 flex items-center gap-4 w-full">
                       <div className="w-20 h-20 bg-muted rounded-xl p-2 shrink-0">
-                        <img src={item.image} alt={item.title} className="w-full h-full object-contain" />
+                        <img loading="lazy" decoding="async" src={item.image} alt={item.title} className="w-full h-full object-contain" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <Link href={`/products/${item.productId}`}>

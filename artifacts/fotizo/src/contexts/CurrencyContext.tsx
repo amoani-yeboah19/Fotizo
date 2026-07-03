@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  ReactNode,
+} from "react";
 import { currencyService } from "@/services";
 import type { CurrencyCode, CurrencyMeta, CurrencyRates } from "@/types";
 
@@ -40,30 +48,38 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const currency = CURRENCIES.find((c) => c.code === currencyCode)!;
+  const currency = useMemo(
+    () => CURRENCIES.find((c) => c.code === currencyCode)!,
+    [currencyCode],
+  );
 
-  const setCurrency = (code: CurrencyCode) => {
+  const setCurrency = useCallback((code: CurrencyCode) => {
     setCurrencyCode(code);
     localStorage.setItem("fotizo_currency", code);
-  };
+  }, []);
 
-  const convert = (amountGBP: number) => {
-    return Math.round(amountGBP * (rates[currencyCode] ?? 1) * 100) / 100;
-  };
-
-  const format = (amountGBP: number) => {
-    const amount = convert(amountGBP);
-    return `${currency.symbol}${amount.toLocaleString("en-GB", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
-  };
-
-  return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, format, convert }}>
-      {children}
-    </CurrencyContext.Provider>
+  const convert = useCallback(
+    (amountGBP: number) => Math.round(amountGBP * (rates[currencyCode] ?? 1) * 100) / 100,
+    [rates, currencyCode],
   );
+
+  const format = useCallback(
+    (amountGBP: number) => {
+      const amount = convert(amountGBP);
+      return `${currency.symbol}${amount.toLocaleString("en-GB", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`;
+    },
+    [convert, currency],
+  );
+
+  const value = useMemo(
+    () => ({ currency, setCurrency, format, convert }),
+    [currency, setCurrency, format, convert],
+  );
+
+  return <CurrencyContext.Provider value={value}>{children}</CurrencyContext.Provider>;
 }
 
 export function useCurrency() {

@@ -16,7 +16,7 @@ export function EmptyState({
     <div className="flex-1 flex items-center justify-center py-24">
       <div className="text-center">
         {icon && <div className="mb-4 flex justify-center text-muted-foreground/40">{icon}</div>}
-        <h2 className="text-2xl font-bold mb-4">{title}</h2>
+        <h2 className="heading-sub mb-4">{title}</h2>
         {description && <p className="text-muted-foreground mb-6">{description}</p>}
         {action}
       </div>
