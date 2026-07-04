@@ -1,5 +1,16 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { catalogService } from "@/features/marketplace/services";
+
+export const useCreateProduct = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: catalogService.createProduct,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["seller-products"] });
+    },
+  });
+};
 
 export const useProducts = () =>
   useQuery({ queryKey: ["products"], queryFn: catalogService.listProducts });

@@ -122,6 +122,37 @@ export interface SellerProduct {
   category: string;
 }
 
+// Payload a seller submits from the "Post a product" wizard. Server-generated
+// fields (id, rating, reviewCount, inStock) are filled by the service/backend.
+export interface NewProductInput {
+  title: string;
+  category: string;
+  description: string;
+  price: number;
+  originalPrice: number | null;
+  stockCount: number;
+  images: string[];
+  tags: string[];
+  specs: ProductSpec;
+  seller: string;
+  sellerId: string;
+}
+
+// Payload a professional submits from the "Offer a service" wizard.
+export interface NewServiceInput {
+  title: string;
+  category: string;
+  description: string;
+  experience: string;
+  hourlyRate: number;
+  availability: string;
+  skills: string[];
+  avatar: string;
+  packages: ServicePackage[];
+  provider: string;
+  providerId: string;
+}
+
 export interface ManagerMetrics {
   totalUsers: number;
   newUsersThisMonth: number;

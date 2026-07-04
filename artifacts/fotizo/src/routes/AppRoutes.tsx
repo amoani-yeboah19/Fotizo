@@ -21,6 +21,8 @@ const DashboardBuyer = lazy(() => import("@/features/profile/pages/BuyerDashboar
 const DashboardSeller = lazy(() => import("@/features/profile/pages/SellerDashboard"));
 const DashboardManager = lazy(() => import("@/features/profile/pages/ManagerDashboard"));
 const DashboardDeveloper = lazy(() => import("@/features/profile/pages/DeveloperDashboard"));
+const PostProduct = lazy(() => import("@/features/marketplace/pages/PostProductPage"));
+const OfferService = lazy(() => import("@/features/artisans/pages/OfferServicePage"));
 
 export function AppRoutes() {
   return (
@@ -45,6 +47,8 @@ export function AppRoutes() {
         <Route path="/messages" component={MessagesPage} />
         <Route path="/messages/:id" component={MessageThread} />
         <Route path="/dashboard/buyer" component={DashboardBuyer} />
+        <Route path="/dashboard/seller/products/new" component={PostProduct} />
+        <Route path="/dashboard/seller/services/new" component={OfferService} />
         <Route path="/dashboard/seller" component={DashboardSeller} />
         <Route path="/dashboard/manager" component={DashboardManager} />
         <Route path="/dashboard/developer" component={DashboardDeveloper} />

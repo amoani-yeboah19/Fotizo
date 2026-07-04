@@ -7,6 +7,7 @@ import {
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from "recharts";
+import { Link } from "wouter";
 import { TrendingUp, Package, ShoppingBag, Star, Plus, Edit2, Eye } from "lucide-react";
 import { useSellerProducts, useOrders } from "@/features/profile/hooks";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -51,8 +52,12 @@ export default function DashboardSeller() {
           <p className="text-muted-foreground mt-1">Manage your business on Fotizo.</p>
         </div>
         <div className="flex gap-3">
-          <Button className="gap-2"><Plus className="w-4 h-4" /> Add Product</Button>
-          <Button variant="outline" className="gap-2"><Plus className="w-4 h-4" /> Add Service</Button>
+          <Link href="/dashboard/seller/products/new">
+            <Button className="gap-2"><Plus className="w-4 h-4" aria-hidden="true" /> Add Product</Button>
+          </Link>
+          <Link href="/dashboard/seller/services/new">
+            <Button variant="outline" className="gap-2"><Plus className="w-4 h-4" aria-hidden="true" /> Add Service</Button>
+          </Link>
         </div>
       </div>
 
