@@ -2,15 +2,16 @@ import { motion } from "framer-motion";
 import { ArrowRight, PlayCircle, ShoppingCart, Briefcase, BarChart3, Users, ShoppingBag, Globe, Heart } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { HeroBackground } from "@/features/home/components/HeroBackground";
 
 const HERO_PHOTO_MOBILE = "/images/hero-team-mobile.webp";
 const HERO_PHOTO_ALT =
   "The FOTIZO community — entrepreneurs, sellers, artisans and freelancers across Ghana, the UK and the US.";
 
 const FEATURES = [
-  { icon: ShoppingCart, title: "Sell Everywhere", desc: "Reach customers across multiple channels." },
-  { icon: Briefcase, title: "Manage Easily", desc: "Streamline operations and save valuable time." },
-  { icon: BarChart3, title: "Grow Smarter", desc: "Gain insights and scale your business faster." },
+  { icon: ShoppingCart, title: "Sell Everywhere", desc: "Reach customers across multiple channels.", tint: "bg-[#08275B]/10 text-[#08275B]" },
+  { icon: Briefcase, title: "Manage Easily", desc: "Streamline operations and save valuable time.", tint: "bg-[#FF6A00]/10 text-[#FF6A00]" },
+  { icon: BarChart3, title: "Grow Smarter", desc: "Gain insights and scale your business faster.", tint: "bg-[#08275B]/10 text-[#08275B]" },
 ];
 
 const STATS = [
@@ -20,8 +21,7 @@ const STATS = [
   { icon: Heart, value: "98%", label: "Customer Satisfaction" },
 ];
 
-// Eyebrow, headline, paragraph, CTAs. The paragraph is hidden on phones (where
-// the copy overlays the image's white zone) and returns from md up.
+// Eyebrow, headline, paragraph, CTAs — the left-hand pitch. Shown on every device.
 function HeroCopy() {
   return (
     <>
@@ -85,11 +85,11 @@ function HeroFeatures() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.36 }}
-      className="grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-4"
+      className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-x-6 gap-y-4"
     >
-      {FEATURES.map(({ icon: Icon, title, desc }) => (
+      {FEATURES.map(({ icon: Icon, title, desc, tint }) => (
         <li key={title} className="flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-primary">
+          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${tint}`}>
             <Icon className="w-4 h-4" aria-hidden="true" />
           </span>
           <div>
@@ -110,7 +110,7 @@ function HeroStats() {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5 }}
-      className="container-app pt-4 pb-16 lg:pt-8 lg:pb-20"
+      className="relative z-10 container-app pt-4 pb-16 lg:pt-8 lg:pb-20"
     >
       <p className="text-center text-sm text-muted-foreground mb-8">
         Trusted by thousands of businesses worldwide
@@ -136,8 +136,10 @@ function HeroStats() {
 export function Hero() {
   return (
     <section className="relative bg-white overflow-hidden">
+      <HeroBackground />
+
       {/* ── md+ : two columns — copy left, image right (never overlap at any width) ── */}
-      <div className="hidden md:block">
+      <div className="relative z-10 hidden md:block">
         <div className="container-app pt-28 lg:pt-32 pb-6">
           <div className="grid md:grid-cols-2 gap-8 lg:gap-12 xl:gap-16 items-center">
             <div className="max-w-xl">
@@ -161,7 +163,7 @@ export function Hero() {
       </div>
 
       {/* ── < md : copy overlaid on the image's white top zone; features below ── */}
-      <div className="md:hidden pt-20">
+      <div className="relative z-10 md:hidden pt-20">
         <div className="relative max-w-[460px] mx-auto">
           <img
             src={HERO_PHOTO_MOBILE}
