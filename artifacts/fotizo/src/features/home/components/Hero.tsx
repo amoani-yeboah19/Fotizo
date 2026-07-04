@@ -57,17 +57,17 @@ function HeroCopy() {
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.26 }}
-        className="mt-7 flex flex-wrap items-center gap-3"
+        className="mt-7 flex flex-nowrap items-center gap-2"
       >
         <Link href="/signup">
-          <Button className="gap-2 bg-primary hover:bg-primary/90 text-white rounded-lg px-6 h-12 text-sm font-semibold shadow-md shadow-primary/25">
+          <Button className="gap-2 bg-primary hover:bg-primary/90 text-white rounded-lg px-4 h-11 text-sm font-semibold shadow-md shadow-primary/25">
             Get Started Free
             <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </Button>
         </Link>
         <Button
           type="button"
-          className="gap-2 rounded-lg px-6 h-12 text-sm font-semibold bg-[#FF6A00] text-white hover:bg-[#FF6A00]/90 shadow-md shadow-[#FF6A00]/30"
+          className="gap-2 rounded-lg px-4 h-11 text-sm font-semibold bg-[#FF6A00] text-white hover:bg-[#FF6A00]/90 shadow-md shadow-[#FF6A00]/30"
         >
           <span className="relative inline-flex items-center justify-center">
             {/* sonar ripple radiating out of the play icon */}
@@ -190,7 +190,7 @@ export function Hero() {
           />
           {/* soft top scrim — safety net; fades out before the people */}
           <div className="absolute inset-0 bg-gradient-to-b from-white from-8% via-white/70 via-40% to-transparent to-54%" />
-          <div className="absolute inset-x-0 top-0 px-6 pt-6">
+          <div className="absolute inset-x-0 top-0 px-5 pt-6">
             <HeroCopy />
           </div>
         </div>
