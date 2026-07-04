@@ -4,27 +4,10 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import { mockupPreviewPlugin } from "./mockupPreviewPlugin";
 
-const rawPort = process.env.PORT;
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
-}
+// PORT / BASE_PATH were mandatory under the old Replit setup. They are now optional
+// with sensible defaults so the build runs on any host without extra env.
+const port = Number(process.env.PORT) || 5174;
+const basePath = process.env.BASE_PATH || "/";
 
 export default defineConfig({
   base: basePath,

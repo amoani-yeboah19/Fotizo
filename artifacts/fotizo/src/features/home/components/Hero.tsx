@@ -67,10 +67,25 @@ function HeroCopy() {
         </Link>
         <Button
           type="button"
-          variant="outline"
-          className="gap-2 rounded-lg px-6 h-12 text-sm font-semibold border-border bg-white/90 backdrop-blur-sm hover:bg-muted text-foreground"
+          className="gap-2 rounded-lg px-6 h-12 text-sm font-semibold bg-[#FF6A00] text-white hover:bg-[#FF6A00]/90 shadow-md shadow-[#FF6A00]/30"
         >
-          <PlayCircle className="w-4 h-4" aria-hidden="true" />
+          <span className="relative inline-flex items-center justify-center">
+            {/* sonar ripple radiating out of the play icon */}
+            <motion.span
+              aria-hidden="true"
+              className="absolute inset-0 rounded-full bg-white/50"
+              animate={{ scale: [1, 2.2], opacity: [0.5, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
+            />
+            {/* gentle pulse on the icon itself */}
+            <motion.span
+              className="relative inline-flex"
+              animate={{ scale: [1, 1.15, 1] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <PlayCircle className="w-4 h-4" aria-hidden="true" />
+            </motion.span>
+          </span>
           Watch Demo
         </Button>
       </motion.div>
