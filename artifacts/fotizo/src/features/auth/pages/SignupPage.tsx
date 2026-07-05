@@ -3,18 +3,21 @@ import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, ShoppingBag, Store, Shield, Code } from "lucide-react";
+import { Loader2, ShoppingBag, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth, UserRole } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
+// Only buyer/seller are self-assignable at signup. Manager/developer are
+// staff roles granted by an admin elsewhere — never from a public form field,
+// since the backend would otherwise trust whatever role the client sends.
 const signupSchema = z.object({
   name: z.string().min(2, "Name is required"),
   email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["buyer", "seller", "manager", "developer"] as const),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  role: z.enum(["buyer", "seller"] as const),
 });
 
 type SignupFormValues = z.infer<typeof signupSchema>;
@@ -22,8 +25,6 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 const ROLES = [
   { id: "buyer", label: "Buyer", desc: "Buy Products & Hire Professionals", icon: ShoppingBag },
   { id: "seller", label: "Professional", desc: "Sell Products or Offer Services", icon: Store },
-  { id: "manager", label: "Manager", desc: "Manage the Fotizo Platform", icon: Shield },
-  { id: "developer", label: "Developer", desc: "Build with Fotizo APIs", icon: Code },
 ] as const;
 
 export default function Signup() {
