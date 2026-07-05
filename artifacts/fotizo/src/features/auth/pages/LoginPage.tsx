@@ -40,15 +40,9 @@ export default function Login() {
           title: "Welcome back!",
           description: "You have successfully signed in.",
         });
-        // Note: The AuthContext actually stores the user and we can route based on it,
-        // but since login is async we need to fetch the local storage or just rely on the mock data.
-        // For simplicity, we can inspect the email or rely on a slight delay to let context update.
-        // Based on mock data:
-        if (data.email.toLowerCase().includes("buyer")) setLocation("/dashboard/buyer");
-        else if (data.email.toLowerCase().includes("seller")) setLocation("/dashboard/seller");
-        else if (data.email.toLowerCase().includes("manager")) setLocation("/dashboard/manager");
-        else if (data.email.toLowerCase().includes("developer")) setLocation("/dashboard/developer");
-        else setLocation("/dashboard/buyer");
+        // Every role lands on the home page after login; their dashboard is one
+        // click away from the account menu in the navbar.
+        setLocation("/");
       } else {
         toast({
           variant: "destructive",

@@ -2,7 +2,7 @@
 // Single source of truth for entities. When the backend contract lands, these should be
 // generated from / reconciled with the OpenAPI spec (see @workspace/api-zod).
 
-export type UserRole = "buyer" | "seller" | "manager" | "developer";
+export type UserRole = "buyer" | "seller" | "manager" | "developer" | "representative";
 
 export interface User {
   id: string;
@@ -173,6 +173,13 @@ export interface DeveloperStats {
   rateLimit: number;
 }
 
+// A negotiation offer attached to a message — renders as an offer card in the thread.
+export interface MessageOffer {
+  description: string;
+  amount: number;
+  status: "pending" | "accepted" | "declined";
+}
+
 export interface Message {
   id: string;
   senderId: string;
@@ -181,6 +188,7 @@ export interface Message {
   content: string;
   timestamp: string;
   read: boolean;
+  offer?: MessageOffer;
 }
 
 export interface Conversation {

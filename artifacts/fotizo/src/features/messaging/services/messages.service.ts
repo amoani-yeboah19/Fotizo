@@ -38,6 +38,26 @@ export const messagesService = {
     return api.post<Message>(`/conversations/${conversationId}/messages`, { content });
   },
 
+  async sendOffer(
+    conversationId: string,
+    offer: { description: string; amount: number },
+    senderId: string,
+    senderName: string,
+  ): Promise<Message> {
+    if (USE_MOCKS) {
+      return {
+        id: `m${Date.now()}`,
+        senderId,
+        senderName,
+        content: `Sent an offer · £${offer.amount.toLocaleString()}`,
+        timestamp: new Date().toISOString(),
+        read: false,
+        offer: { ...offer, status: "pending" },
+      };
+    }
+    return api.post<Message>(`/conversations/${conversationId}/offers`, offer);
+  },
+
   // Simulated counterpart reply. Backend delivers real replies (e.g. via polling or
   // websockets), so against a real API this resolves to null and the UI does nothing.
   async getAutoReply(): Promise<Message | null> {

@@ -4,14 +4,16 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { useMessages } from "@/contexts/MessagesContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
-import { Send, ArrowLeft } from "lucide-react";
+import { Send, ArrowLeft, Handshake, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Price } from "@/components/common/Price";
+import { StatusBadge } from "@/components/common/StatusBadge";
 
 export default function MessageThread() {
   const [, params] = useRoute("/messages/:id");
   const [, setLocation] = useLocation();
-  const { conversations, sendMessage, markAsRead } = useMessages();
+  const { conversations, sendMessage, respondToOffer, markAsRead } = useMessages();
   const { user } = useAuth();
   
   const conversation = conversations.find(c => c.id === params?.id);
@@ -87,6 +89,42 @@ export default function MessageThread() {
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
             {conversation.messages.map((msg, idx) => {
               const isMe = msg.senderId === user?.id;
+
+              if (msg.offer) {
+                const o = msg.offer;
+                return (
+                  <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                    <div className="w-full sm:w-[340px] rounded-2xl border-2 border-[#FF6A00]/30 bg-white overflow-hidden shadow-sm">
+                      <div className="flex items-center gap-2 bg-[#FF6A00]/10 px-4 py-2">
+                        <Handshake className="w-4 h-4 text-[#FF6A00]" aria-hidden="true" />
+                        <span className="text-xs font-bold uppercase tracking-wide text-[#FF6A00]">Custom Offer</span>
+                        <span className="ml-auto text-[10px] text-muted-foreground">{format(new Date(msg.timestamp), "h:mm a")}</span>
+                      </div>
+                      <div className="p-4">
+                        <p className="text-sm text-foreground whitespace-pre-wrap mb-4">{o.description}</p>
+                        <div className="flex items-end justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Offer</p>
+                            <Price amount={o.amount} className="text-2xl font-extrabold text-foreground" />
+                          </div>
+                          {o.status === "pending" ? (
+                            <div className="flex gap-2">
+                              <Button size="sm" className="gap-1 h-8" onClick={() => respondToOffer(conversation.id, msg.id, "accepted")}>
+                                <Check className="w-3.5 h-3.5" aria-hidden="true" /> Accept
+                              </Button>
+                              <Button size="sm" variant="outline" className="gap-1 h-8 text-destructive hover:bg-destructive hover:text-white" onClick={() => respondToOffer(conversation.id, msg.id, "declined")}>
+                                <X className="w-3.5 h-3.5" aria-hidden="true" /> Decline
+                              </Button>
+                            </div>
+                          ) : (
+                            <StatusBadge tone={o.status === "accepted" ? "success" : "danger"}>{o.status}</StatusBadge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
               
               return (
                 <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>

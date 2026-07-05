@@ -6,6 +6,7 @@ export interface SidebarItem {
   icon: ReactNode;
   label: string;
   href?: string;
+  onClick?: () => void;
   active?: boolean;
   badge?: number;
 }

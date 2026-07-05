@@ -488,6 +488,7 @@ export const MOCK_USERS: (User & { password: string })[] = [
   { id: "u2", name: "Sarah Jenkins", email: "seller@fotizo.com", password: "password", role: "seller", avatar: "/images/avatar-2.webp", joinedAt: "2023-11-08", verified: true },
   { id: "u3", name: "James Carter", email: "manager@fotizo.com", password: "password", role: "manager", avatar: "/images/avatar-3.webp", joinedAt: "2023-06-01", verified: true },
   { id: "u4", name: "Priya Sharma", email: "developer@fotizo.com", password: "password", role: "developer", avatar: "/images/avatar-4.webp", joinedAt: "2024-03-20", verified: true },
+  { id: "u5", name: "Jordan Blake", email: "usa@fotizo.com", password: "password", role: "representative", avatar: "/images/avatar-1.webp", joinedAt: "2024-02-01", verified: true },
 ];
 
 export const CURRENCY_RATES: CurrencyRates = { GBP: 1, USD: 1.27, GHS: 18.5 };

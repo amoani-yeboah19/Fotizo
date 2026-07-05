@@ -21,6 +21,7 @@ const DashboardBuyer = lazy(() => import("@/features/profile/pages/BuyerDashboar
 const DashboardSeller = lazy(() => import("@/features/profile/pages/SellerDashboard"));
 const DashboardManager = lazy(() => import("@/features/profile/pages/ManagerDashboard"));
 const DashboardDeveloper = lazy(() => import("@/features/profile/pages/DeveloperDashboard"));
+const DashboardRepresentative = lazy(() => import("@/features/profile/pages/RepresentativeDashboard"));
 const PostProduct = lazy(() => import("@/features/marketplace/pages/PostProductPage"));
 const OfferService = lazy(() => import("@/features/artisans/pages/OfferServicePage"));
 
@@ -52,6 +53,7 @@ export function AppRoutes() {
         <Route path="/dashboard/seller" component={DashboardSeller} />
         <Route path="/dashboard/manager" component={DashboardManager} />
         <Route path="/dashboard/developer" component={DashboardDeveloper} />
+        <Route path="/dashboard/representative" component={DashboardRepresentative} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>

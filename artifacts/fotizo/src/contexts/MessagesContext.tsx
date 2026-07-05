@@ -16,6 +16,13 @@ export type { Conversation, Message } from "@/types";
 interface MessagesContextType {
   conversations: Conversation[];
   sendMessage: (conversationId: string, content: string, senderId: string, senderName: string) => void;
+  sendOffer: (
+    conversationId: string,
+    offer: { description: string; amount: number },
+    senderId: string,
+    senderName: string,
+  ) => void;
+  respondToOffer: (conversationId: string, messageId: string, status: "accepted" | "declined") => void;
   markAsRead: (conversationId: string) => void;
   startConversation: (
     participant: { id: string; name: string; avatar?: string; role: string },
@@ -94,6 +101,49 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const sendOffer = useCallback(
+    (
+      conversationId: string,
+      offer: { description: string; amount: number },
+      senderId: string,
+      senderName: string,
+    ) => {
+      messagesService.sendOffer(conversationId, offer, senderId, senderName).then((newMsg) => {
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === conversationId
+              ? {
+                  ...c,
+                  messages: [...c.messages, newMsg],
+                  lastMessage: newMsg.content,
+                  lastMessageTime: newMsg.timestamp,
+                }
+              : c,
+          ),
+        );
+      });
+    },
+    [],
+  );
+
+  const respondToOffer = useCallback(
+    (conversationId: string, messageId: string, status: "accepted" | "declined") => {
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === conversationId
+            ? {
+                ...c,
+                messages: c.messages.map((m) =>
+                  m.id === messageId && m.offer ? { ...m, offer: { ...m.offer, status } } : m,
+                ),
+              }
+            : c,
+        ),
+      );
+    },
+    [],
+  );
+
   const startConversation = useCallback(
     (
       participant: { id: string; name: string; avatar?: string; role: string },
@@ -122,8 +172,8 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ conversations, sendMessage, markAsRead, startConversation, totalUnread }),
-    [conversations, sendMessage, markAsRead, startConversation, totalUnread],
+    () => ({ conversations, sendMessage, sendOffer, respondToOffer, markAsRead, startConversation, totalUnread }),
+    [conversations, sendMessage, sendOffer, respondToOffer, markAsRead, startConversation, totalUnread],
   );
 
   return <MessagesContext.Provider value={value}>{children}</MessagesContext.Provider>;
