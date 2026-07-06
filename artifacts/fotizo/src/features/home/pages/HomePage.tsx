@@ -4,7 +4,10 @@ import { Hero } from "@/features/home/components/Hero";
 import { Categories } from "@/features/home/components/Categories";
 import { ProductsSection } from "@/features/home/components/ProductsSection";
 import { ServicesSection } from "@/features/home/components/ServicesSection";
-import { WhyFotizo } from "@/features/home/components/WhyFotizo";
+import { PopularServices } from "@/features/home/components/PopularServices";
+import { MakeItHappen } from "@/features/home/components/MakeItHappen";
+import { AiServices } from "@/features/home/components/AiServices";
+import { Guides } from "@/features/home/components/Guides";
 import { Testimonials } from "@/features/home/components/Testimonials";
 import { Newsletter } from "@/features/home/components/Newsletter";
 import { PersonalizedHome } from "@/features/home/components/PersonalizedHome";
@@ -22,9 +25,12 @@ export default function Home() {
         <>
           <Hero />
           <Categories />
+          <PopularServices />
+          <MakeItHappen />
           <ProductsSection />
           <ServicesSection />
-          <WhyFotizo />
+          <AiServices />
+          <Guides />
           <Testimonials />
           <Newsletter />
         </>

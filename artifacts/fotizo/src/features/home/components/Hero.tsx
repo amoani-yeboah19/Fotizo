@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, PlayCircle, ShoppingCart, Briefcase, BarChart3, Users, ShoppingBag, Globe, Heart } from "lucide-react";
+import { ArrowRight, PlayCircle, TrendingUp, Users, ShoppingBag, Globe, Heart } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { HeroBackground } from "@/features/home/components/HeroBackground";
@@ -8,10 +8,12 @@ const HERO_PHOTO_MOBILE = "/images/hero-team-mobile.webp";
 const HERO_PHOTO_ALT =
   "The FOTIZO community — entrepreneurs, sellers, artisans and freelancers across Ghana, the UK and the US.";
 
-const FEATURES = [
-  { icon: ShoppingCart, title: "Sell Everywhere", desc: "Reach customers across multiple channels.", tint: "bg-[#08275B]/10 text-[#08275B]" },
-  { icon: Briefcase, title: "Manage Easily", desc: "Streamline operations and save valuable time.", tint: "bg-[#FF6A00]/10 text-[#FF6A00]" },
-  { icon: BarChart3, title: "Grow Smarter", desc: "Gain insights and scale your business faster.", tint: "bg-[#08275B]/10 text-[#08275B]" },
+const TRENDING = [
+  { label: "Logo Design", href: "/services" },
+  { label: "Web Development", href: "/services" },
+  { label: "Fashion", href: "/products" },
+  { label: "Home & Living", href: "/products" },
+  { label: "AI Services", href: "/services" },
 ];
 
 const STATS = [
@@ -93,27 +95,31 @@ function HeroCopy() {
   );
 }
 
-// The three "why Fotizo" blurbs (Sell Everywhere / Manage Easily / Grow Smarter).
+// Catchy strip under the CTAs: a punchy one-liner + trending-search chips.
 function HeroFeatures() {
   return (
-    <motion.ul
+    <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.36 }}
-      className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-x-6 gap-y-4"
     >
-      {FEATURES.map(({ icon: Icon, title, desc, tint }) => (
-        <li key={title} className="flex items-start gap-3">
-          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${tint}`}>
-            <Icon className="w-4 h-4" aria-hidden="true" />
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-foreground leading-tight">{title}</p>
-            <p className="text-xs text-muted-foreground mt-1 leading-snug">{desc}</p>
-          </div>
-        </li>
-      ))}
-    </motion.ul>
+      <p className="text-sm font-medium text-muted-foreground">
+        One marketplace. <span className="text-primary font-semibold">Endless possibilities</span> —
+        shop, hire &amp; grow across <span className="text-[#FF6A00] font-semibold">3 continents</span>.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          <TrendingUp className="w-3.5 h-3.5 text-[#FF6A00]" aria-hidden="true" /> Trending
+        </span>
+        {TRENDING.map((t) => (
+          <Link key={t.label} href={t.href}>
+            <span className="inline-block rounded-full border border-border bg-white/80 px-3.5 py-1.5 text-xs font-medium text-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer">
+              {t.label}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </motion.div>
   );
 }
 

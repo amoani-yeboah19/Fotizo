@@ -24,6 +24,8 @@ const DashboardDeveloper = lazy(() => import("@/features/profile/pages/Developer
 const DashboardRepresentative = lazy(() => import("@/features/profile/pages/RepresentativeDashboard"));
 const PostProduct = lazy(() => import("@/features/marketplace/pages/PostProductPage"));
 const OfferService = lazy(() => import("@/features/artisans/pages/OfferServicePage"));
+const GuidesPage = lazy(() => import("@/features/guides/pages/GuidesPage"));
+const GuideArticle = lazy(() => import("@/features/guides/pages/GuideArticlePage"));
 
 export function AppRoutes() {
   return (
@@ -42,6 +44,8 @@ export function AppRoutes() {
         <Route path="/products/:id" component={ProductDetail} />
         <Route path="/services" component={ServicesPage} />
         <Route path="/services/:id" component={ServiceDetail} />
+        <Route path="/guides" component={GuidesPage} />
+        <Route path="/guides/:slug" component={GuideArticle} />
         <Route path="/cart" component={CartPage} />
         <Route path="/checkout" component={CheckoutPage} />
         <Route path="/order-confirmation" component={OrderConfirmation} />

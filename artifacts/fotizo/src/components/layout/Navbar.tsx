@@ -6,7 +6,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useMessages } from "@/contexts/MessagesContext";
 import { ProductsMegaMenu } from "@/components/layout/navbar/ProductsMegaMenu";
-import { CurrencySwitcher } from "@/components/layout/navbar/CurrencySwitcher";
 import { UserMenu } from "@/components/layout/navbar/UserMenu";
 import { NavbarMobileMenu } from "@/components/layout/navbar/NavbarMobileMenu";
 
@@ -40,7 +39,7 @@ export function Navbar() {
               decoding="async"
               src="/fotizo-logo.webp"
               alt="Fotizo"
-              className="h-8 w-auto object-contain"
+              className="h-6 w-auto object-contain"
             />
           </Link>
 
@@ -69,8 +68,6 @@ export function Navbar() {
 
           {/* Actions */}
           <div className="hidden md:flex items-center gap-4">
-            <CurrencySwitcher />
-
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
                 <Link href="/messages">
