@@ -29,3 +29,36 @@ export function signAuthToken(payload: AuthTokenPayload): string {
 export function verifyAuthToken(token: string): AuthTokenPayload {
   return jwt.verify(token, JWT_SECRET) as unknown as AuthTokenPayload;
 }
+
+// Short-lived token for the gap between "Google verified this person" and
+// "they picked buyer/seller" — nothing is written to the DB until the role
+// is chosen, so this carries the verified identity across that one extra step.
+const PENDING_GOOGLE_SIGNUP_TTL = "10m";
+
+export interface PendingGoogleSignupPayload {
+  purpose: "google-signup";
+  googleId: string;
+  email: string;
+  name: string;
+}
+
+export function signPendingGoogleSignupToken(
+  payload: Omit<PendingGoogleSignupPayload, "purpose">,
+): string {
+  return jwt.sign({ ...payload, purpose: "google-signup" }, JWT_SECRET, {
+    expiresIn: PENDING_GOOGLE_SIGNUP_TTL,
+  });
+}
+
+export function verifyPendingGoogleSignupToken(token: string): PendingGoogleSignupPayload {
+  const payload = jwt.verify(token, JWT_SECRET);
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    (payload as { purpose?: unknown }).purpose !== "google-signup"
+  ) {
+    // Guards against a regular auth token being replayed into this endpoint.
+    throw new Error("Not a pending Google signup token.");
+  }
+  return payload as unknown as PendingGoogleSignupPayload;
+}

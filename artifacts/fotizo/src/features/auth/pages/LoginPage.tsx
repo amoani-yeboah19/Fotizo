@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { GoogleAuthButton } from "@/features/auth/components/GoogleAuthButton";
+import { GoogleRolePickerDialog } from "@/features/auth/components/GoogleRolePickerDialog";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -22,6 +24,7 @@ export default function Login() {
   const { login } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingGoogleToken, setPendingGoogleToken] = useState<string | null>(null);
 
   const {
     register,
@@ -109,6 +112,20 @@ export default function Login() {
             </Button>
           </form>
 
+          <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="h-px flex-1 bg-border" />
+            <span>OR</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          <GoogleAuthButton
+            onLoggedIn={() => {
+              toast({ title: "Welcome back!", description: "You have successfully signed in." });
+              setLocation("/");
+            }}
+            onNeedsRole={setPendingGoogleToken}
+          />
+
           <div className="mt-6 text-center text-sm">
             <span className="text-muted-foreground">Don't have an account? </span>
             <Link href="/signup">
@@ -130,6 +147,16 @@ export default function Login() {
           </ul>
         </div>
       </div>
+
+      <GoogleRolePickerDialog
+        pendingToken={pendingGoogleToken}
+        onClose={() => setPendingGoogleToken(null)}
+        onComplete={(role) => {
+          setPendingGoogleToken(null);
+          toast({ title: "Account created!", description: "Welcome to Fotizo." });
+          setLocation(`/dashboard/${role}`);
+        }}
+      />
     </div>
   );
 }

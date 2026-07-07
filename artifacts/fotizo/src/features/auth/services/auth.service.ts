@@ -5,6 +5,23 @@ import type { User, SignupData } from "@/types";
 
 const SESSION_KEY = "fotizo_user";
 
+export type GoogleAuthResult =
+  | { kind: "user"; user: User }
+  | { kind: "pending"; pendingToken: string };
+
+// Mock-mode only: the credential is a real Google ID token (JWT), so its
+// payload can be read without verifying the signature just to fake a
+// plausible email/name — never do this for a token that grants real access.
+function decodeGoogleCredentialUnsafe(credential: string): { email: string; name: string } {
+  try {
+    const payloadB64 = credential.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(payloadB64));
+    return { email: payload.email ?? "", name: payload.name ?? payload.email ?? "New User" };
+  } catch {
+    return { email: "", name: "New User" };
+  }
+}
+
 export const authService = {
   async login(email: string, _password: string): Promise<User> {
     if (USE_MOCKS) {
@@ -36,6 +53,38 @@ export const authService = {
       };
     }
     return api.post<User>("/auth/register", data);
+  },
+
+  async loginWithGoogle(credential: string): Promise<GoogleAuthResult> {
+    if (USE_MOCKS) {
+      await delay(500);
+      const { email, name } = decodeGoogleCredentialUnsafe(credential);
+      const found = fx.MOCK_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      if (found) {
+        const { password: _pw, ...user } = found;
+        return { kind: "user", user };
+      }
+      // No real pending state in mock mode — just smuggle the claims through
+      // as the "token" since nothing server-side will ever verify it.
+      return { kind: "pending", pendingToken: JSON.stringify({ email, name }) };
+    }
+    return api.post<GoogleAuthResult>("/auth/google", { credential });
+  },
+
+  async completeGoogleSignup(pendingToken: string, role: "buyer" | "seller"): Promise<User> {
+    if (USE_MOCKS) {
+      await delay(600);
+      const { email, name } = JSON.parse(pendingToken) as { email: string; name: string };
+      return {
+        id: `u${Date.now()}`,
+        name,
+        email,
+        role,
+        joinedAt: new Date().toISOString().split("T")[0],
+        verified: true,
+      };
+    }
+    return api.post<User>("/auth/google/complete", { pendingToken, role });
   },
 
   // Session persistence. On mocks this is localStorage; against a real backend the

@@ -13,11 +13,21 @@ import type { User, SignupData } from "@/types";
 // Re-exported so existing consumers can keep importing these from the context.
 export type { User, UserRole, SignupData } from "@/types";
 
+type GoogleLoginOutcome =
+  | { success: true; needsRole: false }
+  | { success: true; needsRole: true; pendingToken: string }
+  | { success: false; error: string };
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (data: SignupData) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: (credential: string) => Promise<GoogleLoginOutcome>;
+  completeGoogleSignup: (
+    pendingToken: string,
+    role: "buyer" | "seller",
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
 }
@@ -59,6 +69,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const loginWithGoogle = useCallback(async (credential: string): Promise<GoogleLoginOutcome> => {
+    try {
+      const result = await authService.loginWithGoogle(credential);
+      if (result.kind === "user") {
+        setUser(result.user);
+        authService.saveSession(result.user);
+        return { success: true, needsRole: false };
+      }
+      return { success: true, needsRole: true, pendingToken: result.pendingToken };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : "Google sign-in failed.",
+      };
+    }
+  }, []);
+
+  const completeGoogleSignup = useCallback(async (pendingToken: string, role: "buyer" | "seller") => {
+    try {
+      const created = await authService.completeGoogleSignup(pendingToken, role);
+      setUser(created);
+      authService.saveSession(created);
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : "Could not finish creating your account.",
+      };
+    }
+  }, []);
+
   const logout = useCallback(() => {
     setUser(null);
     authService.clearSession();
@@ -74,8 +115,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, isAuthenticated: !!user, login, signup, logout, updateUser }),
-    [user, login, signup, logout, updateUser],
+    () => ({
+      user,
+      isAuthenticated: !!user,
+      login,
+      signup,
+      loginWithGoogle,
+      completeGoogleSignup,
+      logout,
+      updateUser,
+    }),
+    [user, login, signup, loginWithGoogle, completeGoogleSignup, logout, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

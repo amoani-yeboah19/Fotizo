@@ -13,7 +13,11 @@ export const usersTable = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
+  // Null for accounts created via Google — they never set a password.
+  passwordHash: text("password_hash"),
+  // Set once a user links or signs up with Google; unique so one Google
+  // account can't attach itself to more than one Fotizo user.
+  googleId: text("google_id").unique(),
   role: userRoleEnum("role").notNull().default("buyer"),
   avatar: text("avatar"),
   verified: boolean("verified").notNull().default(false),
