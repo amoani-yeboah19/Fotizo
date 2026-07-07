@@ -1,5 +1,5 @@
-import { useState, type ReactNode, type SelectHTMLAttributes } from "react";
-import { Plus, X } from "lucide-react";
+import { useState, useRef, type ReactNode, type SelectHTMLAttributes } from "react";
+import { X, ImagePlus, Camera, Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
@@ -58,9 +58,32 @@ export function NativeSelect({
   );
 }
 
-// Add image URLs with live thumbnail previews. Files can't persist without storage,
-// so we take URLs (matches the existing catalog data).
-export function ImageUrlInput({
+// Downscale a picked/captured photo on a canvas so multi-MB camera shots become
+// reasonably-sized data URLs (kept in memory / mock data; a real backend would
+// receive file uploads instead).
+async function fileToImageDataUrl(file: File, maxDim = 1200, quality = 0.82): Promise<string> {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("Could not read image"));
+      i.src = objectUrl;
+    });
+    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", quality);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+// Photo uploader: pick from the device, drag & drop, or take a picture on
+// phones. Previews render as removable thumbnails; the first image is the cover.
+export function ImageUploadInput({
   value,
   onChange,
   error,
@@ -69,49 +92,107 @@ export function ImageUrlInput({
   onChange: (next: string[]) => void;
   error?: string;
 }) {
-  const [url, setUrl] = useState("");
-  const add = () => {
-    const u = url.trim();
-    if (u && !value.includes(u)) onChange([...value, u]);
-    setUrl("");
+  const pickRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+
+  const addFiles = async (files: FileList | File[] | null) => {
+    const list = Array.from(files ?? []).filter((f) => f.type.startsWith("image/"));
+    if (!list.length) return;
+    setBusy(true);
+    try {
+      const dataUrls = await Promise.all(list.map((f) => fileToImageDataUrl(f)));
+      onChange([...value, ...dataUrls.filter((d) => !value.includes(d))]);
+    } catch {
+      // Unreadable file — ignore; the user can retry with another photo.
+    } finally {
+      setBusy(false);
+    }
   };
+
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
-        <Input
-          type="url"
-          inputMode="url"
-          placeholder="https://…/photo.jpg"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              add();
-            }
-          }}
-          aria-label="Image URL"
-        />
-        <button
-          type="button"
-          onClick={add}
-          className="inline-flex shrink-0 items-center gap-1 rounded-md bg-primary px-3 text-sm font-semibold text-white hover:bg-primary/90"
-        >
-          <Plus className="w-4 h-4" aria-hidden="true" /> Add
-        </button>
+      {/* hidden inputs: gallery/file picker + direct camera capture */}
+      <input
+        ref={pickRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          void addFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          void addFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label="Upload product photos"
+        onClick={() => pickRef.current?.click()}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && pickRef.current?.click()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          void addFiles(e.dataTransfer.files);
+        }}
+        className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center cursor-pointer transition-colors ${
+          dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-muted/40"
+        }`}
+      >
+        {busy ? (
+          <Loader2 className="w-6 h-6 animate-spin text-primary" aria-hidden="true" />
+        ) : (
+          <ImagePlus className="w-6 h-6 text-muted-foreground" aria-hidden="true" />
+        )}
+        <p className="text-sm font-medium text-foreground">
+          {busy ? "Adding photos…" : "Tap to upload photos"}
+        </p>
+        <p className="text-xs text-muted-foreground">or drag &amp; drop images here</p>
       </div>
+
+      <button
+        type="button"
+        onClick={() => cameraRef.current?.click()}
+        className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3.5 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+      >
+        <Camera className="w-4 h-4" aria-hidden="true" /> Take a photo
+      </button>
+
       {value.length > 0 && (
         <ul className="flex flex-wrap gap-3">
           {value.map((src, i) => (
             <li
-              key={src}
+              key={`${i}-${src.slice(-16)}`}
               className="relative h-20 w-20 overflow-hidden rounded-lg border border-border bg-muted"
             >
-              <img src={src} alt={`Image ${i + 1}`} className="h-full w-full object-cover" />
+              <img src={src} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
+              {i === 0 && (
+                <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] font-semibold text-center py-0.5">
+                  COVER
+                </span>
+              )}
               <button
                 type="button"
-                onClick={() => onChange(value.filter((s) => s !== src))}
-                aria-label={`Remove image ${i + 1}`}
+                onClick={() => onChange(value.filter((_, idx) => idx !== i))}
+                aria-label={`Remove photo ${i + 1}`}
                 className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
               >
                 <X className="w-3 h-3" aria-hidden="true" />

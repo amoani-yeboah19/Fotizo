@@ -6,7 +6,7 @@ import * as z from "zod";
 import { Plus, Trash2, Package } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { WizardShell } from "@/components/common/Wizard";
-import { Field, NativeSelect, ImageUrlInput, TagsInput } from "@/components/common/FormControls";
+import { Field, NativeSelect, ImageUploadInput, TagsInput } from "@/components/common/FormControls";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Price } from "@/components/common/Price";
@@ -176,8 +176,8 @@ export default function PostProductPage() {
 
             {step === 2 && (
               <>
-                <Field label="Product images" required hint="Paste image URLs. The first is used as the cover.">
-                  <ImageUrlInput value={images} onChange={setImages} error={mediaError} />
+                <Field label="Product photos" required hint="Upload from your device or take a picture. The first photo is the cover.">
+                  <ImageUploadInput value={images} onChange={setImages} error={mediaError} />
                 </Field>
                 <Field label="Tags" hint="Help buyers find it (e.g. wireless, noise-cancelling).">
                   <TagsInput value={tags} onChange={setTags} placeholder="Add a tag and press Enter" />

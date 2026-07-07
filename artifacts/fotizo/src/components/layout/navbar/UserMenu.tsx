@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { ChevronDown, MessageSquare, LogOut, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { InitialsAvatar } from "@/components/common/InitialsAvatar";
 
 // Desktop avatar dropdown (dashboard / messages / sign out).
 export function UserMenu() {
@@ -19,13 +20,17 @@ export function UserMenu() {
         aria-label="Account menu"
         className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       >
-        <img
-          loading="lazy"
-          decoding="async"
-          src={user?.avatar || "/images/avatar-1.webp"}
-          alt={user?.name}
-          className="w-8 h-8 rounded-full border border-border object-cover"
-        />
+        {user?.avatar ? (
+          <img
+            loading="lazy"
+            decoding="async"
+            src={user.avatar}
+            alt={user?.name}
+            className="w-8 h-8 rounded-full border border-border object-cover"
+          />
+        ) : (
+          <InitialsAvatar name={user?.name} className="w-8 h-8 text-xs border border-border" />
+        )}
         <ChevronDown className="w-3 h-3 text-muted-foreground" />
       </button>
       <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-border rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2 flex flex-col">

@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/contexts/MessagesContext";
+import { InitialsAvatar } from "@/components/common/InitialsAvatar";
 
 export function NavbarMobileMenu({
   onSignIn,
@@ -41,13 +42,17 @@ export function NavbarMobileMenu({
       {isAuthenticated ? (
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3 px-4 py-2 mb-2">
-            <img
-              loading="lazy"
-              decoding="async"
-              src={user?.avatar || "/images/avatar-1.webp"}
-              alt={user?.name}
-              className="w-10 h-10 rounded-full border border-border object-cover"
-            />
+            {user?.avatar ? (
+              <img
+                loading="lazy"
+                decoding="async"
+                src={user.avatar}
+                alt={user?.name}
+                className="w-10 h-10 rounded-full border border-border object-cover"
+              />
+            ) : (
+              <InitialsAvatar name={user?.name} className="w-10 h-10 text-sm border border-border" />
+            )}
             <div>
               <p className="text-sm font-semibold">{user?.name}</p>
               <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>

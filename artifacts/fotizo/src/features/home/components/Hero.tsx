@@ -149,19 +149,22 @@ function HeroFeatures() {
     >
       {/* community line — honest, no invented ratings or counts */}
       <div className="flex items-center gap-3">
-        <div className="flex -space-x-2.5">
-          {[1, 2, 3, 4].map((n) => (
-            <img
-              key={n}
-              loading="lazy"
-              decoding="async"
-              src={`/images/avatar-${n}.webp`}
-              alt=""
-              className="h-8 w-8 rounded-full border-2 border-white object-cover"
-            />
+        <div className="flex -space-x-2 shrink-0" aria-hidden="true">
+          {[
+            { letter: "K", tint: "bg-[#08275B] text-white" },
+            { letter: "A", tint: "bg-[#FF6A00] text-white" },
+            { letter: "S", tint: "bg-[#0d3a85] text-white" },
+            { letter: "D", tint: "bg-[#FF8B3D] text-white" },
+          ].map(({ letter, tint }) => (
+            <span
+              key={letter}
+              className={`flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-xs font-bold ${tint}`}
+            >
+              {letter}
+            </span>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground leading-snug">
+        <p className="flex-1 min-w-0 text-xs text-muted-foreground leading-snug">
           Join a <span className="font-semibold text-foreground">growing community</span> of buyers
           &amp; sellers across <span className="font-semibold text-foreground">Ghana, the UK &amp; the USA</span>
         </p>
