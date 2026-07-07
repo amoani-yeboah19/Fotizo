@@ -23,7 +23,7 @@ export function DashboardLayout({
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <div className="flex-1 flex pt-20">
+      <div className="flex-1 flex flex-col md:flex-row pt-20">
         {sidebar}
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
           <div className="max-w-6xl mx-auto">{children}</div>

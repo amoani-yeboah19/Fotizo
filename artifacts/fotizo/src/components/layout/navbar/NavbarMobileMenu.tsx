@@ -4,7 +4,13 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/contexts/MessagesContext";
 
-export function NavbarMobileMenu() {
+export function NavbarMobileMenu({
+  onSignIn,
+  onJoin,
+}: {
+  onSignIn?: () => void;
+  onJoin?: () => void;
+}) {
   const { user, isAuthenticated, logout } = useAuth();
   const { totalUnread } = useMessages();
   const [, setLocation] = useLocation();
@@ -57,8 +63,8 @@ export function NavbarMobileMenu() {
         </div>
       ) : (
         <div className="flex flex-col gap-2 mt-auto">
-          <Link href="/login"><Button variant="outline" className="w-full justify-center">Sign In</Button></Link>
-          <Link href="/signup"><Button className="w-full justify-center bg-primary text-white">Get Started</Button></Link>
+          <Button variant="outline" className="w-full justify-center" onClick={onSignIn}>Sign In</Button>
+          <Button className="w-full justify-center bg-primary text-white" onClick={onJoin}>Get Started</Button>
         </div>
       )}
     </div>

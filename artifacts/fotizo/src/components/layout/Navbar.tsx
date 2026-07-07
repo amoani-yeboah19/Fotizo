@@ -8,13 +8,20 @@ import { useMessages } from "@/contexts/MessagesContext";
 import { ProductsMegaMenu } from "@/components/layout/navbar/ProductsMegaMenu";
 import { UserMenu } from "@/components/layout/navbar/UserMenu";
 import { NavbarMobileMenu } from "@/components/layout/navbar/NavbarMobileMenu";
+import { AuthModal, type AuthView } from "@/features/auth/components/AuthModal";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [authView, setAuthView] = useState<AuthView | null>(null);
   const { isAuthenticated } = useAuth();
   const { count } = useCart();
   const { totalUnread } = useMessages();
+
+  const openAuth = (view: AuthView) => {
+    setMobileMenuOpen(false);
+    setAuthView(view);
+  };
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -94,14 +101,15 @@ export function Navbar() {
               </div>
             ) : (
               <>
-                <Link href="/login">
-                  <Button variant="ghost" className="text-sm font-medium">Sign In</Button>
-                </Link>
-                <Link href="/signup">
-                  <Button className="bg-primary hover:bg-primary/90 text-white rounded-full px-6">
-                    Get Started
-                  </Button>
-                </Link>
+                <Button variant="ghost" className="text-sm font-medium" onClick={() => openAuth("signin")}>
+                  Sign In
+                </Button>
+                <Button
+                  className="bg-primary hover:bg-primary/90 text-white rounded-full px-6"
+                  onClick={() => openAuth("join")}
+                >
+                  Get Started
+                </Button>
               </>
             )}
           </div>
@@ -130,7 +138,13 @@ export function Navbar() {
         </div>
       </div>
 
-      {mobileMenuOpen && <NavbarMobileMenu />}
+      {mobileMenuOpen && <NavbarMobileMenu onSignIn={() => openAuth("signin")} onJoin={() => openAuth("join")} />}
+
+      <AuthModal
+        open={authView !== null}
+        initialView={authView ?? "signin"}
+        onOpenChange={(open) => !open && setAuthView(null)}
+      />
     </header>
   );
 }

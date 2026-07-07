@@ -3,7 +3,7 @@ import { LayoutGrid, SearchCheck, Zap, HandCoins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const VALUE_PROPS = [
-  { icon: LayoutGrid, text: "Access a pool of top talent and products across 100+ categories" },
+  { icon: LayoutGrid, text: "Access top talent and products across every major category" },
   { icon: SearchCheck, text: "Enjoy a simple, easy-to-use matching experience" },
   { icon: Zap, text: "Get quality work done quickly and within budget" },
   { icon: HandCoins, text: "Only pay when you're happy" },

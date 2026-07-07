@@ -66,7 +66,10 @@ export function NegotiateDialog({ service }: { service: NegotiableService }) {
           <Handshake className="w-4 h-4" aria-hidden="true" /> Negotiate
         </Button>
       </DialogTrigger>
-      <DialogContent onClick={(e) => e.stopPropagation()}>
+      <DialogContent
+        onClick={(e) => e.stopPropagation()}
+        className="w-[calc(100%-2rem)] max-h-[92vh] overflow-y-auto rounded-2xl"
+      >
         <DialogHeader>
           <DialogTitle>Send an offer to {service.provider}</DialogTitle>
           <DialogDescription>Tell them what you need and your proposed budget.</DialogDescription>
