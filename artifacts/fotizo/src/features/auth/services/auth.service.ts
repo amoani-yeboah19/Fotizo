@@ -1,4 +1,4 @@
-import { api, USE_MOCKS } from "@/api";
+import { api, AUTH_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import * as fx from "@/services/mocks/fixtures";
 import type { User, SignupData } from "@/types";
@@ -24,7 +24,7 @@ function decodeGoogleCredentialUnsafe(credential: string): { email: string; name
 
 export const authService = {
   async login(email: string, _password: string): Promise<User> {
-    if (USE_MOCKS) {
+    if (AUTH_USE_MOCKS) {
       await delay(600);
       const found = fx.MOCK_USERS.find(
         (u) => u.email.toLowerCase() === email.toLowerCase(),
@@ -37,7 +37,7 @@ export const authService = {
   },
 
   async signup(data: SignupData): Promise<User> {
-    if (USE_MOCKS) {
+    if (AUTH_USE_MOCKS) {
       await delay(800);
       const exists = fx.MOCK_USERS.find(
         (u) => u.email.toLowerCase() === data.email.toLowerCase(),
@@ -56,7 +56,7 @@ export const authService = {
   },
 
   async loginWithGoogle(credential: string): Promise<GoogleAuthResult> {
-    if (USE_MOCKS) {
+    if (AUTH_USE_MOCKS) {
       await delay(500);
       const { email, name } = decodeGoogleCredentialUnsafe(credential);
       const found = fx.MOCK_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
@@ -72,7 +72,7 @@ export const authService = {
   },
 
   async completeGoogleSignup(pendingToken: string, role: "buyer" | "seller"): Promise<User> {
-    if (USE_MOCKS) {
+    if (AUTH_USE_MOCKS) {
       await delay(600);
       const { email, name } = JSON.parse(pendingToken) as { email: string; name: string };
       return {
@@ -90,7 +90,7 @@ export const authService = {
   // Session persistence. On mocks this is localStorage; against a real backend the
   // session is a cookie set by the server, so save/clear become no-ops / a logout call.
   async getSession(): Promise<User | null> {
-    if (USE_MOCKS) {
+    if (AUTH_USE_MOCKS) {
       const stored = localStorage.getItem(SESSION_KEY);
       if (!stored) return null;
       try {
@@ -108,11 +108,11 @@ export const authService = {
   },
 
   saveSession(user: User): void {
-    if (USE_MOCKS) localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    if (AUTH_USE_MOCKS) localStorage.setItem(SESSION_KEY, JSON.stringify(user));
   },
 
   clearSession(): void {
-    if (USE_MOCKS) {
+    if (AUTH_USE_MOCKS) {
       localStorage.removeItem(SESSION_KEY);
     } else {
       void api.post("/auth/logout").catch(() => {});

@@ -206,6 +206,96 @@ export function ImageUploadInput({
   );
 }
 
+// Single-photo uploader for profile pictures: circular preview + upload /
+// take-a-photo buttons. Same client-side downscaling as ImageUploadInput.
+export function AvatarUploadInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const pickRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  const addFile = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    setBusy(true);
+    try {
+      onChange(await fileToImageDataUrl(file, 600));
+    } catch {
+      // Unreadable file — user can retry.
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-4">
+      <input
+        ref={pickRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          void addFile(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="user"
+        className="hidden"
+        onChange={(e) => {
+          void addFile(e.target.files);
+          e.target.value = "";
+        }}
+      />
+
+      <div className="relative h-16 w-16 shrink-0">
+        {value ? (
+          <img src={value} alt="Profile photo preview" className="h-16 w-16 rounded-full border border-border object-cover" />
+        ) : (
+          <span className="flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-border bg-muted text-muted-foreground">
+            {busy ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : <ImagePlus className="w-5 h-5" aria-hidden="true" />}
+          </span>
+        )}
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            aria-label="Remove photo"
+            className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+          >
+            <X className="w-3 h-3" aria-hidden="true" />
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => pickRef.current?.click()}
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3.5 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+        >
+          <ImagePlus className="w-4 h-4" aria-hidden="true" /> Upload photo
+        </button>
+        <button
+          type="button"
+          onClick={() => cameraRef.current?.click()}
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3.5 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+        >
+          <Camera className="w-4 h-4" aria-hidden="true" /> Take a photo
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Add free-text tags/skills as removable chips.
 export function TagsInput({
   value,

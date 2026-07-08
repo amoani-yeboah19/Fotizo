@@ -6,7 +6,7 @@ import * as z from "zod";
 import { Plus, Trash2, Briefcase } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { WizardShell } from "@/components/common/Wizard";
-import { Field, NativeSelect, TagsInput } from "@/components/common/FormControls";
+import { Field, NativeSelect, TagsInput, AvatarUploadInput } from "@/components/common/FormControls";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Price } from "@/components/common/Price";
@@ -84,7 +84,7 @@ export default function OfferServicePage() {
   const submit = form.handleSubmit(async (data) => {
     if (skills.length === 0) return setStep(1), setStepError("Add at least one skill");
     if (validPackages.length === 0) return setStep(2), setStepError("Add at least one package");
-    if (!avatar.trim()) return setStepError("Add a profile photo URL");
+    if (!avatar.trim()) return setStepError("Add a profile photo");
 
     const input: NewServiceInput = {
       title: data.title,
@@ -223,21 +223,8 @@ export default function OfferServicePage() {
 
             {step === 3 && (
               <div className="space-y-5">
-                <Field label="Profile photo" required hint="A clear headshot or logo (image URL)." error={step === 3 ? stepError : undefined}>
-                  <div className="flex items-center gap-4">
-                    <img
-                      src={avatar || "/images/avatar-1.webp"}
-                      alt=""
-                      className="h-16 w-16 rounded-full border border-border object-cover bg-muted"
-                    />
-                    <Input
-                      type="url"
-                      placeholder="https://…/photo.jpg"
-                      value={avatar}
-                      onChange={(e) => setAvatar(e.target.value)}
-                      aria-label="Profile photo URL"
-                    />
-                  </div>
+                <Field label="Profile photo" required hint="A clear headshot or your business logo." error={step === 3 ? stepError : undefined}>
+                  <AvatarUploadInput value={avatar} onChange={setAvatar} />
                 </Field>
 
                 <div className="rounded-xl border border-border p-4">
