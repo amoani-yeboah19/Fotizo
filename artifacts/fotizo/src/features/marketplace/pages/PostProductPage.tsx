@@ -7,11 +7,13 @@ import { Plus, Trash2, Package } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { WizardShell } from "@/components/common/Wizard";
 import { Field, NativeSelect, ImageUploadInput, TagsInput } from "@/components/common/FormControls";
+import { AiAssistButton } from "@/components/common/AiAssistButton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Price } from "@/components/common/Price";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { aiService } from "@/services";
 import { useCreateProduct } from "@/features/marketplace/hooks";
 import type { NewProductInput } from "@/types";
 
@@ -55,7 +57,17 @@ export default function PostProductPage() {
     resolver: zodResolver(schema),
     defaultValues: { title: "", category: "", description: "", price: "", originalPrice: "", stockCount: "1" },
   });
-  const { register, formState: { errors }, watch } = form;
+  const { register, formState: { errors }, watch, setValue } = form;
+
+  // Draft the description, tags and specs from the title + category + whatever
+  // notes the seller has typed so far. Errors surface via AiAssistButton's toast.
+  const writeWithAi = async () => {
+    const { title, category, description } = form.getValues();
+    const draft = await aiService.writeProductListing({ title, category, notes: description });
+    setValue("description", draft.description, { shouldValidate: true });
+    if (draft.tags.length) setTags(draft.tags);
+    if (draft.specs.length) setSpecs(draft.specs.map((s) => ({ key: s.name, value: s.value })));
+  };
 
   const next = async () => {
     const fields = STEP_FIELDS[step];
@@ -140,8 +152,18 @@ export default function PostProductPage() {
                   htmlFor="description"
                   required
                   error={errors.description?.message}
-                  hint="What is it, what's included, why it's great."
+                  hint={
+                    !v.title || v.title.length < 3 || !v.category
+                      ? "Add a title and category first, then let AI draft it — or write your own."
+                      : "What is it, what's included, why it's great. Or let AI draft it from the title."
+                  }
                 >
+                  <div className="mb-2 flex justify-end">
+                    <AiAssistButton
+                      disabled={!v.title || v.title.length < 3 || !v.category}
+                      run={writeWithAi}
+                    />
+                  </div>
                   <Textarea id="description" rows={5} placeholder="Describe your product…" {...register("description")} />
                 </Field>
               </>

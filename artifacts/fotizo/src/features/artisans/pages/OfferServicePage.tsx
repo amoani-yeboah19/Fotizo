@@ -7,11 +7,13 @@ import { Plus, Trash2, Briefcase } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { WizardShell } from "@/components/common/Wizard";
 import { Field, NativeSelect, TagsInput, AvatarUploadInput } from "@/components/common/FormControls";
+import { AiAssistButton } from "@/components/common/AiAssistButton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Price } from "@/components/common/Price";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { aiService } from "@/services";
 import { useCreateService } from "@/features/artisans/hooks";
 import type { NewServiceInput } from "@/types";
 
@@ -58,7 +60,16 @@ export default function OfferServicePage() {
     resolver: zodResolver(schema),
     defaultValues: { title: "", category: "", description: "", experience: "", hourlyRate: "", availability: "" },
   });
-  const { register, formState: { errors }, watch } = form;
+  const { register, formState: { errors }, watch, setValue } = form;
+
+  // Draft the "about this service" copy + skills from the title, category and
+  // any notes typed so far. Skills land in the (later) Expertise step pre-filled.
+  const writeWithAi = async () => {
+    const { title, category, description } = form.getValues();
+    const draft = await aiService.writeServiceListing({ title, category, notes: description });
+    setValue("description", draft.description, { shouldValidate: true });
+    if (draft.skills.length) setSkills(draft.skills);
+  };
 
   const validPackages = packages.filter((p) => p.name.trim() && Number(p.price) > 0);
 
@@ -157,8 +168,18 @@ export default function OfferServicePage() {
                   htmlFor="description"
                   required
                   error={errors.description?.message}
-                  hint="What you offer, your process, what clients can expect."
+                  hint={
+                    !v.title || v.title.length < 3 || !v.category
+                      ? "Add a title and category first, then let AI draft it — or write your own."
+                      : "What you offer, your process, what clients can expect. Or let AI draft it (and your skills)."
+                  }
                 >
+                  <div className="mb-2 flex justify-end">
+                    <AiAssistButton
+                      disabled={!v.title || v.title.length < 3 || !v.category}
+                      run={writeWithAi}
+                    />
+                  </div>
                   <Textarea id="description" rows={5} placeholder="Describe your service…" {...register("description")} />
                 </Field>
               </>
