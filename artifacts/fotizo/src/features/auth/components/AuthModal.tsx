@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { GoogleAuthButton } from "@/features/auth/components/GoogleAuthButton";
+import { GoogleRolePickerDialog } from "@/features/auth/components/GoogleRolePickerDialog";
 
 export type AuthView = "signin" | "join";
 
@@ -37,6 +39,7 @@ export function AuthModal({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"buyer" | "seller">("buyer");
+  const [pendingGoogleToken, setPendingGoogleToken] = useState<string | null>(null);
 
   // Re-sync when the modal is (re)opened from a specific trigger.
   useEffect(() => {
@@ -73,6 +76,7 @@ export function AuthModal({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-[880px] max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-2xl border-0">
         <div className="grid md:grid-cols-2">
@@ -170,6 +174,26 @@ export function AuthModal({
                 </Button>
             </form>
 
+            <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="h-px flex-1 bg-border" />
+              <span>OR</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <GoogleAuthButton
+              onLoggedIn={() => {
+                toast({ title: "Welcome back!", description: "You have successfully signed in." });
+                onOpenChange(false);
+                setLocation("/");
+              }}
+              onNeedsRole={(token) => {
+                // Two separate dialogs shouldn't be open at once — close this
+                // one, and the role picker (a sibling, not nested) takes over.
+                onOpenChange(false);
+                setPendingGoogleToken(token);
+              }}
+            />
+
             <p className="mt-auto pt-8 text-xs text-muted-foreground leading-relaxed">
               By joining, you agree to the Fotizo{" "}
               <a href="#" className="underline underline-offset-2 hover:text-foreground">Terms of Service</a> and{" "}
@@ -179,5 +203,16 @@ export function AuthModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    <GoogleRolePickerDialog
+      pendingToken={pendingGoogleToken}
+      onClose={() => setPendingGoogleToken(null)}
+      onComplete={() => {
+        setPendingGoogleToken(null);
+        toast({ title: "Account created!", description: "Welcome to Fotizo." });
+        setLocation("/");
+      }}
+    />
+    </>
   );
 }
