@@ -1,11 +1,11 @@
-import { api, USE_MOCKS } from "@/api";
+import { api, CATALOG_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import * as fx from "@/services/mocks/fixtures";
 import type { Product, Category, SellerProduct, NewProductInput } from "@/types";
 
 export const catalogService = {
   async createProduct(input: NewProductInput): Promise<Product> {
-    if (USE_MOCKS) {
+    if (CATALOG_USE_MOCKS) {
       await delay();
       const id = `p-${Date.now()}`;
       const product: Product = {
@@ -44,7 +44,7 @@ export const catalogService = {
   },
 
   async listProducts(): Promise<Product[]> {
-    if (USE_MOCKS) {
+    if (CATALOG_USE_MOCKS) {
       await delay();
       return fx.products;
     }
@@ -52,7 +52,7 @@ export const catalogService = {
   },
 
   async getProduct(id: string): Promise<Product | null> {
-    if (USE_MOCKS) {
+    if (CATALOG_USE_MOCKS) {
       await delay();
       return fx.products.find((p) => p.id === id) ?? null;
     }
@@ -60,7 +60,7 @@ export const catalogService = {
   },
 
   async getRelatedProducts(id: string): Promise<Product[]> {
-    if (USE_MOCKS) {
+    if (CATALOG_USE_MOCKS) {
       await delay();
       const product = fx.products.find((p) => p.id === id);
       if (!product) return [];
@@ -72,7 +72,7 @@ export const catalogService = {
   },
 
   async listCategories(): Promise<Category[]> {
-    if (USE_MOCKS) {
+    if (CATALOG_USE_MOCKS) {
       await delay();
       return fx.categories;
     }
@@ -80,7 +80,7 @@ export const catalogService = {
   },
 
   async listSellerProducts(): Promise<SellerProduct[]> {
-    if (USE_MOCKS) {
+    if (CATALOG_USE_MOCKS) {
       await delay();
       return fx.sellerProducts;
     }
