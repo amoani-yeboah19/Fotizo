@@ -1,11 +1,11 @@
-import { api, USE_MOCKS } from "@/api";
+import { api, ORDERS_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import * as fx from "@/services/mocks/fixtures";
 import type { Order, PlaceOrderInput, OrderConfirmation } from "@/types";
 
 export const ordersService = {
   async listOrders(): Promise<Order[]> {
-    if (USE_MOCKS) {
+    if (ORDERS_USE_MOCKS) {
       await delay();
       return fx.mockOrders;
     }
@@ -13,7 +13,7 @@ export const ordersService = {
   },
 
   async placeOrder(input: PlaceOrderInput): Promise<OrderConfirmation> {
-    if (USE_MOCKS) {
+    if (ORDERS_USE_MOCKS) {
       await delay(1500);
       return { orderId: `ord-${Date.now()}` };
     }

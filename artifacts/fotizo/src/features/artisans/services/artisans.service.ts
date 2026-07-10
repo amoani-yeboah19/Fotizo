@@ -1,11 +1,11 @@
-import { api, USE_MOCKS } from "@/api";
+import { api, ARTISANS_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import * as fx from "@/services/mocks/fixtures";
 import type { Service, NewServiceInput } from "@/types";
 
 export const artisansService = {
   async createService(input: NewServiceInput): Promise<Service> {
-    if (USE_MOCKS) {
+    if (ARTISANS_USE_MOCKS) {
       await delay();
       const id = `s-${Date.now()}`;
       const service: Service = {
@@ -31,7 +31,7 @@ export const artisansService = {
   },
 
   async listServices(): Promise<Service[]> {
-    if (USE_MOCKS) {
+    if (ARTISANS_USE_MOCKS) {
       await delay();
       return fx.services;
     }
@@ -39,7 +39,7 @@ export const artisansService = {
   },
 
   async getService(id: string): Promise<Service | null> {
-    if (USE_MOCKS) {
+    if (ARTISANS_USE_MOCKS) {
       await delay();
       return fx.services.find((s) => s.id === id) ?? null;
     }

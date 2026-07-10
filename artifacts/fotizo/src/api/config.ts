@@ -5,7 +5,9 @@
 // VITE_USE_MOCK_AUTH    — same, but for auth only. Falls back to VITE_USE_MOCKS when unset.
 // VITE_USE_MOCK_CATALOG — same, but for the product catalog only. Falls back to VITE_USE_MOCKS
 //                         when unset. Each domain flips independently as its backend ships —
-//                         orders/bookings/messages stay mocked until those exist server-side.
+//                         bookings/messages stay mocked until those exist server-side.
+// VITE_USE_MOCK_ORDERS  — same, but for cart/checkout/order-history only.
+// VITE_USE_MOCK_ARTISANS — same, but for the services (artisans) catalog only.
 //
 // A backend developer connects a real backend by setting these; no UI code changes.
 
@@ -18,3 +20,9 @@ export const AUTH_USE_MOCKS =
 
 export const CATALOG_USE_MOCKS =
   (import.meta.env.VITE_USE_MOCK_CATALOG ?? import.meta.env.VITE_USE_MOCKS ?? "true") !== "false";
+
+export const ORDERS_USE_MOCKS =
+  (import.meta.env.VITE_USE_MOCK_ORDERS ?? import.meta.env.VITE_USE_MOCKS ?? "true") !== "false";
+
+export const ARTISANS_USE_MOCKS =
+  (import.meta.env.VITE_USE_MOCK_ARTISANS ?? import.meta.env.VITE_USE_MOCKS ?? "true") !== "false";

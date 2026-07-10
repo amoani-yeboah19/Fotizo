@@ -9,12 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCart } from "@/contexts/CartContext";
 import { usePlaceOrder } from "@/features/payments/hooks";
+import { useToast } from "@/hooks/use-toast";
 import { Loader2, CheckCircle2 } from "lucide-react";
 
 export default function CheckoutPage() {
   const [, setLocation] = useLocation();
   const { items, total, clearCart } = useCart();
   const placeOrder = usePlaceOrder();
+  const { toast } = useToast();
 
   const [step, setStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -30,12 +32,21 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async () => {
     setIsProcessing(true);
-    await placeOrder.mutateAsync({
-      items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, price: i.price })),
-      total: grandTotal,
-    });
-    clearCart();
-    setLocation("/order-confirmation");
+    try {
+      await placeOrder.mutateAsync({
+        items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, price: i.price })),
+        total: grandTotal,
+      });
+      clearCart();
+      setLocation("/order-confirmation");
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Couldn't place order",
+        description: "One or more items may be out of stock. Please review your cart and try again.",
+      });
+      setIsProcessing(false);
+    }
   };
 
   return (
