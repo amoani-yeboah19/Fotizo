@@ -1,5 +1,9 @@
-import { pgTable, uuid, text, integer, real, numeric, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, uuid, text, integer, real, numeric, jsonb, timestamp } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
+
+// "unpublished" is a soft delete — the row is kept (so nothing that later
+// references it, e.g. past orders, dangles) but hidden from public reads.
+export const productStatusEnum = pgEnum("product_status", ["active", "unpublished"]);
 
 // Fixed taxonomy shared across products and services — small and rarely
 // changes, so it's a seeded table rather than something sellers can create.
@@ -29,6 +33,7 @@ export const productsTable = pgTable("products", {
   stockCount: integer("stock_count").notNull().default(0),
   tags: text("tags").array().notNull().default([]),
   specs: jsonb("specs").$type<Record<string, string>>().notNull().default({}),
+  status: productStatusEnum("status").notNull().default("active"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

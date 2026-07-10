@@ -53,6 +53,7 @@ export function AppRoutes() {
         <Route path="/messages/:id" component={MessageThread} />
         <Route path="/dashboard/buyer" component={DashboardBuyer} />
         <Route path="/dashboard/seller/products/new" component={PostProduct} />
+        <Route path="/dashboard/seller/products/:id/edit" component={PostProduct} />
         <Route path="/dashboard/seller/services/new" component={OfferService} />
         <Route path="/dashboard/seller" component={DashboardSeller} />
         <Route path="/dashboard/manager" component={DashboardManager} />

@@ -31,3 +31,27 @@ export const useRelatedProducts = (id: string) =>
 
 export const useCategories = () =>
   useQuery({ queryKey: ["categories"], queryFn: catalogService.listCategories });
+
+export const useUpdateProduct = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Parameters<typeof catalogService.updateProduct>[1] }) =>
+      catalogService.updateProduct(id, input),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["seller-products"] });
+      qc.invalidateQueries({ queryKey: ["product", id] });
+    },
+  });
+};
+
+export const useDeleteProduct = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => catalogService.deleteProduct(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["seller-products"] });
+    },
+  });
+};

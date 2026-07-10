@@ -86,4 +86,45 @@ export const catalogService = {
     }
     return api.get<SellerProduct[]>("/seller/products");
   },
+
+  async updateProduct(id: string, input: Partial<NewProductInput>): Promise<Product> {
+    if (CATALOG_USE_MOCKS) {
+      await delay();
+      const idx = fx.products.findIndex((p) => p.id === id);
+      if (idx === -1) throw new Error("Product not found.");
+      const updated: Product = {
+        ...fx.products[idx],
+        ...input,
+        image: input.images ? input.images[0] ?? "" : fx.products[idx].image,
+        inStock: (input.stockCount ?? fx.products[idx].stockCount) > 0,
+      };
+      fx.products[idx] = updated;
+      const sIdx = fx.sellerProducts.findIndex((p) => p.id === id);
+      if (sIdx !== -1) {
+        fx.sellerProducts[sIdx] = {
+          ...fx.sellerProducts[sIdx],
+          title: updated.title,
+          price: updated.price,
+          stock: updated.stockCount,
+          image: updated.image,
+          category: updated.category,
+        };
+      }
+      return updated;
+    }
+    return api.patch<Product>(`/products/${id}`, input);
+  },
+
+  // Soft delete — hides the listing from the catalog rather than erasing it.
+  async deleteProduct(id: string): Promise<void> {
+    if (CATALOG_USE_MOCKS) {
+      await delay();
+      const idx = fx.products.findIndex((p) => p.id === id);
+      if (idx !== -1) fx.products.splice(idx, 1);
+      const sIdx = fx.sellerProducts.findIndex((p) => p.id === id);
+      if (sIdx !== -1) fx.sellerProducts[sIdx] = { ...fx.sellerProducts[sIdx], status: "unpublished" };
+      return;
+    }
+    await api.del(`/products/${id}`);
+  },
 };

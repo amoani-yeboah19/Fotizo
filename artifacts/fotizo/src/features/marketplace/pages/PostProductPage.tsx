@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { useLocation, useRoute } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Plus, Trash2, Package } from "lucide-react";
+import { Plus, Trash2, Package, Loader2 } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { WizardShell } from "@/components/common/Wizard";
 import { Field, NativeSelect, ImageUploadInput, TagsInput } from "@/components/common/FormControls";
@@ -14,7 +14,7 @@ import { Price } from "@/components/common/Price";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { aiService } from "@/services";
-import { useCreateProduct } from "@/features/marketplace/hooks";
+import { useCreateProduct, useUpdateProduct, useProduct } from "@/features/marketplace/hooks";
 import type { NewProductInput } from "@/types";
 
 const PRODUCT_CATEGORIES = [
@@ -43,9 +43,13 @@ const STEP_FIELDS: Record<number, (keyof FormValues)[]> = {
 
 export default function PostProductPage() {
   const [, setLocation] = useLocation();
+  const [isEditRoute, editParams] = useRoute("/dashboard/seller/products/:id/edit");
+  const editingId = isEditRoute ? editParams?.id : undefined;
   const { user } = useAuth();
   const { toast } = useToast();
   const createProduct = useCreateProduct();
+  const updateProduct = useUpdateProduct();
+  const { data: existingProduct, isLoading: isLoadingExisting } = useProduct(editingId ?? "");
 
   const [step, setStep] = useState(0);
   const [images, setImages] = useState<string[]>([]);
@@ -57,7 +61,24 @@ export default function PostProductPage() {
     resolver: zodResolver(schema),
     defaultValues: { title: "", category: "", description: "", price: "", originalPrice: "", stockCount: "1" },
   });
-  const { register, formState: { errors }, watch, setValue } = form;
+  const { register, formState: { errors }, watch, setValue, reset } = form;
+
+  // Fill the form once the existing listing loads — only in edit mode.
+  useEffect(() => {
+    if (!existingProduct) return;
+    reset({
+      title: existingProduct.title,
+      category: existingProduct.category,
+      description: existingProduct.description,
+      price: String(existingProduct.price),
+      originalPrice: existingProduct.originalPrice ? String(existingProduct.originalPrice) : "",
+      stockCount: String(existingProduct.stockCount),
+    });
+    setImages(existingProduct.images);
+    setTags(existingProduct.tags);
+    const existingSpecs = Object.entries(existingProduct.specs).map(([key, value]) => ({ key, value }));
+    setSpecs(existingSpecs.length ? existingSpecs : [{ key: "", value: "" }]);
+  }, [existingProduct, reset]);
 
   // Draft the description, tags and specs from the title + category + whatever
   // notes the seller has typed so far. Errors surface via AiAssistButton's toast.
@@ -105,11 +126,20 @@ export default function PostProductPage() {
       sellerId: user?.id ?? "me",
     };
     try {
-      const created = await createProduct.mutateAsync(input);
-      toast({ title: "Product published!", description: `${created.title} is now live on Fotizo.` });
+      if (editingId) {
+        const updated = await updateProduct.mutateAsync({ id: editingId, input });
+        toast({ title: "Changes saved", description: `${updated.title} has been updated.` });
+      } else {
+        const created = await createProduct.mutateAsync(input);
+        toast({ title: "Product published!", description: `${created.title} is now live on Fotizo.` });
+      }
       setLocation("/dashboard/seller");
     } catch {
-      toast({ variant: "destructive", title: "Couldn't publish", description: "Please try again." });
+      toast({
+        variant: "destructive",
+        title: editingId ? "Couldn't save changes" : "Couldn't publish",
+        description: "Please try again.",
+      });
     }
   });
 
@@ -118,6 +148,16 @@ export default function PostProductPage() {
 
   const v = watch();
 
+  if (editingId && isLoadingExisting) {
+    return (
+      <PageLayout mainClassName="container-app py-24 md:py-28">
+        <div className="mx-auto max-w-2xl flex items-center justify-center gap-2 text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> Loading your listing…
+        </div>
+      </PageLayout>
+    );
+  }
+
   return (
     <PageLayout mainClassName="container-app py-24 md:py-28">
       <div className="mx-auto max-w-2xl">
@@ -125,8 +165,10 @@ export default function PostProductPage() {
           <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
             <Package className="w-3.5 h-3.5" aria-hidden="true" /> Seller tools
           </span>
-          <h1 className="heading-page text-foreground mt-3">Post a product</h1>
-          <p className="text-muted-foreground mt-1">List a new product on the Fotizo marketplace.</p>
+          <h1 className="heading-page text-foreground mt-3">{editingId ? "Edit product" : "Post a product"}</h1>
+          <p className="text-muted-foreground mt-1">
+            {editingId ? "Update your listing on the Fotizo marketplace." : "List a new product on the Fotizo marketplace."}
+          </p>
         </header>
 
         <div className="rounded-2xl border border-border bg-white p-6 sm:p-8 shadow-sm">
@@ -136,8 +178,8 @@ export default function PostProductPage() {
             onBack={back}
             onNext={next}
             onSubmit={submit}
-            submitting={createProduct.isPending}
-            submitLabel="Publish product"
+            submitting={editingId ? updateProduct.isPending : createProduct.isPending}
+            submitLabel={editingId ? "Save changes" : "Publish product"}
           >
             {step === 0 && (
               <>
@@ -257,7 +299,9 @@ export default function PostProductPage() {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Publishing adds this to the marketplace and your seller dashboard.
+                  {editingId
+                    ? "Saving updates this listing everywhere it already appears."
+                    : "Publishing adds this to the marketplace and your seller dashboard."}
                 </p>
               </div>
             )}

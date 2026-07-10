@@ -3,8 +3,9 @@ import { Link } from "wouter";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Package, ShoppingBag, Star, Plus, Edit2, Eye, MessageSquare } from "lucide-react";
+import { TrendingUp, Package, ShoppingBag, Star, Plus, Edit2, Eye, MessageSquare, Trash2 } from "lucide-react";
 import { useSellerProducts, useOrders } from "@/features/profile/hooks";
+import { useDeleteProduct } from "@/features/marketplace/hooks";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { StatCard } from "@/components/common/StatCard";
@@ -13,6 +14,7 @@ import { Price } from "@/components/common/Price";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { chartColors, chartAxisTick, chartTooltipStyle } from "@/constants/chart";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 type Section = "overview" | "products" | "orders";
 
@@ -25,6 +27,18 @@ export default function DashboardSeller() {
   const { data: sellerProducts = [] } = useSellerProducts();
   const { data: orders = [] } = useOrders();
   const [section, setSection] = useState<Section>("overview");
+  const deleteProduct = useDeleteProduct();
+  const { toast } = useToast();
+
+  const handleDelete = async (id: string, title: string) => {
+    if (!window.confirm(`Remove "${title}" from the marketplace? You can't undo this from here.`)) return;
+    try {
+      await deleteProduct.mutateAsync(id);
+      toast({ title: "Product removed", description: `${title} is no longer listed.` });
+    } catch {
+      toast({ variant: "destructive", title: "Couldn't remove product", description: "Please try again." });
+    }
+  };
 
   const sidebar = (
     <DashboardSidebar
@@ -72,12 +86,24 @@ export default function DashboardSeller() {
                 <td className="px-6 py-4">{product.stock}</td>
                 <td className="px-6 py-4">{product.sales}</td>
                 <td className="px-6 py-4">
-                  <StatusBadge tone={product.status === "active" ? "success" : "danger"}>{product.status.replace("_", " ")}</StatusBadge>
+                  <StatusBadge tone={product.status === "active" ? "success" : product.status === "unpublished" ? "warning" : "danger"}>
+                    {product.status.replace("_", " ")}
+                  </StatusBadge>
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex justify-end gap-2">
                     <Link href={`/products/${product.id}`}><Button aria-label="View product" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary"><Eye className="w-4 h-4" /></Button></Link>
-                    <Link href="/dashboard/seller/products/new"><Button aria-label="Edit product" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary"><Edit2 className="w-4 h-4" /></Button></Link>
+                    <Link href={`/dashboard/seller/products/${product.id}/edit`}><Button aria-label="Edit product" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary"><Edit2 className="w-4 h-4" /></Button></Link>
+                    <Button
+                      aria-label="Remove product"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      disabled={deleteProduct.isPending}
+                      onClick={() => handleDelete(product.id, product.title)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </td>
               </tr>
