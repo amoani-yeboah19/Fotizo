@@ -3,13 +3,14 @@ import { Link } from "wouter";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Package, ShoppingBag, Star, Plus, Edit2, Eye, MessageSquare, Trash2 } from "lucide-react";
+import { TrendingUp, Package, ShoppingBag, Star, Plus, Edit2, Eye, MessageSquare, Trash2, Loader2 } from "lucide-react";
 import { useSellerProducts, useOrders } from "@/features/profile/hooks";
 import { useDeleteProduct } from "@/features/marketplace/hooks";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { StatCard } from "@/components/common/StatCard";
 import { SurfaceCard } from "@/components/common/SurfaceCard";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Price } from "@/components/common/Price";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { chartColors, chartAxisTick, chartTooltipStyle } from "@/constants/chart";
@@ -29,14 +30,18 @@ export default function DashboardSeller() {
   const [section, setSection] = useState<Section>("overview");
   const deleteProduct = useDeleteProduct();
   const { toast } = useToast();
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
 
-  const handleDelete = async (id: string, title: string) => {
-    if (!window.confirm(`Remove "${title}" from the marketplace? You can't undo this from here.`)) return;
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const { id, title } = pendingDelete;
     try {
       await deleteProduct.mutateAsync(id);
       toast({ title: "Product removed", description: `${title} is no longer listed.` });
     } catch {
       toast({ variant: "destructive", title: "Couldn't remove product", description: "Please try again." });
+    } finally {
+      setPendingDelete(null);
     }
   };
 
@@ -61,6 +66,18 @@ export default function DashboardSeller() {
           <Link href="/dashboard/seller/services/new"><Button size="sm" variant="outline" className="gap-2"><Plus className="w-4 h-4" aria-hidden="true" /> Add Service</Button></Link>
         </div>
       </div>
+      {sellerProducts.length === 0 ? (
+        <div className="px-6 py-16 text-center">
+          <Package className="mx-auto h-10 w-10 text-muted-foreground/40" aria-hidden="true" />
+          <p className="mt-3 font-semibold text-foreground">No products yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            List your first product to start selling on Fotizo.
+          </p>
+          <Link href="/dashboard/seller/products/new">
+            <Button className="mt-4 gap-2"><Plus className="w-4 h-4" aria-hidden="true" /> Add your first product</Button>
+          </Link>
+        </div>
+      ) : (
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
           <thead className="bg-muted/50 text-muted-foreground uppercase tracking-wider text-xs">
@@ -99,10 +116,14 @@ export default function DashboardSeller() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      disabled={deleteProduct.isPending}
-                      onClick={() => handleDelete(product.id, product.title)}
+                      disabled={deleteProduct.isPending && pendingDelete?.id === product.id}
+                      onClick={() => setPendingDelete({ id: product.id, title: product.title })}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      {deleteProduct.isPending && pendingDelete?.id === product.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
                     </Button>
                   </div>
                 </td>
@@ -111,6 +132,7 @@ export default function DashboardSeller() {
           </tbody>
         </table>
       </div>
+      )}
     </SurfaceCard>
   );
 
@@ -209,6 +231,21 @@ export default function DashboardSeller() {
           </div>
         </SurfaceCard>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(o) => { if (!o) setPendingDelete(null); }}
+        title="Remove product?"
+        description={
+          pendingDelete
+            ? `"${pendingDelete.title}" will be removed from the marketplace and buyers won't see it anymore.`
+            : undefined
+        }
+        confirmLabel="Remove"
+        onConfirm={confirmDelete}
+        loading={deleteProduct.isPending}
+        destructive
+      />
     </DashboardLayout>
   );
 }
