@@ -42,41 +42,35 @@ function toPublicOrder(item: OrderItemRow, createdAt: Date) {
   };
 }
 
-// Both dashboards call this same endpoint today (see profile/hooks'
-// `useOrders`), so it answers "orders relevant to me" based on role rather
-// than needing a separate seller-only route: a buyer sees what they bought,
-// a seller sees what's been bought from them.
+// Purchases — items the caller bought. Anyone can buy on Fotizo (a seller
+// shopping from other sellers is a buyer here), so this is scoped by buyerId
+// and no longer branches on role. Sales are a separate endpoint below.
 router.get("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
-  const { role, userId } = req.auth!;
+  const rows = await db
+    .select({ item: orderItemsTable, createdAt: ordersTable.createdAt })
+    .from(orderItemsTable)
+    .innerJoin(ordersTable, eq(orderItemsTable.orderId, ordersTable.id))
+    .where(eq(ordersTable.buyerId, req.auth!.userId))
+    .orderBy(desc(ordersTable.createdAt));
+  res.json(rows.map((r) => toPublicOrder(r.item, r.createdAt)));
+});
 
-  if (role === "buyer") {
-    const rows = await db
-      .select({ item: orderItemsTable, createdAt: ordersTable.createdAt })
-      .from(orderItemsTable)
-      .innerJoin(ordersTable, eq(orderItemsTable.orderId, ordersTable.id))
-      .where(eq(ordersTable.buyerId, userId))
-      .orderBy(desc(ordersTable.createdAt));
-    res.json(rows.map((r) => toPublicOrder(r.item, r.createdAt)));
-    return;
-  }
-
-  if (role === "seller") {
-    const rows = await db
-      .select({ item: orderItemsTable, createdAt: ordersTable.createdAt })
-      .from(orderItemsTable)
-      .innerJoin(ordersTable, eq(orderItemsTable.orderId, ordersTable.id))
-      .where(eq(orderItemsTable.sellerId, userId))
-      .orderBy(desc(ordersTable.createdAt));
-    res.json(rows.map((r) => toPublicOrder(r.item, r.createdAt)));
-    return;
-  }
-
-  res.json([]);
+// Sales — items bought FROM the caller (their fulfilment queue). Scoped by the
+// per-line sellerId, so it's correct even for a mixed-seller order.
+router.get("/sales", requireAuth, async (req: AuthenticatedRequest, res) => {
+  const rows = await db
+    .select({ item: orderItemsTable, createdAt: ordersTable.createdAt })
+    .from(orderItemsTable)
+    .innerJoin(ordersTable, eq(orderItemsTable.orderId, ordersTable.id))
+    .where(eq(orderItemsTable.sellerId, req.auth!.userId))
+    .orderBy(desc(ordersTable.createdAt));
+  res.json(rows.map((r) => toPublicOrder(r.item, r.createdAt)));
 });
 
 router.post("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
-  if (req.auth!.role !== "buyer") {
-    res.status(403).json({ error: "Only buyer accounts can place orders." });
+  // Buyers and sellers can both purchase; staff accounts (manager/developer) can't.
+  if (req.auth!.role !== "buyer" && req.auth!.role !== "seller") {
+    res.status(403).json({ error: "This account type can't place orders." });
     return;
   }
 

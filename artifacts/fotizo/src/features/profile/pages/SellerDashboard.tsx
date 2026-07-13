@@ -3,8 +3,8 @@ import { Link } from "wouter";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Package, ShoppingBag, Star, Plus, Edit2, Eye, MessageSquare, Trash2, Loader2 } from "lucide-react";
-import { useSellerProducts, useOrders } from "@/features/profile/hooks";
+import { TrendingUp, Package, ShoppingBag, ShoppingCart, Star, Plus, Edit2, Eye, MessageSquare, Trash2, Loader2 } from "lucide-react";
+import { useSellerProducts, useOrders, useSales } from "@/features/profile/hooks";
 import { useDeleteProduct } from "@/features/marketplace/hooks";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
@@ -16,8 +16,12 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { chartColors, chartAxisTick, chartTooltipStyle } from "@/constants/chart";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import type { Order } from "@/types";
 
-type Section = "overview" | "products" | "orders";
+const statusTone = (s: string) =>
+  s === "delivered" ? "success" : s === "cancelled" ? "danger" : "warning";
+
+type Section = "overview" | "products" | "orders" | "purchases";
 
 const chartData = [
   { name: "Mon", revenue: 400 }, { name: "Tue", revenue: 300 }, { name: "Wed", revenue: 550 },
@@ -26,7 +30,8 @@ const chartData = [
 
 export default function DashboardSeller() {
   const { data: sellerProducts = [] } = useSellerProducts();
-  const { data: orders = [] } = useOrders();
+  const { data: sales = [] } = useSales();
+  const { data: purchases = [] } = useOrders();
   const [section, setSection] = useState<Section>("overview");
   const deleteProduct = useDeleteProduct();
   const { toast } = useToast();
@@ -52,6 +57,7 @@ export default function DashboardSeller() {
         { icon: <TrendingUp className="w-4 h-4" />, label: "Dashboard", active: section === "overview", onClick: () => setSection("overview") },
         { icon: <Package className="w-4 h-4" />, label: "My Products", active: section === "products", onClick: () => setSection("products") },
         { icon: <ShoppingBag className="w-4 h-4" />, label: "Orders", active: section === "orders", onClick: () => setSection("orders") },
+        { icon: <ShoppingCart className="w-4 h-4" />, label: "My Purchases", active: section === "purchases", onClick: () => setSection("purchases") },
         { icon: <MessageSquare className="w-4 h-4" />, label: "Messages", href: "/messages" },
       ]}
     />
@@ -136,18 +142,90 @@ export default function DashboardSeller() {
     </SurfaceCard>
   );
 
+  // Shared table for the seller's sales (bought from them) and purchases (bought
+  // by them). "sales" shows quantity; "purchases" shows who they bought from.
+  const ordersTableCard = (rows: Order[], mode: "sales" | "purchases") => (
+    <SurfaceCard className="overflow-hidden">
+      {rows.length === 0 ? (
+        <div className="px-6 py-16 text-center">
+          {mode === "sales" ? (
+            <>
+              <ShoppingBag className="mx-auto h-10 w-10 text-muted-foreground/40" aria-hidden="true" />
+              <p className="mt-3 font-semibold text-foreground">No orders yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                When someone buys one of your products, it'll show up here.
+              </p>
+            </>
+          ) : (
+            <>
+              <ShoppingCart className="mx-auto h-10 w-10 text-muted-foreground/40" aria-hidden="true" />
+              <p className="mt-3 font-semibold text-foreground">No purchases yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Anything you buy from other sellers will appear here.
+              </p>
+              <Link href="/products">
+                <Button className="mt-4 gap-2"><ShoppingCart className="w-4 h-4" aria-hidden="true" /> Browse marketplace</Button>
+              </Link>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-muted/50 text-muted-foreground uppercase tracking-wider text-xs">
+              <tr>
+                <th className="px-6 py-4 font-medium">Order</th>
+                <th className="px-6 py-4 font-medium">Product</th>
+                <th className="px-6 py-4 font-medium">{mode === "purchases" ? "Seller" : "Qty"}</th>
+                <th className="px-6 py-4 font-medium">Total</th>
+                <th className="px-6 py-4 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y border-border">
+              {rows.map((order) => (
+                <tr key={order.id} className="hover:bg-muted/30">
+                  <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{order.id.slice(0, 8)}</td>
+                  <td className="px-6 py-4 font-medium">{order.productTitle}</td>
+                  <td className="px-6 py-4">{mode === "purchases" ? order.seller : `×${order.quantity}`}</td>
+                  <td className="px-6 py-4"><Price amount={order.price * order.quantity} /></td>
+                  <td className="px-6 py-4 capitalize"><StatusBadge tone={statusTone(order.status)}>{order.status}</StatusBadge></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </SurfaceCard>
+  );
+
   return (
     <DashboardLayout sidebar={sidebar}>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <h1 className="heading-page text-foreground">
-            {section === "overview" ? "Seller Dashboard" : section === "products" ? "My Products" : "Orders"}
+            {section === "overview"
+              ? "Seller Dashboard"
+              : section === "products"
+                ? "My Products"
+                : section === "orders"
+                  ? "Orders"
+                  : "My Purchases"}
           </h1>
-          <p className="text-muted-foreground mt-1">Manage your business on Fotizo.</p>
+          <p className="text-muted-foreground mt-1">
+            {section === "purchases"
+              ? "Things you've bought from other sellers on Fotizo."
+              : "Manage your business on Fotizo."}
+          </p>
         </div>
         <div className="flex gap-3">
-          <Link href="/dashboard/seller/products/new"><Button className="gap-2"><Plus className="w-4 h-4" aria-hidden="true" /> Add Product</Button></Link>
-          <Link href="/dashboard/seller/services/new"><Button variant="outline" className="gap-2"><Plus className="w-4 h-4" aria-hidden="true" /> Add Service</Button></Link>
+          {section === "purchases" ? (
+            <Link href="/products"><Button className="gap-2"><ShoppingCart className="w-4 h-4" aria-hidden="true" /> Browse marketplace</Button></Link>
+          ) : (
+            <>
+              <Link href="/dashboard/seller/products/new"><Button className="gap-2"><Plus className="w-4 h-4" aria-hidden="true" /> Add Product</Button></Link>
+              <Link href="/dashboard/seller/services/new"><Button variant="outline" className="gap-2"><Plus className="w-4 h-4" aria-hidden="true" /> Add Service</Button></Link>
+            </>
+          )}
         </div>
       </div>
 
@@ -157,7 +235,7 @@ export default function DashboardSeller() {
             <StatCard label="Revenue (Month)" value="£4,280" valueClassName="text-primary"
               sub={<p className="text-xs text-green-600 mt-2 flex items-center font-medium"><TrendingUp className="w-3 h-3 mr-1" /> +12.5% vs last month</p>} />
             <StatCard label="Active Listings" value={String(sellerProducts.length)} />
-            <StatCard label="Orders to Fulfill" value={String(orders.length)} valueClassName="text-accent" />
+            <StatCard label="Orders to Fulfill" value={String(sales.length)} valueClassName="text-accent" />
             <StatCard label="Average Rating" value={<span className="inline-flex items-center gap-2">4.9 <Star className="w-6 h-6 fill-accent text-accent" /></span>} />
           </div>
 
@@ -183,18 +261,22 @@ export default function DashboardSeller() {
                 <Button variant="link" className="p-0" onClick={() => setSection("orders")}>View All</Button>
               </div>
               <div className="space-y-4 flex-1">
-                {orders.slice(0, 5).map((order) => (
-                  <div key={order.id} className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium text-sm truncate max-w-[150px]">{order.productTitle}</p>
-                      <p className="text-xs text-muted-foreground">{order.id}</p>
+                {sales.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No orders yet.</p>
+                ) : (
+                  sales.slice(0, 5).map((order) => (
+                    <div key={order.id} className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium text-sm truncate max-w-[150px]">{order.productTitle}</p>
+                        <p className="text-xs text-muted-foreground">{order.id}</p>
+                      </div>
+                      <div className="text-right">
+                        <Price amount={order.price} className="text-sm font-bold" />
+                        <p className="text-xs text-accent">Pending</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <Price amount={order.price} className="text-sm font-bold" />
-                      <p className="text-xs text-accent">Pending</p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </SurfaceCard>
           </div>
@@ -205,32 +287,9 @@ export default function DashboardSeller() {
 
       {section === "products" && ProductsTable}
 
-      {section === "orders" && (
-        <SurfaceCard className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-muted/50 text-muted-foreground uppercase tracking-wider text-xs">
-                <tr>
-                  <th className="px-6 py-4 font-medium">Order</th>
-                  <th className="px-6 py-4 font-medium">Product</th>
-                  <th className="px-6 py-4 font-medium">Total</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y border-border">
-                {orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-muted/30">
-                    <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{order.id}</td>
-                    <td className="px-6 py-4 font-medium">{order.productTitle}</td>
-                    <td className="px-6 py-4"><Price amount={order.price} /></td>
-                    <td className="px-6 py-4"><StatusBadge tone="warning">Pending</StatusBadge></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </SurfaceCard>
-      )}
+      {section === "orders" && ordersTableCard(sales, "sales")}
+
+      {section === "purchases" && ordersTableCard(purchases, "purchases")}
 
       <ConfirmDialog
         open={pendingDelete !== null}
