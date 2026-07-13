@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/contexts/MessagesContext";
-import { useOrders, useBookings } from "@/features/profile/hooks";
+import { useOrders, useBookings, useDashboardSection } from "@/features/profile/hooks";
 import { useProducts } from "@/features/marketplace/hooks";
 import { ProductCard } from "@/features/marketplace/components/ProductCard";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -85,7 +84,10 @@ export default function DashboardBuyer() {
   const { data: orders = [] } = useOrders();
   const { data: bookings = [] } = useBookings();
   const { data: products = [] } = useProducts();
-  const [section, setSection] = useState<Section>("overview");
+  const [section, setSection] = useDashboardSection<Section>(
+    ["overview", "orders", "bookings", "wishlist"],
+    "overview",
+  );
 
   const sidebar = (
     <DashboardSidebar

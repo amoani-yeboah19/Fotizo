@@ -138,7 +138,13 @@ export function Navbar() {
         </div>
       </div>
 
-      {mobileMenuOpen && <NavbarMobileMenu onSignIn={() => openAuth("signin")} onJoin={() => openAuth("join")} />}
+      {mobileMenuOpen && (
+        <NavbarMobileMenu
+          onSignIn={() => openAuth("signin")}
+          onJoin={() => openAuth("join")}
+          onClose={() => setMobileMenuOpen(false)}
+        />
+      )}
 
       <AuthModal
         open={authView !== null}

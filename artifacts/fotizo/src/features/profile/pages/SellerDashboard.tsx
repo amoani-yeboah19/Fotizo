@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
 import { TrendingUp, Package, ShoppingBag, ShoppingCart, Star, Plus, Edit2, Eye, MessageSquare, Trash2, Loader2 } from "lucide-react";
-import { useSellerProducts, useOrders, useSales } from "@/features/profile/hooks";
+import { useSellerProducts, useOrders, useSales, useDashboardSection } from "@/features/profile/hooks";
 import { useDeleteProduct } from "@/features/marketplace/hooks";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
@@ -32,7 +32,10 @@ export default function DashboardSeller() {
   const { data: sellerProducts = [] } = useSellerProducts();
   const { data: sales = [] } = useSales();
   const { data: purchases = [] } = useOrders();
-  const [section, setSection] = useState<Section>("overview");
+  const [section, setSection] = useDashboardSection<Section>(
+    ["overview", "products", "orders", "purchases"],
+    "overview",
+  );
   const deleteProduct = useDeleteProduct();
   const { toast } = useToast();
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);

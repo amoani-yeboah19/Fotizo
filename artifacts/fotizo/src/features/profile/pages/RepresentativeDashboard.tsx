@@ -1,8 +1,8 @@
-import { useState } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
 import { Globe, Store, ShoppingBag, Users, ShieldAlert, TrendingUp } from "lucide-react";
+import { useDashboardSection } from "@/features/profile/hooks";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { StatCard } from "@/components/common/StatCard";
@@ -106,7 +106,10 @@ function ApprovalsQueue() {
 }
 
 export default function DashboardRepresentative() {
-  const [section, setSection] = useState<Section>("overview");
+  const [section, setSection] = useDashboardSection<Section>(
+    ["overview", "sellers", "orders", "approvals"],
+    "overview",
+  );
 
   const sidebar = (
     <DashboardSidebar

@@ -1,11 +1,10 @@
-import { useState } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import {
   Code, Terminal, Key, Book, Copy, ExternalLink, Webhook, ListTree, Activity, CheckCircle2,
 } from "lucide-react";
-import { useDeveloperStats } from "@/features/profile/hooks";
+import { useDeveloperStats, useDashboardSection } from "@/features/profile/hooks";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { StatCard } from "@/components/common/StatCard";
@@ -138,7 +137,10 @@ function RequestLog() {
 
 export default function DashboardDeveloper() {
   const { data: developerStats } = useDeveloperStats();
-  const [section, setSection] = useState<Section>("overview");
+  const [section, setSection] = useDashboardSection<Section>(
+    ["overview", "keys", "usage", "webhooks", "endpoints"],
+    "overview",
+  );
 
   const sidebar = (
     <DashboardSidebar

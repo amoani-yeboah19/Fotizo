@@ -4,21 +4,28 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/contexts/MessagesContext";
 import { InitialsAvatar } from "@/components/common/InitialsAvatar";
+import { dashboardNavItems, dashboardHref } from "@/features/profile/dashboardNav";
+
+const linkClass =
+  "block px-4 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg cursor-pointer";
 
 export function NavbarMobileMenu({
   onSignIn,
   onJoin,
+  onClose,
 }: {
   onSignIn?: () => void;
   onJoin?: () => void;
+  onClose?: () => void;
 }) {
   const { user, isAuthenticated, logout } = useAuth();
   const { totalUnread } = useMessages();
   const [, setLocation] = useLocation();
 
-  const dashboardLink = user ? `/dashboard/${user.role}` : "/login";
+  const dashboardPages = dashboardNavItems(user?.role);
   const handleLogout = () => {
     logout();
+    onClose?.();
     setLocation("/");
   };
 
@@ -34,8 +41,8 @@ export function NavbarMobileMenu({
         />
       </div>
       <nav className="flex flex-col gap-2">
-        <Link href="/products"><span className="block px-4 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg cursor-pointer">Products</span></Link>
-        <Link href="/services"><span className="block px-4 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg cursor-pointer">Services</span></Link>
+        <Link href="/products" onClick={onClose}><span className={linkClass}>Products</span></Link>
+        <Link href="/services" onClick={onClose}><span className={linkClass}>Services</span></Link>
       </nav>
       <div className="h-px bg-border my-2" />
 
@@ -58,8 +65,23 @@ export function NavbarMobileMenu({
               <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
             </div>
           </div>
-          <Link href={dashboardLink}><span className="block px-4 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg cursor-pointer">Dashboard</span></Link>
-          <Link href="/messages">
+
+          {/* The logged-in user's dashboard pages (deep-linked via ?tab=). */}
+          {dashboardPages.length > 0 && (
+            <>
+              <p className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Dashboard
+              </p>
+              {dashboardPages.map((item) => (
+                <Link key={item.tab} href={dashboardHref(user!.role, item.tab)} onClick={onClose}>
+                  <span className={linkClass}>{item.label}</span>
+                </Link>
+              ))}
+              <div className="h-px bg-border my-2" />
+            </>
+          )}
+
+          <Link href="/messages" onClick={onClose}>
             <span className="flex justify-between px-4 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg cursor-pointer">
               Messages {totalUnread > 0 && <span className="bg-accent text-white px-2 py-0.5 rounded-full text-xs">{totalUnread}</span>}
             </span>

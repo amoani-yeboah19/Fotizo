@@ -1,9 +1,8 @@
-import { useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
 import { Users, Activity, ShieldAlert } from "lucide-react";
-import { useManagerMetrics } from "@/features/profile/hooks";
+import { useManagerMetrics, useDashboardSection } from "@/features/profile/hooks";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { StatCard } from "@/components/common/StatCard";
@@ -99,7 +98,10 @@ function ModerationQueue({ count }: { count: number }) {
 
 export default function DashboardManager() {
   const { data: managerMetrics } = useManagerMetrics();
-  const [section, setSection] = useState<Section>("overview");
+  const [section, setSection] = useDashboardSection<Section>(
+    ["overview", "users", "moderation"],
+    "overview",
+  );
 
   const sidebar = (
     <DashboardSidebar
