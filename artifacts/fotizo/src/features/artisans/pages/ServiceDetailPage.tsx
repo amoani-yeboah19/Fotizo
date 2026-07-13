@@ -8,6 +8,8 @@ import { Price } from "@/components/common/Price";
 import { SurfaceCard } from "@/components/common/SurfaceCard";
 import { BookingDialog } from "@/features/artisans/components/BookingDialog";
 import { useMessages } from "@/contexts/MessagesContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { Star, CheckCircle2, ChevronRight, MessageSquare, Clock, Briefcase } from "lucide-react";
 
 export default function ServiceDetail() {
@@ -16,6 +18,8 @@ export default function ServiceDetail() {
   const id = params?.id ?? "";
   const { data: service, isLoading } = useService(id);
   const { startConversation } = useMessages();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   if (isLoading) {
     return (
@@ -40,17 +44,26 @@ export default function ServiceDetail() {
     );
   }
 
-  const handleMessageProvider = () => {
-    const convId = startConversation(
-      {
-        id: service.providerId,
-        name: service.provider,
-        avatar: service.avatar,
-        role: "Professional",
-      },
-      `Inquiry: ${service.title}`,
-    );
-    setLocation(`/messages/${convId}`);
+  const handleMessageProvider = async () => {
+    if (!user) {
+      toast({ title: "Sign in to message", description: "Please log in to contact this provider." });
+      setLocation("/login");
+      return;
+    }
+    try {
+      const convId = await startConversation(
+        {
+          id: service.providerId,
+          name: service.provider,
+          avatar: service.avatar,
+          role: "Professional",
+        },
+        `Inquiry: ${service.title}`,
+      );
+      setLocation(`/messages/${convId}`);
+    } catch {
+      toast({ variant: "destructive", title: "Couldn't start conversation", description: "Please try again." });
+    }
   };
 
   return (
@@ -143,7 +156,7 @@ export default function ServiceDetail() {
             </div>
 
             <div className="mt-6 pt-6 border-t border-border">
-              <Button variant="outline" className="w-full gap-2" onClick={handleMessageProvider}>
+              <Button variant="outline" className="w-full gap-2" onClick={() => void handleMessageProvider()}>
                 <MessageSquare className="w-4 h-4" /> Message Provider
               </Button>
             </div>

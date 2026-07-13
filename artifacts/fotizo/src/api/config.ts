@@ -8,6 +8,7 @@
 //                         bookings/messages stay mocked until those exist server-side.
 // VITE_USE_MOCK_ORDERS  — same, but for cart/checkout/order-history only.
 // VITE_USE_MOCK_ARTISANS — same, but for the services (artisans) catalog only.
+// VITE_USE_MOCK_MESSAGES — same, but for conversations/messaging only.
 //
 // A backend developer connects a real backend by setting these; no UI code changes.
 
@@ -26,3 +27,6 @@ export const ORDERS_USE_MOCKS =
 
 export const ARTISANS_USE_MOCKS =
   (import.meta.env.VITE_USE_MOCK_ARTISANS ?? import.meta.env.VITE_USE_MOCKS ?? "true") !== "false";
+
+export const MESSAGES_USE_MOCKS =
+  (import.meta.env.VITE_USE_MOCK_MESSAGES ?? import.meta.env.VITE_USE_MOCKS ?? "true") !== "false";

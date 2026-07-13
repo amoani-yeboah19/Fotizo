@@ -7,6 +7,7 @@ interface ImportMetaEnv {
   readonly VITE_USE_MOCK_CATALOG?: string;
   readonly VITE_USE_MOCK_ORDERS?: string;
   readonly VITE_USE_MOCK_ARTISANS?: string;
+  readonly VITE_USE_MOCK_MESSAGES?: string;
   readonly VITE_GOOGLE_CLIENT_ID?: string;
 }
 

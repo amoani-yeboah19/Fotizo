@@ -1,4 +1,4 @@
-import { api, USE_MOCKS } from "@/api";
+import { api, MESSAGES_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import * as fx from "@/services/mocks/fixtures";
 import type { Conversation, Message } from "@/types";
@@ -10,13 +10,38 @@ const AUTO_REPLIES = [
   "I appreciate you reaching out. Let me look into this.",
 ];
 
+type Participant = { id: string; name: string; avatar?: string; role: string };
+type OfferInput = { description: string; amount: number };
+type OfferResponse = "accepted" | "declined";
+
 export const messagesService = {
   async listConversations(): Promise<Conversation[]> {
-    if (USE_MOCKS) {
+    if (MESSAGES_USE_MOCKS) {
       await delay();
       return structuredClone(fx.INITIAL_CONVERSATIONS);
     }
     return api.get<Conversation[]>("/conversations");
+  },
+
+  // Find-or-create a thread with a participant for a subject. The real backend
+  // returns the existing thread (with history) if one already matches.
+  async startConversation(participant: Participant, subject: string): Promise<Conversation> {
+    if (MESSAGES_USE_MOCKS) {
+      await delay();
+      return {
+        id: `conv${Date.now()}`,
+        participantId: participant.id,
+        participantName: participant.name,
+        participantAvatar: participant.avatar,
+        participantRole: participant.role,
+        subject,
+        messages: [],
+        lastMessage: "",
+        lastMessageTime: new Date().toISOString(),
+        unreadCount: 0,
+      };
+    }
+    return api.post<Conversation>("/conversations", { participantId: participant.id, subject });
   },
 
   async sendMessage(
@@ -25,7 +50,7 @@ export const messagesService = {
     senderId: string,
     senderName: string,
   ): Promise<Message> {
-    if (USE_MOCKS) {
+    if (MESSAGES_USE_MOCKS) {
       return {
         id: `m${Date.now()}`,
         senderId,
@@ -40,16 +65,16 @@ export const messagesService = {
 
   async sendOffer(
     conversationId: string,
-    offer: { description: string; amount: number },
+    offer: OfferInput,
     senderId: string,
     senderName: string,
   ): Promise<Message> {
-    if (USE_MOCKS) {
+    if (MESSAGES_USE_MOCKS) {
       return {
         id: `m${Date.now()}`,
         senderId,
         senderName,
-        content: `Sent an offer · £${offer.amount.toLocaleString()}`,
+        content: "Sent an offer",
         timestamp: new Date().toISOString(),
         read: false,
         offer: { ...offer, status: "pending" },
@@ -58,10 +83,23 @@ export const messagesService = {
     return api.post<Message>(`/conversations/${conversationId}/offers`, offer);
   },
 
-  // Simulated counterpart reply. Backend delivers real replies (e.g. via polling or
-  // websockets), so against a real API this resolves to null and the UI does nothing.
+  // Accept/decline an offer. Real backend returns the updated message; mocks
+  // resolve to null and the context applies the change locally.
+  async respondToOffer(
+    conversationId: string,
+    messageId: string,
+    status: OfferResponse,
+  ): Promise<Message | null> {
+    if (MESSAGES_USE_MOCKS) return null;
+    return api.post<Message>(`/conversations/${conversationId}/offers/${messageId}/respond`, {
+      status,
+    });
+  },
+
+  // Simulated counterpart reply. Only mocks fabricate one; against a real API
+  // this resolves to null (real replies arrive via the context's polling).
   async getAutoReply(): Promise<Message | null> {
-    if (!USE_MOCKS) return null;
+    if (!MESSAGES_USE_MOCKS) return null;
     await delay(1500);
     return {
       id: `m${Date.now() + 1}`,
@@ -74,7 +112,7 @@ export const messagesService = {
   },
 
   async markAsRead(conversationId: string): Promise<void> {
-    if (USE_MOCKS) return;
+    if (MESSAGES_USE_MOCKS) return;
     await api.post(`/conversations/${conversationId}/read`);
   },
 };

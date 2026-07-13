@@ -7,4 +7,5 @@ export {
   CATALOG_USE_MOCKS,
   ORDERS_USE_MOCKS,
   ARTISANS_USE_MOCKS,
+  MESSAGES_USE_MOCKS,
 } from "./config";

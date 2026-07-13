@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { Send, ArrowLeft, Handshake, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Avatar } from "@/components/common/Avatar";
 import { Price } from "@/components/common/Price";
 import { StatusBadge } from "@/components/common/StatusBadge";
 
@@ -20,11 +21,12 @@ export default function MessageThread() {
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Mark read on open and whenever new messages arrive while the thread is open.
   useEffect(() => {
     if (params?.id) {
       markAsRead(params.id);
     }
-  }, [params?.id, conversations.length]);
+  }, [params?.id, conversation?.messages.length]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -54,7 +56,7 @@ export default function MessageThread() {
                 onClick={() => setLocation(`/messages/${conv.id}`)}
                 className={`flex items-start gap-3 p-4 border-b border-border cursor-pointer transition-colors ${conv.id === conversation.id ? 'bg-primary/5 border-l-4 border-l-primary' : 'hover:bg-muted/50'}`}
               >
-                <img loading="lazy" decoding="async" src={conv.participantAvatar || "/images/avatar-1.webp"} alt={conv.participantName} className="w-12 h-12 rounded-full object-cover shrink-0" />
+                <Avatar src={conv.participantAvatar} name={conv.participantName} className="w-12 h-12 text-base shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline mb-1">
                     <h4 className="font-semibold text-sm truncate">{conv.participantName}</h4>
@@ -75,7 +77,7 @@ export default function MessageThread() {
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setLocation("/messages")}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <img loading="lazy" decoding="async" src={conversation.participantAvatar || "/images/avatar-1.webp"} alt={conversation.participantName} className="w-10 h-10 rounded-full object-cover" />
+            <Avatar src={conversation.participantAvatar} name={conversation.participantName} className="w-10 h-10 text-sm" />
             <div>
               <h3 className="font-bold text-sm leading-tight">{conversation.participantName}</h3>
               <p className="text-xs text-muted-foreground">{conversation.participantRole}</p>
@@ -107,7 +109,12 @@ export default function MessageThread() {
                             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Offer</p>
                             <Price amount={o.amount} className="text-2xl font-extrabold text-foreground" />
                           </div>
-                          {o.status === "pending" ? (
+                          {o.status !== "pending" ? (
+                            <StatusBadge tone={o.status === "accepted" ? "success" : "danger"}>{o.status}</StatusBadge>
+                          ) : isMe ? (
+                            // My own offer — waiting on the other person to respond.
+                            <StatusBadge tone="warning">pending</StatusBadge>
+                          ) : (
                             <div className="flex gap-2">
                               <Button size="sm" className="gap-1 h-8" onClick={() => respondToOffer(conversation.id, msg.id, "accepted")}>
                                 <Check className="w-3.5 h-3.5" aria-hidden="true" /> Accept
@@ -116,8 +123,6 @@ export default function MessageThread() {
                                 <X className="w-3.5 h-3.5" aria-hidden="true" /> Decline
                               </Button>
                             </div>
-                          ) : (
-                            <StatusBadge tone={o.status === "accepted" ? "success" : "danger"}>{o.status}</StatusBadge>
                           )}
                         </div>
                       </div>
@@ -130,7 +135,7 @@ export default function MessageThread() {
                 <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                   <div className={`flex max-w-[75%] ${isMe ? 'flex-row-reverse' : 'flex-row'} gap-3`}>
                     {!isMe && (
-                      <img loading="lazy" decoding="async" src={conversation.participantAvatar || "/images/avatar-1.webp"} alt={msg.senderName} className="w-8 h-8 rounded-full mt-auto" />
+                      <Avatar src={conversation.participantAvatar} name={msg.senderName} className="w-8 h-8 text-xs mt-auto" />
                     )}
                     
                     <div className="flex flex-col">

@@ -32,27 +32,35 @@ export function NegotiateDialog({ service }: { service: NegotiableService }) {
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
+  const [sending, setSending] = useState(false);
 
   const valid = description.trim().length > 0 && Number(amount) > 0;
 
-  const submit = () => {
+  const submit = async () => {
     if (!user) {
       toast({ title: "Sign in to negotiate", description: "Please log in to send an offer." });
       setOpen(false);
       setLocation("/login");
       return;
     }
-    if (!valid) return;
-    const convId = startConversation(
-      { id: service.providerId, name: service.provider, avatar: service.avatar, role: "seller" },
-      `Negotiation: ${service.title}`,
-    );
-    sendOffer(convId, { description: description.trim(), amount: Number(amount) }, user.id, user.name);
-    toast({ title: "Offer sent", description: `Your offer was sent to ${service.provider}.` });
-    setDescription("");
-    setAmount("");
-    setOpen(false);
-    setLocation(`/messages/${convId}`);
+    if (!valid || sending) return;
+    setSending(true);
+    try {
+      const convId = await startConversation(
+        { id: service.providerId, name: service.provider, avatar: service.avatar, role: "seller" },
+        `Negotiation: ${service.title}`,
+      );
+      sendOffer(convId, { description: description.trim(), amount: Number(amount) }, user.id, user.name);
+      toast({ title: "Offer sent", description: `Your offer was sent to ${service.provider}.` });
+      setDescription("");
+      setAmount("");
+      setOpen(false);
+      setLocation(`/messages/${convId}`);
+    } catch {
+      toast({ variant: "destructive", title: "Couldn't send offer", description: "Please try again." });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -87,7 +95,7 @@ export function NegotiateDialog({ service }: { service: NegotiableService }) {
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  submit();
+                  void submit();
                 }
               }}
             />
@@ -103,15 +111,15 @@ export function NegotiateDialog({ service }: { service: NegotiableService }) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder={String(service.hourlyRate)}
-              onKeyDown={(e) => e.key === "Enter" && submit()}
+              onKeyDown={(e) => e.key === "Enter" && void submit()}
             />
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={!valid} className="gap-1.5">
-            <Handshake className="w-4 h-4" aria-hidden="true" /> Send offer
+          <Button onClick={() => void submit()} disabled={!valid || sending} className="gap-1.5">
+            <Handshake className="w-4 h-4" aria-hidden="true" /> {sending ? "Sending…" : "Send offer"}
           </Button>
         </DialogFooter>
       </DialogContent>
