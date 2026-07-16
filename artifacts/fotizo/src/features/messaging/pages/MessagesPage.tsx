@@ -10,7 +10,7 @@ export default function MessagesPage() {
 
   return (
     <PageLayout footer={false} mainClassName="flex overflow-hidden pt-20">
-        <div className="w-full lg:w-96 shrink-0 border-r border-border bg-white flex flex-col h-[calc(100vh-80px)]">
+        <div className="w-full lg:w-96 shrink-0 border-r border-border bg-white flex flex-col h-[calc(100dvh-80px)]">
           <div className="p-4 border-b border-border">
             <h2 className="text-xl font-bold">Messages</h2>
           </div>
@@ -53,7 +53,7 @@ export default function MessagesPage() {
         </div>
 
         {/* Right Panel - Empty State */}
-        <div className="hidden lg:flex flex-1 bg-muted/20 items-center justify-center h-[calc(100vh-80px)]">
+        <div className="hidden lg:flex flex-1 bg-muted/20 items-center justify-center h-[calc(100dvh-80px)]">
           <div className="text-center">
             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-border">
               <MessageSquare className="w-8 h-8 text-primary" />

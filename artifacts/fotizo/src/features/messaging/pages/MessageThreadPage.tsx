@@ -45,7 +45,7 @@ export default function MessageThread() {
     <PageLayout footer={false} mainClassName="flex overflow-hidden pt-20">
         
         {/* Left Panel - Hidden on mobile when thread is active */}
-        <div className="hidden lg:flex w-96 shrink-0 border-r border-border bg-white flex-col h-[calc(100vh-80px)]">
+        <div className="hidden lg:flex w-96 shrink-0 border-r border-border bg-white flex-col h-[calc(100dvh-80px)]">
           <div className="p-4 border-b border-border">
             <h2 className="text-xl font-bold">Messages</h2>
           </div>
@@ -70,7 +70,7 @@ export default function MessageThread() {
         </div>
 
         {/* Right Panel - Active Conversation */}
-        <div className="flex-1 flex flex-col h-[calc(100vh-80px)] bg-muted/10">
+        <div className="flex-1 flex flex-col h-[calc(100dvh-80px)] bg-muted/10">
           
           {/* Header */}
           <div className="h-16 border-b border-border bg-white px-4 flex items-center gap-4 shrink-0 shadow-sm z-10">
