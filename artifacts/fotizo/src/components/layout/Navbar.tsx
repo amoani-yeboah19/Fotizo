@@ -53,6 +53,11 @@ export function Navbar() {
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-8">
             <ProductsMegaMenu />
+            <Link href="/shop">
+              <span className="text-sm font-semibold text-[#FF6A00] hover:opacity-80 transition-opacity cursor-pointer">
+                Shop
+              </span>
+            </Link>
             <Link href="/services">
               <span className="text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer">
                 Services

@@ -41,6 +41,7 @@ export function NavbarMobileMenu({
         />
       </div>
       <nav className="flex flex-col gap-2">
+        <Link href="/shop" onClick={onClose}><span className="block px-4 py-3 text-sm font-semibold text-[#FF6A00] hover:bg-muted rounded-lg cursor-pointer">Shop</span></Link>
         <Link href="/products" onClick={onClose}><span className={linkClass}>Products</span></Link>
         <Link href="/services" onClick={onClose}><span className={linkClass}>Services</span></Link>
       </nav>
