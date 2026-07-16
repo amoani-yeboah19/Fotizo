@@ -8,6 +8,8 @@ import { Loading } from "@/components/common/QueryStates";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Price } from "@/components/common/Price";
 import { useCart } from "@/contexts/CartContext";
+import { useMessages } from "@/contexts/MessagesContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Star, Heart, MessageSquare, ChevronRight, Minus, Plus, Truck, ShieldCheck } from "lucide-react";
 
@@ -21,6 +23,8 @@ export default function ProductDetail() {
   const [activeTab, setActiveTab] = useState("description");
 
   const { addItem } = useCart();
+  const { startConversation } = useMessages();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   if (isLoading) {
@@ -59,6 +63,27 @@ export default function ProductDetail() {
       title: "Added to cart",
       description: `${product.title} has been added to your cart.`,
     });
+  };
+
+  const handleMessageSeller = async () => {
+    if (!user) {
+      toast({ title: "Sign in to message", description: "Please log in to contact this seller." });
+      setLocation("/login");
+      return;
+    }
+    if (user.id === product.sellerId) {
+      toast({ title: "This is your listing", description: "You can't message yourself about your own product." });
+      return;
+    }
+    try {
+      const convId = await startConversation(
+        { id: product.sellerId, name: product.seller, role: "seller" },
+        `Inquiry: ${product.title}`,
+      );
+      setLocation(`/messages/${convId}`);
+    } catch {
+      toast({ variant: "destructive", title: "Couldn't start conversation", description: "Please try again." });
+    }
   };
 
   return (
@@ -131,7 +156,7 @@ export default function ProductDetail() {
                 <p className="text-sm text-muted-foreground mb-1">Sold by</p>
                 <p className="font-semibold">{product.seller}</p>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setLocation("/messages")} className="gap-2">
+              <Button variant="outline" size="sm" onClick={() => void handleMessageSeller()} className="gap-2">
                 <MessageSquare className="w-4 h-4" /> Message Seller
               </Button>
             </div>
