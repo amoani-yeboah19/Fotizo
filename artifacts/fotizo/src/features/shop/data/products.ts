@@ -1,18 +1,15 @@
 import type { LucideIcon } from "lucide-react";
-import { Glasses, Gem, Droplets, Shirt, Crown, ShoppingBag, Footprints, Sparkles, Watch } from "lucide-react";
+import { Smartphone, Zap, ShoppingBag, Shirt, Laptop } from "lucide-react";
 
-// Temu/Taobao-style storefront for Fotizo's imported (China-sourced) product
-// line. This is curated placeholder data — prices are in the app's base currency
-// (the Price component converts to the active one), and images come from a
-// keyword image service so the grid looks like a real catalog until the
-// supplier's real feed is imported. Swap `productImage()` to change the source.
+// Fotizo Shop catalog — real products sourced from the supplier storefront.
+// Prices are stored in the app's base currency (GBP); the Price component
+// converts to the active currency (the ₵ prices convert back at the app's
+// GHS rate). Images are hosted by the supplier and load over HTTPS.
 
 export interface ShopCategory {
   id: string;
   label: string;
   icon: LucideIcon;
-  /** keyword(s) used to fetch topical placeholder imagery */
-  keyword: string;
 }
 
 export interface ShopProduct {
@@ -30,195 +27,89 @@ export interface ShopProduct {
   description: string;
 }
 
-// Stable, topical placeholder image. `lock` keeps the same photo per product.
-function productImage(keyword: string, lock: number): string {
-  return `https://loremflickr.com/600/600/${encodeURIComponent(keyword)}?lock=${lock}`;
-}
+export const SHOP_CATEGORIES: ShopCategory[] = [
+  { id: "phones", label: "Phones", icon: Smartphone },
+  { id: "appliances", label: "Appliances", icon: Zap },
+  { id: "bags", label: "Bags", icon: ShoppingBag },
+  { id: "fashion", label: "Fashion", icon: Shirt },
+  { id: "electronics", label: "Electronics", icon: Laptop },
+];
 
-interface CatTemplate {
-  label: string;
-  icon: LucideIcon;
-  keyword: string;
-  low: number;
-  high: number;
-  names: string[];
-}
-
-const CATALOG: Record<string, CatTemplate> = {
-  accessories: {
-    label: "Accessories",
-    icon: Glasses,
-    keyword: "accessory,fashion",
-    low: 4,
-    high: 22,
-    names: [
-      "Retro Round Sunglasses",
-      "Minimalist Leather Belt",
-      "Silk Twill Neck Scarf",
-      "Woven Straw Sun Hat",
-      "Classic Aviator Sunglasses",
-      "Adjustable Canvas Cap",
-    ],
-  },
-  jewellery: {
-    label: "Jewellery",
-    icon: Gem,
-    keyword: "jewelry",
-    low: 6,
-    high: 38,
-    names: [
-      "18K Gold-Plated Hoop Earrings",
-      "Sterling Silver Pendant Necklace",
-      "Cubic Zirconia Tennis Bracelet",
-      "Minimalist Stacking Rings Set",
-      "Freshwater Pearl Drop Earrings",
-      "Layered Chain Choker",
-    ],
-  },
-  perfumes: {
-    label: "Perfumes",
-    icon: Droplets,
-    keyword: "perfume",
-    low: 9,
-    high: 42,
-    names: [
-      "Amber Oud Eau de Parfum 50ml",
-      "Fresh Citrus Cologne 100ml",
-      "Rose Musk Body Mist 200ml",
-      "Velvet Vanilla Perfume 30ml",
-      "Ocean Breeze EDT 75ml",
-      "Sandalwood Attar Oil 12ml",
-    ],
-  },
-  mens: {
-    label: "Men's Wear",
-    icon: Shirt,
-    keyword: "menswear,fashion",
-    low: 12,
-    high: 56,
-    names: [
-      "Slim-Fit Oxford Shirt",
-      "Merino Wool Crewneck Sweater",
-      "Tapered Stretch Chinos",
-      "Quilted Bomber Jacket",
-      "Cotton Piqué Polo Shirt",
-      "Washed Denim Jeans",
-    ],
-  },
-  womens: {
-    label: "Women's Wear",
-    icon: Crown,
-    keyword: "dress,fashion",
-    low: 11,
-    high: 52,
-    names: [
-      "Pleated Chiffon Midi Dress",
-      "Ribbed Knit Cardigan",
-      "High-Waist Wide-Leg Trousers",
-      "Satin Slip Camisole",
-      "Oversized Tailored Blazer",
-      "Floral Wrap Blouse",
-    ],
-  },
-  bags: {
-    label: "Bags",
-    icon: ShoppingBag,
-    keyword: "handbag",
-    low: 10,
-    high: 60,
-    names: [
-      "Quilted Chain Crossbody Bag",
-      "Canvas Tote Shopper",
-      "Mini Leather Backpack",
-      "Structured Top-Handle Bag",
-      "Nylon Belt Bag",
-      "Woven Bucket Bag",
-    ],
-  },
-  shoes: {
-    label: "Shoes",
-    icon: Footprints,
-    keyword: "shoes",
-    low: 14,
-    high: 48,
-    names: [
-      "Chunky Platform Sneakers",
-      "Pointed-Toe Ballet Flats",
-      "Suede Chelsea Boots",
-      "Strappy Block Heels",
-      "Canvas Slip-On Shoes",
-      "Padded Slide Sandals",
-    ],
-  },
-  beauty: {
-    label: "Beauty",
-    icon: Sparkles,
-    keyword: "cosmetics,makeup",
-    low: 4,
-    high: 30,
-    names: [
-      "Matte Liquid Lipstick Set",
-      "Hydrating Sheet Mask (10 pack)",
-      "Volumizing Lash Mascara",
-      "Jade Facial Roller",
-      "Nourishing Tinted Lip Oil",
-      "Full-Coverage Foundation",
-    ],
-  },
-  watches: {
-    label: "Watches",
-    icon: Watch,
-    keyword: "watch",
-    low: 16,
-    high: 72,
-    names: [
-      "Minimalist Mesh-Strap Watch",
-      "Chronograph Sports Watch",
-      "Rose-Gold Bangle Watch",
-      "Digital LED Watch",
-      "Leather-Strap Dress Watch",
-      "Smart Fitness Tracker Watch",
-    ],
-  },
-};
-
-export const SHOP_CATEGORIES: ShopCategory[] = Object.entries(CATALOG).map(
-  ([id, c]) => ({ id, label: c.label, icon: c.icon, keyword: c.keyword }),
-);
-
-const SOLD_STEPS = [64, 128, 312, 540, 890, 1200, 2600, 4300, 6800, 9500];
-const DISCOUNTS = [0.35, 0.45, 0.52, 0.4, 0.6, 0.48];
-
-// Build the flat product list from the templates above.
-export const SHOP_PRODUCTS: ShopProduct[] = Object.entries(CATALOG).flatMap(
-  ([catId, c]) =>
-    c.names.map((name, i) => {
-      const span = c.high - c.low;
-      const originalPrice = Math.round((c.low + (span * (i + 1)) / c.names.length) * 100) / 100;
-      const discount = DISCOUNTS[i % DISCOUNTS.length];
-      const price = Math.round(originalPrice * (1 - discount) * 100) / 100;
-      const lock = catId.length * 100 + i * 7 + 11;
-      const globalIdx = Object.keys(CATALOG).indexOf(catId) * 6 + i;
-      return {
-        id: `${catId}-${i + 1}`,
-        title: name,
-        category: catId,
-        price,
-        originalPrice,
-        rating: Math.min(5, Math.round((4.3 + ((globalIdx % 7) * 0.1)) * 10) / 10),
-        sold: SOLD_STEPS[globalIdx % SOLD_STEPS.length],
-        image: productImage(c.keyword, lock),
-        images: [
-          productImage(c.keyword, lock),
-          productImage(c.keyword, lock + 1000),
-          productImage(c.keyword, lock + 2000),
-        ],
-        freeShipping: globalIdx % 3 !== 0,
-        almostGone: globalIdx % 5 === 0,
-        description: `${name} — imported directly through Fotizo's global sourcing network. Quality-checked before dispatch, with fast tracked shipping and buyer protection on every order.`,
-      };
-    }),
-);
+export const SHOP_PRODUCTS: ShopProduct[] = [
+  {id:"t-57",title:"Women's Thong Breathable Medium Pure Cotton T-back",category:"fashion",price:0.32,originalPrice:0.41,rating:4.3,sold:86,image:"https://tuwa.com.gh/cache//catalog/Product/Fashion/Women/Women's-thong-breathable-medium-pure-cotton--1-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Fashion/Women/Women's-thong-breathable-medium-pure-cotton--1-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Fashion/Women/Women's-thong-breathable-medium-pure-cotton--11-560x560.jpg"],freeShipping:false,almostGone:true,description:"Women's Thong Breathable Medium Pure Cotton T-back — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-44",title:"Lunch Bag for Adults Kids Thermal Insulated Cool Lunch Box Storage Pack",category:"bags",price:1.89,originalPrice:2.74,rating:4.4,sold:142,image:"https://tuwa.com.gh/cache//catalog/Product/lunch-bag--1-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/lunch-bag--1-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/lunch-bag--2-560x560.jpg"],freeShipping:true,almostGone:false,description:"Lunch Bag for Adults Kids Thermal Insulated Cool Lunch Box Storage Pack — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-46",title:"Decakila Electric 1.8L Kettle Stainless Steel KEKT031M",category:"appliances",price:4.59,originalPrice:7.65,rating:4.5,sold:310,image:"https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila%20KEKT031M-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila%20KEKT031M-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila--KEKT031M-118-560x560.jpg"],freeShipping:true,almostGone:false,description:"Decakila Electric 1.8L Kettle Stainless Steel KEKT031M — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-106",title:"Outdoor Lightweight Men's Backpack Computer Versatile Leisure Student Trend Travel Backpack - Black",category:"bags",price:4.32,originalPrice:5.92,rating:4.6,sold:540,image:"https://tuwa.com.gh/cache//catalog/Product/Mens-Backpack-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Mens-Backpack-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Mens-Backpack-11-560x560.jpg"],freeShipping:false,almostGone:false,description:"Outdoor Lightweight Men's Backpack Computer Versatile Leisure Student Trend Travel Backpack - Black — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-45",title:"Decakila Dry Iron 1200W KEEN018L",category:"appliances",price:5.35,originalPrice:9.73,rating:4.7,sold:905,image:"https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila---KEEN018L-1-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila---KEEN018L-1-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila---KEEN018L-560x560.jpg"],freeShipping:true,almostGone:false,description:"Decakila Dry Iron 1200W KEEN018L — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-218",title:"Decakila 5.0L Transparent Window Air Fryer KEEC045B",category:"appliances",price:47.3,originalPrice:72.77,rating:4.8,sold:1200,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Decakila/decakila-KEEC045B-3-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Decakila/decakila-KEEC045B-3-560x560.jpg"],freeShipping:true,almostGone:false,description:"Decakila 5.0L Transparent Window Air Fryer KEEC045B — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-208",title:"Raf Juicer Multifunctional Fresh Juice Electric Automatic Juice Machine",category:"appliances",price:37.78,originalPrice:48.44,rating:4.9,sold:2600,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Raf-Juicer-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Raf-Juicer-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/RAF/raf-juice-1-560x560.jpg"],freeShipping:false,almostGone:true,description:"Raf Juicer Multifunctional Fresh Juice Electric Automatic Juice Machine — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-202",title:"Redmi Buds 6 Active Earbuds - White",category:"phones",price:17.95,originalPrice:26.01,rating:4.3,sold:4300,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/XIAOMI/Redmi-Buds-6-Active-Earbuds-12---white-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/XIAOMI/Redmi-Buds-6-Active-Earbuds-12---white-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/XIAOMI/Redmi-Buds-6-Active-Earbuds-01-white-560x560.jpg"],freeShipping:true,almostGone:false,description:"Redmi Buds 6 Active Earbuds - White — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-180",title:"Midea 1.5L Table Blender MJ-BL2516CEE-MP01S",category:"appliances",price:16.16,originalPrice:26.93,rating:4.4,sold:6800,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/midea---MJ-BL2516CEE-MP01S-0-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/midea---MJ-BL2516CEE-MP01S-0-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/midea---MJ-BL2516CEE-MP01S-1-560x560.jpg"],freeShipping:true,almostGone:false,description:"Midea 1.5L Table Blender MJ-BL2516CEE-MP01S — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-178",title:"Midea 7L Air Fryer MF-CY70K",category:"appliances",price:59.41,originalPrice:81.38,rating:4.5,sold:86,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea-7L-Air-Fryer-MF-CY70K-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea-7L-Air-Fryer-MF-CY70K-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea-7L-Air-Fryer-MF-CY70K-1-560x560.jpg"],freeShipping:false,almostGone:false,description:"Midea 7L Air Fryer MF-CY70K — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-177",title:"Midea 8L Air Fryer - MF-CY85WK",category:"appliances",price:64.81,originalPrice:117.84,rating:4.6,sold:142,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea-7L-Air-Fryer---MF-CY85WK-1-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea-7L-Air-Fryer---MF-CY85WK-1-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea-7L-Air-Fryer---MF-CY85WK-560x560.jpg"],freeShipping:true,almostGone:false,description:"Midea 8L Air Fryer - MF-CY85WK — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-142",title:"Women's Genuine Leather Crossbody Bag Classic Shoulder Handbag with Adjustable Strap",category:"bags",price:9.19,originalPrice:14.14,rating:4.7,sold:310,image:"https://tuwa.com.gh/cache//catalog/Product/Bags/Women's-Genuine-Leather-Crossbody-Bag-Classic-Shoulder-Handbag-with-Adjustable-Strap-01-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Bags/Women's-Genuine-Leather-Crossbody-Bag-Classic-Shoulder-Handbag-with-Adjustable-Strap-01-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Bags/Women's-Genuine-Leather-Crossbody-Bag-Classic-Shoulder-Handbag-with-Adjustable-Strap-04-560x560.jpg"],freeShipping:true,almostGone:false,description:"Women's Genuine Leather Crossbody Bag Classic Shoulder Handbag with Adjustable Strap — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-131",title:"Cutlery Set 24 Pcs",category:"electronics",price:18.11,originalPrice:23.22,rating:4.8,sold:540,image:"https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KMTT157M-1-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KMTT157M-1-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KMTT157M-560x560.jpg"],freeShipping:false,almostGone:true,description:"Cutlery Set 24 Pcs — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-122",title:"Minimalist Geometric Embossed Ladies Bag Fanny Pack Unisex Fanny Pack - Sleek and Stylish Design",category:"bags",price:4.59,originalPrice:6.65,rating:4.9,sold:905,image:"https://tuwa.com.gh/cache//catalog/Product/Bags/Minimalist-Geometric-Embossed-Ladies-Fanny-Pack--Unisex-Fanny-Pack---Sleek-and-Stylish-Design-13-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Bags/Minimalist-Geometric-Embossed-Ladies-Fanny-Pack--Unisex-Fanny-Pack---Sleek-and-Stylish-Design-13-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Bags/Minimalist-Geometric-Embossed-Ladies-Fanny-Pack--Unisex-Fanny-Pack---Sleek-and-Stylish-Design-560x560.jpg"],freeShipping:true,almostGone:false,description:"Minimalist Geometric Embossed Ladies Bag Fanny Pack Unisex Fanny Pack - Sleek and Stylish Design — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-170",title:"H&A 200L Chest Freezer",category:"appliances",price:161.62,originalPrice:269.37,rating:4.3,sold:1200,image:"https://tuwa.com.gh/cache//catalog/Product/Decakila/H&A-BD:BC200Q%20-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Decakila/H&A-BD:BC200Q%20-560x560.jpg"],freeShipping:true,almostGone:false,description:"H&A 200L Chest Freezer — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-150",title:"Xiaomi Redmi 15 8GB+256GB | Free Earbuds",category:"phones",price:145.89,originalPrice:199.85,rating:4.4,sold:2600,image:"https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-15-8GB+256GB--560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-15-8GB+256GB--560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-15-8GB+256GB-1-560x560.jpg"],freeShipping:false,almostGone:false,description:"Xiaomi Redmi 15 8GB+256GB | Free Earbuds — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-132",title:"HOMII KIDS 7S – 7″ Kids Tablet, Android, 32GB ROM+4GB RAM ,Single SIM,with Learning Apps",category:"phones",price:38.38,originalPrice:69.78,rating:4.5,sold:4300,image:"https://tuwa.com.gh/cache//catalog/Product/HOMII/HOMII-KIDS-7S---11-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/HOMII/HOMII-KIDS-7S---11-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/HOMII/HOMII-KIDS-7S---111-560x560.jpg"],freeShipping:true,almostGone:false,description:"HOMII KIDS 7S – 7″ Kids Tablet, Android, 32GB ROM+4GB RAM ,Single SIM,with Learning Apps — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-117",title:"Decakila Hot & Cold Water Dispenser - With half storage cabinet KEWF002B",category:"appliances",price:72.7,originalPrice:111.85,rating:4.6,sold:6800,image:"https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KEWF002B--Recovered-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KEWF002B--Recovered-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KEWF002B--Recovered-12-560x560.jpg"],freeShipping:true,almostGone:false,description:"Decakila Hot & Cold Water Dispenser - With half storage cabinet KEWF002B — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-103",title:"Decakila 1.5L Rice Cooker KEER033W",category:"appliances",price:15.95,originalPrice:20.45,rating:4.7,sold:86,image:"https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KEER033W-1-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KEER033W-1-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KEER033W-560x560.jpg"],freeShipping:false,almostGone:true,description:"Decakila 1.5L Rice Cooker KEER033W — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-97",title:"Xiaomi Redmi 14C 6GB+128GB | Free Earbuds",category:"phones",price:81.57,originalPrice:118.22,rating:4.8,sold:142,image:"https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-14C-6GB+128GB-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-14C-6GB+128GB-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-14C-6GB+128GB-1-560x560.jpg"],freeShipping:true,almostGone:false,description:"Xiaomi Redmi 14C 6GB+128GB | Free Earbuds — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-84",title:"Sigma 32\" FHD Digital Frameless Satellite TV + Free Wall Mount Bracket",category:"appliances",price:70.22,originalPrice:117.03,rating:4.9,sold:310,image:"https://tuwa.com.gh/cache//catalog/Product/SIGMA/Sigma%20SIG-K32V6%20-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/SIGMA/Sigma%20SIG-K32V6%20-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/SIGMA/Sigma%20SIG-K32V6%20-1-560x560.jpg"],freeShipping:true,almostGone:false,description:"Sigma 32\" FHD Digital Frameless Satellite TV + Free Wall Mount Bracket — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-63",title:"Vyvylabs Explorer Series GaN 4 Ports+AC Fast Charger Travel Adapter 85W A+3C (with Type-C Cable) Black",category:"electronics",price:16.22,originalPrice:22.22,rating:4.3,sold:540,image:"https://tuwa.com.gh/cache//catalog/Product/VyVy%20Lab/vyvylabs-GAN85T-BK-11-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/VyVy%20Lab/vyvylabs-GAN85T-BK-11-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/VyVy%20Lab/vyvylabs-GAN85T-BK-560x560.jpg"],freeShipping:false,almostGone:false,description:"Vyvylabs Explorer Series GaN 4 Ports+AC Fast Charger Travel Adapter 85W A+3C (with Type-C Cable) Black — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-62",title:"Vyvylabs Superb Series Fast Charging Cable Type-C to Type-C 100W 1M Dark Gray - VCJLCC100-GY",category:"electronics",price:2.43,originalPrice:4.42,rating:4.4,sold:905,image:"https://tuwa.com.gh/cache//catalog/Product/VyVy%20Lab/vyvylab-VCJLCC100-GY--5435-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/VyVy%20Lab/vyvylab-VCJLCC100-GY--5435-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/VyVy%20Lab/vyvylab-VCJLCC100-GY--515-560x560.jpg"],freeShipping:true,almostGone:false,description:"Vyvylabs Superb Series Fast Charging Cable Type-C to Type-C 100W 1M Dark Gray - VCJLCC100-GY — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-74",title:"Non-Stick Deep Frying Pan - KMEP017R",category:"electronics",price:10,originalPrice:15.38,rating:4.5,sold:1200,image:"https://tuwa.com.gh/cache//catalog/Decakila--KMEP017R-1-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Decakila--KMEP017R-1-560x560.jpg","https://tuwa.com.gh/cache//catalog/Decakila--KMEP017R--560x560.jpg"],freeShipping:true,almostGone:false,description:"Non-Stick Deep Frying Pan - KMEP017R — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-75",title:"Decakila Double 2000W Hot Plate - KECC005B",category:"appliances",price:12.43,originalPrice:15.94,rating:4.6,sold:2600,image:"https://tuwa.com.gh/cache//catalog/Decakila---KECC005B-1-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Decakila---KECC005B-1-560x560.jpg","https://tuwa.com.gh/cache//catalog/Decakila---KECC005B-560x560.jpg"],freeShipping:false,almostGone:true,description:"Decakila Double 2000W Hot Plate - KECC005B — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-101",title:"Set of 10 Food Container Set 10 Piece Premium Food Container Set KMTT120R",category:"electronics",price:6.22,originalPrice:9.01,rating:4.7,sold:4300,image:"https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KMTT120R-1--560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KMTT120R-1--560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KMTT120R-1-560x560.jpg"],freeShipping:true,almostGone:false,description:"Set of 10 Food Container Set 10 Piece Premium Food Container Set KMTT120R — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-129",title:"Set of Sealed Food Container 3 Set KMTT125W",category:"electronics",price:6.76,originalPrice:11.27,rating:4.8,sold:6800,image:"https://tuwa.com.gh/cache//catalog/Product/Decakila/decakila-KMTT125W-1-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Decakila/decakila-KMTT125W-1-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Decakila/decakila-KMTT125W-560x560.jpg"],freeShipping:true,almostGone:false,description:"Set of Sealed Food Container 3 Set KMTT125W — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-137",title:"High-End Straw Texture Versatile Handbag Women 2025 Summer New Contrast Color Crossbody Bag Small Square Bag",category:"bags",price:8.65,originalPrice:11.85,rating:4.9,sold:86,image:"https://tuwa.com.gh/cache//catalog/Product/Bags/High-End-Straw-Texture-Versatile-Handbag--560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Bags/High-End-Straw-Texture-Versatile-Handbag--560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Bags/High-End-Straw-Texture-Versatile-Handbag-blk-560x560.jpg"],freeShipping:false,almostGone:false,description:"High-End Straw Texture Versatile Handbag Women 2025 Summer New Contrast Color Crossbody Bag Small Square Bag — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-181",title:"Midea 1.8L Rice Cooker Gold - YJ508J",category:"appliances",price:20.49,originalPrice:37.25,rating:4.3,sold:142,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/midea-YJ508J--01-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/midea-YJ508J--01-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/midea-YJ508J--11-560x560.jpg"],freeShipping:true,almostGone:false,description:"Midea 1.8L Rice Cooker Gold - YJ508J — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-193",title:"Bruhm 5.7L Digital Air Fryer 1750W BFE‑571750B",category:"appliances",price:37.78,originalPrice:58.12,rating:4.4,sold:310,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Bruhm/Bruhm---BFE%E2%80%91571750B-001-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Bruhm/Bruhm---BFE%E2%80%91571750B-001-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Bruhm/Bruhm---BFE%E2%80%91571750B-560x560.jpg"],freeShipping:true,almostGone:false,description:"Bruhm 5.7L Digital Air Fryer 1750W BFE‑571750B — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-220",title:"Decakila 2L 300W Electric Chopper Vegetable & Meat Grinder with 2 Speeds",category:"appliances",price:12.97,originalPrice:16.63,rating:4.5,sold:540,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Decakila/decakila-KEMG011B-2-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Decakila/decakila-KEMG011B-2-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Decakila/decakila-KEMG011B-1-560x560.jpg"],freeShipping:false,almostGone:true,description:"Decakila 2L 300W Electric Chopper Vegetable & Meat Grinder with 2 Speeds — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-40",title:"Vyvylabs VitaMix 800ml Portable Juice Blender",category:"appliances",price:11.35,originalPrice:16.45,rating:4.6,sold:905,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/vyvy/vyvylabs-blender-11-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/vyvy/vyvylabs-blender-11-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/vyvy/VYVYLAB-VKGZJ01-GN-560x560.jpg"],freeShipping:true,almostGone:false,description:"Vyvylabs VitaMix 800ml Portable Juice Blender — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-41",title:"Vyvylabs Open Wearable Stereo Hanging Ear Sports Earphones OWS30",category:"electronics",price:10.76,originalPrice:17.93,rating:4.7,sold:1200,image:"https://tuwa.com.gh/cache//catalog/Vyvylabs%20Open%20Wearable%20Stereo%20Hanging%20Ear%20Sports%20Earphones%20OWS30-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Vyvylabs%20Open%20Wearable%20Stereo%20Hanging%20Ear%20Sports%20Earphones%20OWS30-560x560.jpg"],freeShipping:true,almostGone:false,description:"Vyvylabs Open Wearable Stereo Hanging Ear Sports Earphones OWS30 — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-42",title:"SOKANY Electric Stove Hotplate 1000w SK-5109",category:"appliances",price:5.35,originalPrice:7.33,rating:4.8,sold:2600,image:"https://tuwa.com.gh/cache//catalog/Product/Sokany11-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Sokany11-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/sokany-1-560x560.jpg"],freeShipping:false,almostGone:false,description:"SOKANY Electric Stove Hotplate 1000w SK-5109 — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-43",title:"P9 Sports Wireless Headset Bluetooth 5.2 Noise Reduction Large Battery Life AUX FM TF Music Game Headphones For PC Phone",category:"phones",price:2.7,originalPrice:4.91,rating:4.9,sold:4300,image:"https://tuwa.com.gh/cache//catalog/Product/P9%20HEADPHONES-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/P9%20HEADPHONES-560x560.jpg"],freeShipping:true,almostGone:false,description:"P9 Sports Wireless Headset Bluetooth 5.2 Noise Reduction Large Battery Life AUX FM TF Music Game Headphones For PC Phone — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-236",title:"Multipurpose Food Sealing Clip - Airtight Bag Clip for Food Preservation, Tea Moisture-Proof Sealer, Discharge Mouth Plastic Bag Clip for Snacks & Chips",category:"bags",price:0.65,originalPrice:1,rating:4.3,sold:6800,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Multipurpose-Food-Sealing-Clip-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Multipurpose-Food-Sealing-Clip-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Multipurpose-Food-Sealing-Clip-3-560x560.jpg"],freeShipping:true,almostGone:false,description:"Multipurpose Food Sealing Clip - Airtight Bag Clip for Food Preservation, Tea Moisture-Proof Sealer, Discharge Mouth Plastic Bag Clip for Snacks & Chips — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-229",title:"Unisex Japanese Washed Canvas Tote Bag – Large Multi-Way Crossbody & Thickened Student Tote",category:"bags",price:6.49,originalPrice:8.32,rating:4.4,sold:86,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Unisex-Japanese-Washed-Canvas-Tote-Bag--560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Unisex-Japanese-Washed-Canvas-Tote-Bag--560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Unisex-Japanese-Washed-Canvas-Tote-Bag-Coffee-560x560.jpg"],freeShipping:false,almostGone:true,description:"Unisex Japanese Washed Canvas Tote Bag – Large Multi-Way Crossbody & Thickened Student Tote — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-204",title:"Bath Mat Bathroom Carpet Super Absorbent Foam & Rubber",category:"electronics",price:4.59,originalPrice:6.65,rating:4.5,sold:142,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Bath-Mat-121-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Bath-Mat-121-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Bath-Mat-560x560.jpg"],freeShipping:true,almostGone:false,description:"Bath Mat Bathroom Carpet Super Absorbent Foam & Rubber — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-185",title:"Midea 1.7L Electric Kettle Stainless Steel MK-17S32A2",category:"appliances",price:10.76,originalPrice:17.93,rating:4.6,sold:310,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea-MK-17S32A2-11-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea-MK-17S32A2-11-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea-MK-17S32A2-560x560.jpg"],freeShipping:true,almostGone:false,description:"Midea 1.7L Electric Kettle Stainless Steel MK-17S32A2 — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-139",title:"Women's Black Woven Leather Crossbody Bag with Detachable Shoulder Strap & Zip Closure",category:"bags",price:8.38,originalPrice:11.48,rating:4.7,sold:540,image:"https://tuwa.com.gh/cache//catalog/Product/Bags/Women's-Black-Woven-Leather-Crossbody-Bag-with-Detachable-Shoulder-Strap-&-Zip-Closure-03-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Bags/Women's-Black-Woven-Leather-Crossbody-Bag-with-Detachable-Shoulder-Strap-&-Zip-Closure-03-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Bags/Women's-Black-Woven-Leather-Crossbody-Bag-with-Detachable-Shoulder-Strap-&-Zip-Closure-02-560x560.jpg"],freeShipping:false,almostGone:false,description:"Women's Black Woven Leather Crossbody Bag with Detachable Shoulder Strap & Zip Closure — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-136",title:"Retro Denim Contrast Color Handheld Kelly Bag Women's 2025 Light Luxury Texture Shoulder Bag Crossbody Bag",category:"bags",price:13.51,originalPrice:24.56,rating:4.8,sold:905,image:"https://tuwa.com.gh/cache//catalog/Product/Bags/Retro-Denim-Contrast-Color-Handheld-Kelly-Bag-123-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Bags/Retro-Denim-Contrast-Color-Handheld-Kelly-Bag-123-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Bags/Retro-Denim-Contrast-Color-Handheld-Kelly-Bag-1-560x560.jpg"],freeShipping:true,almostGone:false,description:"Retro Denim Contrast Color Handheld Kelly Bag Women's 2025 Light Luxury Texture Shoulder Bag Crossbody Bag — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-130",title:"Kitchen Knife Set 5Pcs KMTT110B",category:"appliances",price:4.65,originalPrice:7.15,rating:4.9,sold:1200,image:"https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KMTT110B---560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KMTT110B---560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KMTT110B--11-560x560.jpg"],freeShipping:true,almostGone:false,description:"Kitchen Knife Set 5Pcs KMTT110B — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-73",title:"Multipurpose 4L Salad Spinner - KMTT088W",category:"appliances",price:5.68,originalPrice:7.28,rating:4.3,sold:2600,image:"https://tuwa.com.gh/cache//catalog/Decakila---Salad-Spinner----KMTT088W--560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Decakila---Salad-Spinner----KMTT088W--560x560.jpg"],freeShipping:false,almostGone:true,description:"Multipurpose 4L Salad Spinner - KMTT088W — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-58",title:"Vyvylabs Hardcore Series Fast Charging Cable Type-C to Type-C 100W Dark Gray VCHCC10-DGY",category:"electronics",price:2.43,originalPrice:3.52,rating:4.4,sold:4300,image:"https://tuwa.com.gh/cache//catalog/Product/VyVy%20Lab/vyvylabs-VCHCC10-DGY-11-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/VyVy%20Lab/vyvylabs-VCHCC10-DGY-11-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/VyVy%20Lab/vyvylabs-VCHCC10-DGY-1-560x560.jpg"],freeShipping:true,almostGone:false,description:"Vyvylabs Hardcore Series Fast Charging Cable Type-C to Type-C 100W Dark Gray VCHCC10-DGY — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-198",title:"TECNO POP 20 4GB + 64GB KN3",category:"phones",price:68.59,originalPrice:114.32,rating:4.5,sold:6800,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/TECNO/POP-20-11-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/TECNO/POP-20-11-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/TECNO/POP-20-12-560x560.jpg"],freeShipping:true,almostGone:false,description:"TECNO POP 20 4GB + 64GB KN3 — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-159",title:"itel SUPER 26 Ultra 8GB+256GB | Free Earbuds",category:"phones",price:113.51,originalPrice:155.49,rating:4.6,sold:86,image:"https://tuwa.com.gh/cache//catalog/Product/Itel/itel-SUPER-26-Ultra_-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Itel/itel-SUPER-26-Ultra_-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Itel/itel-SUPER-26-Ultra_1-560x560.jpg"],freeShipping:false,almostGone:false,description:"itel SUPER 26 Ultra 8GB+256GB | Free Earbuds — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-158",title:"TECNO Spark 40 Pro 4GB RAM + 128GB ROM",category:"phones",price:124.32,originalPrice:226.04,rating:4.7,sold:142,image:"https://tuwa.com.gh/cache//catalog/Product/Tecno/TECNO-Spark-40-Pro-1-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Tecno/TECNO-Spark-40-Pro-1-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Tecno/TECNO-Spark-40-Pro--560x560.jpg"],freeShipping:true,almostGone:false,description:"TECNO Spark 40 Pro 4GB RAM + 128GB ROM — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-152",title:"XIAOMI Redmi 15C 6GB+128GB | Free Earbud",category:"phones",price:91.84,originalPrice:141.29,rating:4.8,sold:310,image:"https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-15c-6GB+128GB--560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-15c-6GB+128GB--560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-15c---560x560.jpg"],freeShipping:true,almostGone:false,description:"XIAOMI Redmi 15C 6GB+128GB | Free Earbud — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-151",title:"XIAOMI Redmi 15C 8GB+256GB | Free Earbud",category:"phones",price:113.46,originalPrice:145.46,rating:4.9,sold:540,image:"https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-15c-8GB+128GB--560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-15c-8GB+128GB--560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-15c---560x560.jpg"],freeShipping:false,almostGone:true,description:"XIAOMI Redmi 15C 8GB+256GB | Free Earbud — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-95",title:"Xiaomi Redmi A5 3GB+64GB",category:"phones",price:54,originalPrice:78.26,rating:4.3,sold:905,image:"https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-A5-3GB+64GB-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-A5-3GB+64GB-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/XIAOMI/Xiaomi-Redmi-A5-4GB+128GB--800x800-560x560.jpg"],freeShipping:true,almostGone:false,description:"Xiaomi Redmi A5 3GB+64GB — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-66",title:"HMD Arc 64/4GB | Plus Free Earbuds",category:"phones",price:59.41,originalPrice:99.02,rating:4.4,sold:1200,image:"https://tuwa.com.gh/cache//catalog/Product/HMD/HMD-ARC-11-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/HMD/HMD-ARC-11-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/HMD/HMD-ARC-12-560x560.jpg"],freeShipping:true,almostGone:false,description:"HMD Arc 64/4GB | Plus Free Earbuds — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-49",title:"Samsung Galaxy A06 4GB+128GB | Plus Free Earbuds",category:"phones",price:75.62,originalPrice:103.59,rating:4.5,sold:2600,image:"https://tuwa.com.gh/cache//catalog/Product/Samsung/SAMSUNG-GALAXY-A06-4128GB-BLACK-560x560.png",images:["https://tuwa.com.gh/cache//catalog/Product/Samsung/SAMSUNG-GALAXY-A06-4128GB-BLACK-560x560.png"],freeShipping:false,almostGone:false,description:"Samsung Galaxy A06 4GB+128GB | Plus Free Earbuds — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-143",title:"Large Laptop Backpack for Men & Women Water Resistant Oxford Travel Backpack with Padded Sleeve",category:"bags",price:6.49,originalPrice:11.8,rating:4.6,sold:4300,image:"https://tuwa.com.gh/cache//catalog/Product/Bags/Large-Laptop-Backpack-for-Men-&-Women-Water-Resistant-Oxford-Travel-Backpack-with-Padded-Sleeve-03-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Bags/Large-Laptop-Backpack-for-Men-&-Women-Water-Resistant-Oxford-Travel-Backpack-with-Padded-Sleeve-03-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Bags/Large-Laptop-Backpack-for-Men-&-Women-Water-Resistant-Oxford-Travel-Backpack-with-Padded-Sleeve-04-560x560.jpg"],freeShipping:true,almostGone:false,description:"Large Laptop Backpack for Men & Women Water Resistant Oxford Travel Backpack with Padded Sleeve — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-141",title:"Retro Handheld Dress Bag Vintage Leather Tanned Large-Capacity Briefcase Women's Business Trip Work Clothing Bag",category:"bags",price:11.89,originalPrice:18.29,rating:4.7,sold:6800,image:"https://tuwa.com.gh/cache//catalog/Product/Bags/Retro-Handheld-Dress-Bag-Vintage-Leather-Tanned-Large-Capacity-Briefcase-Women's-Business-Trip-Work-Clothing-Bag-01-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Bags/Retro-Handheld-Dress-Bag-Vintage-Leather-Tanned-Large-Capacity-Briefcase-Women's-Business-Trip-Work-Clothing-Bag-01-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Bags/Retro-Handheld-Dress-Bag-Vintage-Leather-Tanned-Large-Capacity-Briefcase-Women's-Business-Trip-Work-Clothing-Bag-04-560x560.jpg"],freeShipping:true,almostGone:false,description:"Retro Handheld Dress Bag Vintage Leather Tanned Large-Capacity Briefcase Women's Business Trip Work Clothing Bag — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-124",title:"Modern Women's Bag with Stylish Metal Chain for Women Rectangle Bag",category:"bags",price:6.49,originalPrice:8.32,rating:4.8,sold:86,image:"https://tuwa.com.gh/cache//catalog/Product/Bags/Modern-Women's-Bag-with-Stylish-Metal-Chain-for-Women-Rectangle-Bag-111-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Bags/Modern-Women's-Bag-with-Stylish-Metal-Chain-for-Women-Rectangle-Bag-111-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Bags/Modern-Women's-Bag-with-Stylish-Metal-Chain-for-Women-Rectangle-Bag-12-560x560.jpg"],freeShipping:false,almostGone:true,description:"Modern Women's Bag with Stylish Metal Chain for Women Rectangle Bag — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-123",title:"Women Faux Snakeskin Texture Fashionable Simple Square Lock Handle Shoulder Bag",category:"bags",price:7.03,originalPrice:10.19,rating:4.9,sold:142,image:"https://tuwa.com.gh/cache//catalog/Product/Bags/Women-Faux-Snakeskin-Texture-Fashionable-Simple-Square-Lock-Handle-Shoulder-Bag-11-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Bags/Women-Faux-Snakeskin-Texture-Fashionable-Simple-Square-Lock-Handle-Shoulder-Bag-11-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Bags/Women-Faux-Snakeskin-Texture-Fashionable-Simple-Square-Lock-Handle-Shoulder-Bag-1-560x560.jpg"],freeShipping:true,almostGone:true,description:"Women Faux Snakeskin Texture Fashionable Simple Square Lock Handle Shoulder Bag — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-77",title:"Washed Horse Leather Derby Shoes Men's big Head Business Casual High-end handmade big head leather shoes formal men's shoes",category:"appliances",price:18.92,originalPrice:31.53,rating:4.3,sold:310,image:"https://tuwa.com.gh/cache//catalog/Product/Derby-Shoes-1-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Derby-Shoes-1-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Derby-Shoes-111-560x560.jpg"],freeShipping:true,almostGone:false,description:"Washed Horse Leather Derby Shoes Men's big Head Business Casual High-end handmade big head leather shoes formal men's shoes — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-69",title:"SK Same style Bodysuit seamless body shaper corset underwear for women",category:"fashion",price:4.59,originalPrice:6.29,rating:4.4,sold:540,image:"https://tuwa.com.gh/cache//catalog/Product/Fashion/Women/_SK-Same-style-jumpsuit-seamless-body-shaper-corset-underwear-for-women-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Fashion/Women/_SK-Same-style-jumpsuit-seamless-body-shaper-corset-underwear-for-women-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Fashion/Women/_SK-Same-style-jumpsuit-seamless-body-shaper-corset-underwear-for-women-1-560x560.jpg"],freeShipping:false,almostGone:true,description:"SK Same style Bodysuit seamless body shaper corset underwear for women — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-209",title:"Silver Crest 3L Multifunctional Blender Commercial Blender",category:"appliances",price:24.32,originalPrice:44.22,rating:4.5,sold:905,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Silver%20Crest/silver-crest-belender---02-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Silver%20Crest/silver-crest-belender---02-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Silver%20Crest/silver-crest-belender---01-560x560.jpg"],freeShipping:true,almostGone:false,description:"Silver Crest 3L Multifunctional Blender Commercial Blender — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-186",title:"Midea 1.5L Blender with Grinder MJ-BL40G1",category:"appliances",price:26.97,originalPrice:41.49,rating:4.6,sold:1200,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/midea---MJ-BL40G1-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/midea---MJ-BL40G1-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/midea---MJ-BL40G1-1-560x560.jpg"],freeShipping:true,almostGone:false,description:"Midea 1.5L Blender with Grinder MJ-BL40G1 — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-184",title:"Midea 6L Air Fryer MF-CY55WK",category:"appliances",price:43.19,originalPrice:55.37,rating:4.7,sold:2600,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea---MF-CN45WK--43-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea---MF-CN45WK--43-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea---MF-CN45WK-560x560.jpg"],freeShipping:false,almostGone:true,description:"Midea 6L Air Fryer MF-CY55WK — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-183",title:"Midea 20L Grill Microwave Oven MG720CFB",category:"appliances",price:48.59,originalPrice:70.42,rating:4.8,sold:4300,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea-20L-Grill-Microwave-Oven--MG720CFB-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea-20L-Grill-Microwave-Oven--MG720CFB-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea---MG720CFB-560x560.jpg"],freeShipping:true,almostGone:false,description:"Midea 20L Grill Microwave Oven MG720CFB — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-176",title:"Midea 4.5L Air Fryer MF-CN45WK",category:"appliances",price:37.78,originalPrice:62.97,rating:4.9,sold:6800,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea---MF-CN45WK--43-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea---MF-CN45WK--43-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Midea/Midea---MF-CN45WK-560x560.jpg"],freeShipping:true,almostGone:false,description:"Midea 4.5L Air Fryer MF-CN45WK — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-76",title:"Decakila 1000W Single Hot Plate One Burner - KECC004B",category:"appliances",price:5.95,originalPrice:8.15,rating:4.3,sold:86,image:"https://tuwa.com.gh/cache//catalog/Decakila---KECC004B-1-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Decakila---KECC004B-1-560x560.jpg","https://tuwa.com.gh/cache//catalog/Decakila---KECC004B-560x560.jpg"],freeShipping:false,almostGone:false,description:"Decakila 1000W Single Hot Plate One Burner - KECC004B — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-51",title:"Decakila Steam Iron 1200W KEEN002R",category:"appliances",price:9.19,originalPrice:16.71,rating:4.4,sold:142,image:"https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila--KEEN002R-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila--KEEN002R-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/Decakila/Decakila-Steam-Iron-1200W-KEEN002R-560x560.jpg"],freeShipping:true,almostGone:false,description:"Decakila Steam Iron 1200W KEEN002R — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-100",title:"5 Set of Food Container Set 5-Piece BPA-Free Food Storage Set KMTT119R",category:"electronics",price:3.78,originalPrice:5.82,rating:4.5,sold:310,image:"https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KMTT119R-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KMTT119R-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KMTT120R-1-560x560.jpg"],freeShipping:true,almostGone:false,description:"5 Set of Food Container Set 5-Piece BPA-Free Food Storage Set KMTT119R — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-99",title:"Xiaomi Redmi Note 14 6GB+128GB | Free Earbuds",category:"phones",price:121.62,originalPrice:155.92,rating:4.6,sold:540,image:"https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-Note-14-6GB+128GB-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-Note-14-6GB+128GB-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Xiaomi/Xiaomi-Redmi-Note-14-6GB+128GB-1-560x560.jpg"],freeShipping:false,almostGone:true,description:"Xiaomi Redmi Note 14 6GB+128GB | Free Earbuds — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-67",title:"HMD Aura2 4GB/128GB | Plus Free Earbuds",category:"phones",price:64.86,originalPrice:94,rating:4.7,sold:905,image:"https://tuwa.com.gh/cache//catalog/Product/HMD/HMD-Aura-2-11-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/HMD/HMD-Aura-2-11-560x560.jpg"],freeShipping:true,almostGone:false,description:"HMD Aura2 4GB/128GB | Plus Free Earbuds — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-211",title:"TCL 1.5HP Inverter Split Air Conditioner TAC‑12CSA/XA73I",category:"electronics",price:297.24,originalPrice:495.4,rating:4.8,sold:1200,image:"https://tuwa.com.gh/cache//image/catalog/demo/product/TCL/Decakila-KEJB031R-2-560x560.jpg",images:["https://tuwa.com.gh/cache//image/catalog/demo/product/TCL/Decakila-KEJB031R-2-560x560.jpg","https://tuwa.com.gh/cache//image/catalog/demo/product/TCL/TCL-1.5HP-TAC%E2%80%9112CSA-XA73I-560x560.jpg"],freeShipping:true,almostGone:false,description:"TCL 1.5HP Inverter Split Air Conditioner TAC‑12CSA/XA73I — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-156",title:"TECNO Pop 10 3GB+64GB",category:"phones",price:55.41,originalPrice:75.9,rating:4.9,sold:2600,image:"https://tuwa.com.gh/cache//catalog/Product/Tecno/tecno-pop-1-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Tecno/tecno-pop-1-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Tecno/tecno-pop-11-560x560.jpg"],freeShipping:false,almostGone:true,description:"TECNO Pop 10 3GB+64GB — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-105",title:"Decakila 1.5L Stand Blender with Grinder Table Blender KEJB034W",category:"appliances",price:16.16,originalPrice:29.38,rating:4.3,sold:4300,image:"https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KEJB034W-1--560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KEJB034W-1--560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KEJB034W-560x560.jpg"],freeShipping:true,almostGone:false,description:"Decakila 1.5L Stand Blender with Grinder Table Blender KEJB034W — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-104",title:"Decakila 1.8L Rice Cooker KEER034W",category:"appliances",price:17.3,originalPrice:26.62,rating:4.4,sold:6800,image:"https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KEER033W-1-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KEER033W-1-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Decakila/Decakila-KEER033W-560x560.jpg"],freeShipping:true,almostGone:false,description:"Decakila 1.8L Rice Cooker KEER034W — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+  {id:"t-88",title:"Itel A50C 2GB+32GB",category:"phones",price:40,originalPrice:51.28,rating:4.5,sold:86,image:"https://tuwa.com.gh/cache//catalog/Product/Itel/Itel-A50C-2GB+32GB-1-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Itel/Itel-A50C-2GB+32GB-1-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Itel/Itel-A50C-2GB+32GB-560x560.jpg"],freeShipping:false,almostGone:true,description:"Itel A50C 2GB+32GB — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
+];
 
 export function discountPct(p: Pick<ShopProduct, "price" | "originalPrice">): number {
   if (p.originalPrice <= p.price) return 0;
@@ -235,18 +126,16 @@ export function shopProductsByCategory(categoryId: string | null): ShopProduct[]
 }
 
 // Most-discounted items, for the "Lightning Deals" strip.
-export function flashDeals(limit = 10): ShopProduct[] {
+export function flashDeals(limit = 12): ShopProduct[] {
   return [...SHOP_PRODUCTS].sort((a, b) => discountPct(b) - discountPct(a)).slice(0, limit);
 }
 
 export function relatedShopProducts(product: ShopProduct, limit = 6): ShopProduct[] {
-  return SHOP_PRODUCTS.filter(
-    (p) => p.category === product.category && p.id !== product.id,
-  ).slice(0, limit);
+  return SHOP_PRODUCTS.filter((p) => p.category === product.category && p.id !== product.id).slice(0, limit);
 }
 
 export function categoryLabel(id: string): string {
-  return CATALOG[id]?.label ?? id;
+  return SHOP_CATEGORIES.find((c) => c.id === id)?.label ?? id;
 }
 
 // Formats a sold count Temu-style: 9500 → "9.5k+ sold".
