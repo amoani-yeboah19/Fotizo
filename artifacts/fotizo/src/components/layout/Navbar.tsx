@@ -121,6 +121,18 @@ export function Navbar() {
 
           {/* Mobile Toggle */}
           <div className="flex md:hidden items-center gap-4">
+            {isAuthenticated && (
+              <Link href="/messages">
+                <button aria-label="Messages" className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer">
+                  <MessageSquare className="w-5 h-5" />
+                  {totalUnread > 0 && (
+                    <span className="absolute top-0 right-0 w-4 h-4 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {totalUnread}
+                    </span>
+                  )}
+                </button>
+              </Link>
+            )}
             <Link href="/cart">
               <button aria-label="Cart" className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer">
                 <ShoppingCart className="w-5 h-5" />
