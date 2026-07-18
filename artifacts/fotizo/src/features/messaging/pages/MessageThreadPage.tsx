@@ -10,12 +10,18 @@ import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/common/Avatar";
 import { Price } from "@/components/common/Price";
 import { StatusBadge } from "@/components/common/StatusBadge";
+import { useVisibleViewportHeight } from "@/hooks/useVisibleViewportHeight";
+
+// Height that tracks the visible viewport (minus the 80px fixed navbar) so the
+// message input stays above the on-screen keyboard on every platform.
+const PANEL_HEIGHT = { height: "calc(var(--app-height, 100dvh) - 80px)" } as const;
 
 export default function MessageThread() {
   const [, params] = useRoute("/messages/:id");
   const [, setLocation] = useLocation();
   const { conversations, sendMessage, respondToOffer, markAsRead } = useMessages();
   const { user } = useAuth();
+  useVisibleViewportHeight();
   
   const conversation = conversations.find(c => c.id === params?.id);
   const [inputText, setInputText] = useState("");
@@ -45,7 +51,7 @@ export default function MessageThread() {
     <PageLayout footer={false} mainClassName="flex overflow-hidden pt-20">
         
         {/* Left Panel - Hidden on mobile when thread is active */}
-        <div className="hidden lg:flex w-96 shrink-0 border-r border-border bg-white flex-col h-[calc(100dvh-80px)]">
+        <div className="hidden lg:flex w-96 shrink-0 border-r border-border bg-white flex-col" style={PANEL_HEIGHT}>
           <div className="p-4 border-b border-border">
             <h2 className="text-xl font-bold">Messages</h2>
           </div>
@@ -70,7 +76,7 @@ export default function MessageThread() {
         </div>
 
         {/* Right Panel - Active Conversation */}
-        <div className="flex-1 flex flex-col h-[calc(100dvh-80px)] bg-muted/10">
+        <div className="flex-1 flex flex-col bg-muted/10" style={PANEL_HEIGHT}>
           
           {/* Header */}
           <div className="h-16 border-b border-border bg-white px-4 flex items-center gap-4 shrink-0 shadow-sm z-10">
