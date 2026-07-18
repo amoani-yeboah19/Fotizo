@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Play, TrendingUp, ShieldCheck, BadgeCheck, Globe, Heart } from "lucide-react";
+import { ArrowRight, ShoppingBag, TrendingUp, ShieldCheck, BadgeCheck, Globe, Heart } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { HeroBackground } from "@/features/home/components/HeroBackground";
@@ -117,23 +117,25 @@ function HeroCopy() {
           </Button>
         </Link>
 
-        {/* secondary: glass pill with a pulsing orange play badge — modern media-button pattern */}
-        <Button
-          type="button"
-          className="group gap-2 sm:gap-2.5 rounded-full pl-1.5 pr-4 sm:pr-5 h-11 text-sm font-semibold bg-white/90 backdrop-blur-sm border border-border text-foreground shadow-sm hover:border-[#FF6A00]/50 hover:bg-[#FF6A00]/5 hover:text-foreground hover:-translate-y-0.5 transition-all duration-300"
-        >
-          <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-[#FF6A00] text-white shadow-md shadow-[#FF6A00]/40 transition-transform duration-300 group-hover:scale-105">
-            {/* sonar ripple radiating out of the badge */}
-            <motion.span
-              aria-hidden="true"
-              className="absolute inset-0 rounded-full bg-[#FF6A00]/40"
-              animate={{ scale: [1, 1.7], opacity: [0.6, 0] }}
-              transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
-            />
-            <Play className="relative w-3.5 h-3.5 fill-current translate-x-[1px]" aria-hidden="true" />
-          </span>
-          Watch Demo
-        </Button>
+        {/* secondary: glass pill with a pulsing orange shop badge → the Shop storefront */}
+        <Link href="/shop">
+          <Button
+            type="button"
+            className="group gap-2 sm:gap-2.5 rounded-full pl-1.5 pr-4 sm:pr-5 h-11 text-sm font-semibold bg-white/90 backdrop-blur-sm border border-border text-foreground shadow-sm hover:border-[#FF6A00]/50 hover:bg-[#FF6A00]/5 hover:text-foreground hover:-translate-y-0.5 transition-all duration-300"
+          >
+            <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-[#FF6A00] text-white shadow-md shadow-[#FF6A00]/40 transition-transform duration-300 group-hover:scale-105">
+              {/* sonar ripple radiating out of the badge */}
+              <motion.span
+                aria-hidden="true"
+                className="absolute inset-0 rounded-full bg-[#FF6A00]/40"
+                animate={{ scale: [1, 1.7], opacity: [0.6, 0] }}
+                transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
+              />
+              <ShoppingBag className="relative w-3.5 h-3.5" aria-hidden="true" />
+            </span>
+            Shop Now
+          </Button>
+        </Link>
       </motion.div>
     </>
   );
