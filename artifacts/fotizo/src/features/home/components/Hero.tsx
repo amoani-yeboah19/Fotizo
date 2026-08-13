@@ -7,24 +7,29 @@ import { HeroBackground } from "@/features/home/components/HeroBackground";
 
 const HERO_PHOTO_MOBILE = "/images/hero-team-mobile.webp";
 const HERO_PHOTO_ALT =
-  "The FOTIZO community — entrepreneurs, sellers, artisans and freelancers across Ghana, the UK and the US.";
+  "The FOTIZO community — entrepreneurs, sellers, artisans and freelancers around the world.";
 
 // Rotating headline phrases — each completes "The Smarter Way to … Online".
 const ROTATING_PHRASES = ["Run Your Business", "Grow Your Sales", "Hire Top Talent", "Shop the World"];
 
+// Real destinations only — every chip lands somewhere with stock behind it.
+// (/products is deliberately absent: the local seller catalogue is still empty.)
 const TRENDING = [
-  { label: "Logo Design", href: "/services" },
-  { label: "Web Development", href: "/services" },
-  { label: "Fashion", href: "/products" },
-  { label: "Home & Living", href: "/products" },
-  { label: "AI Services", href: "/services" },
+  { label: "Fotizo Autos", href: "/autos" },
+  { label: "Wigs & Hair", href: "/shop?category=wigs" },
+  { label: "Braiding Hair", href: "/shop?category=wigs" },
+  { label: "Hairdressing", href: "/services?category=hairdressing" },
+  { label: "Web Development", href: "/services?category=web-development" },
+  { label: "Fashion & Tailoring", href: "/services?category=fashion-design" },
 ];
 
 // Honest trust promises — no invented usage metrics; we're a startup.
+// Positioned globally rather than as a three-country platform: we sell and
+// source worldwide, with Ghana, the UK, the USA and China as the main hubs.
 const PROMISES = [
   { icon: ShieldCheck, title: "Secure Payments", sub: "Protected checkout on every order" },
   { icon: BadgeCheck, title: "Verified Sellers", sub: "Every professional is vetted" },
-  { icon: Globe, title: "3 Countries", sub: "Ghana, the UK & the USA" },
+  { icon: Globe, title: "Global Reach", sub: "Hubs in Ghana, the UK, the USA & China" },
   { icon: Heart, title: "Real Support", sub: "Humans, not bots" },
 ];
 
@@ -79,7 +84,7 @@ function HeroCopy() {
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF6A00] opacity-60" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FF6A00]" />
         </span>
-        All-in-One Platform · Ghana · UK · USA
+        All-in-One Platform · Selling Worldwide
       </motion.div>
 
       <motion.h1
@@ -168,7 +173,7 @@ function HeroFeatures() {
         </div>
         <p className="flex-1 min-w-0 text-xs text-muted-foreground leading-snug">
           Join a <span className="font-semibold text-foreground">growing community</span> of buyers
-          &amp; sellers across <span className="font-semibold text-foreground">Ghana, the UK &amp; the USA</span>
+          &amp; sellers <span className="font-semibold text-foreground">around the world</span>
         </p>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -199,7 +204,7 @@ function HeroStats() {
       className="relative z-10 container-app pt-4 pb-16 lg:pt-8 lg:pb-20"
     >
       <p className="text-center text-sm text-muted-foreground mb-8">
-        Built for buyers and sellers across three continents
+        Built for buyers and sellers worldwide
       </p>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8">
         {PROMISES.map(({ icon: Icon, title, sub }, i) => (
