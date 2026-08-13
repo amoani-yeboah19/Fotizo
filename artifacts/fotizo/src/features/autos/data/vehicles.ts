@@ -19,7 +19,7 @@ import { Fuel, BatteryCharging, Leaf } from "lucide-react";
 //   avatr-11:        "AVATR 11 002/004/006/007" by JustAnotherCarDesigner (CC BY-SA 4.0) — https://commons.wikimedia.org/wiki/File:AVATR_11_002.jpg
 
 export type FuelType = "petrol" | "hybrid" | "electric";
-export type BodyType = "suv" | "coupe-suv";
+export type BodyType = "suv" | "coupe-suv" | "sedan";
 
 export interface Vehicle {
   id: string;
@@ -61,9 +61,13 @@ export const FUEL_ICONS: Record<FuelType, LucideIcon> = {
   electric: BatteryCharging,
 };
 
+// Menu order for the filter rail. Types with no vehicle behind them are hidden
+// at render time, so a new type can be declared here before its first car
+// lands without leaving customers a chip that returns nothing.
 export const BODY_LABELS: Record<BodyType, string> = {
   suv: "SUV",
   "coupe-suv": "Coupe SUV",
+  sedan: "Sedan",
 };
 
 export const VEHICLES: Vehicle[] = [
@@ -222,6 +226,19 @@ export function leadTimeLabel(v: Vehicle): string {
 /** Makes present in the catalog, for the filter rail. */
 export function vehicleMakes(): string[] {
   return [...new Set(VEHICLES.map((v) => v.make))].sort();
+}
+
+// The filter rails are built from what's actually in stock, not from the full
+// set of declared types — otherwise "Sedan" or "Hybrid" sit there as chips that
+// can only ever return an empty grid. Both keep their declared menu order.
+export function vehicleBodyTypes(): BodyType[] {
+  const present = new Set(VEHICLES.map((v) => v.bodyType));
+  return (Object.keys(BODY_LABELS) as BodyType[]).filter((b) => present.has(b));
+}
+
+export function vehicleFuelTypes(): FuelType[] {
+  const present = new Set(VEHICLES.map((v) => v.fuel));
+  return (Object.keys(FUEL_LABELS) as FuelType[]).filter((f) => present.has(f));
 }
 
 export function relatedVehicles(vehicle: Vehicle, limit = 3): Vehicle[] {

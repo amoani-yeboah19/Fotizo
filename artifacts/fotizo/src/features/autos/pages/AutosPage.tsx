@@ -7,6 +7,8 @@ import {
   BODY_LABELS,
   FUEL_LABELS,
   vehicleMakes,
+  vehicleBodyTypes,
+  vehicleFuelTypes,
   type BodyType,
   type FuelType,
 } from "@/features/autos/data/vehicles";
@@ -28,6 +30,8 @@ export default function AutosPage() {
   const [fuel, setFuel] = useState<FuelFilter>(null);
 
   const makes = useMemo(() => vehicleMakes(), []);
+  const bodyTypes = useMemo(() => vehicleBodyTypes(), []);
+  const fuelTypes = useMemo(() => vehicleFuelTypes(), []);
 
   const shown = useMemo(
     () =>
@@ -92,7 +96,7 @@ export default function AutosPage() {
 
           <FilterRow label="Body">
             <Chip active={body === null} onClick={() => setBody(null)}>All</Chip>
-            {(Object.keys(BODY_LABELS) as BodyType[]).map((b) => (
+            {bodyTypes.map((b) => (
               <Chip key={b} active={body === b} onClick={() => setBody(b)}>
                 {BODY_LABELS[b]}
               </Chip>
@@ -101,7 +105,7 @@ export default function AutosPage() {
 
           <FilterRow label="Fuel">
             <Chip active={fuel === null} onClick={() => setFuel(null)}>All</Chip>
-            {(Object.keys(FUEL_LABELS) as FuelType[]).map((f) => (
+            {fuelTypes.map((f) => (
               <Chip key={f} active={fuel === f} onClick={() => setFuel(f)}>
                 {FUEL_LABELS[f]}
               </Chip>
