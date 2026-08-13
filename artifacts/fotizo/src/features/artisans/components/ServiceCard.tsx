@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Price } from "@/components/common/Price";
 import { RatingStars } from "@/components/common/RatingStars";
 import { NegotiateDialog } from "@/features/artisans/components/NegotiateDialog";
+import {
+  serviceCategoryLabel,
+  serviceGroupLabel,
+  type ServiceGroupId,
+} from "@workspace/service-taxonomy";
 
 interface Service {
   id: string;
@@ -17,6 +22,7 @@ interface Service {
   experience: string;
   hourlyRate: number;
   category: string;
+  group: ServiceGroupId;
   availability: string;
 }
 
@@ -26,9 +32,9 @@ export const ServiceCard = memo(function ServiceCard({ service }: { service: Ser
   return (
     <div className="flex flex-col bg-white rounded-2xl border border-border p-6 hover:shadow-lg hover:border-primary/20 transition-all duration-300 h-full">
       <Link href={`/services/${service.id}`} className="block cursor-pointer">
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-center gap-4">
-            <div className="relative">
+            <div className="relative shrink-0">
               <img loading="lazy" decoding="async"
                 src={service.avatar}
                 alt={service.provider}
@@ -39,15 +45,17 @@ export const ServiceCard = memo(function ServiceCard({ service }: { service: Ser
             <div>
               <div className="flex items-center gap-1.5">
                 <h4 className="font-semibold text-foreground">{service.provider}</h4>
-                <CheckCircle2 className="w-4 h-4 text-primary" />
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-primary" />
               </div>
-              <p className="text-sm text-muted-foreground">{service.category} Expert</p>
+              <p className="text-sm text-muted-foreground">
+                {serviceCategoryLabel(service.category)}
+              </p>
             </div>
           </div>
           <RatingStars
             value={service.rating}
             reviewCount={service.reviewCount}
-            className="bg-muted/50 px-2 py-1 rounded-md text-sm font-medium"
+            className="shrink-0 bg-muted/50 px-2 py-1 rounded-md text-sm font-medium"
           />
         </div>
 
@@ -55,16 +63,21 @@ export const ServiceCard = memo(function ServiceCard({ service }: { service: Ser
           {service.title}
         </h3>
 
-        <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm mb-6">
+        <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm mb-4">
           <div className="flex items-center text-muted-foreground">
-            <Briefcase className="w-4 h-4 mr-2" />
+            <Briefcase className="w-4 h-4 mr-2 shrink-0" />
             {service.experience} exp.
           </div>
           <div className="flex items-center text-muted-foreground">
-            <Clock className="w-4 h-4 mr-2" />
+            <Clock className="w-4 h-4 mr-2 shrink-0" />
             {service.availability}
           </div>
         </div>
+
+        {/* Which side of the platform this provider sits on. */}
+        <span className="mb-6 inline-flex w-fit rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+          {serviceGroupLabel(service.group)}
+        </span>
       </Link>
 
       <div className="mt-auto pt-4 border-t border-border flex items-center justify-between gap-2">

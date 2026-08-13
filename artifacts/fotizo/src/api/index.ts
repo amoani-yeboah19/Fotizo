@@ -8,4 +8,5 @@ export {
   ORDERS_USE_MOCKS,
   ARTISANS_USE_MOCKS,
   MESSAGES_USE_MOCKS,
+  AUTOS_USE_MOCKS,
 } from "./config";

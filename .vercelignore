@@ -1,0 +1,12 @@
+# Keep CLI deploys small — Vercel runs `pnpm install` and builds from source,
+# so installed/built artefacts and local scratch never need uploading.
+node_modules
+.local
+.git
+dist
+*.tsbuildinfo
+
+# Large assets that aren't part of the fotizo build
+mobilehero.png
+attached_assets
+artifacts/mockup-sandbox

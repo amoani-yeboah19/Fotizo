@@ -87,6 +87,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/service-taxonomy':
+        specifier: workspace:*
+        version: link:../../lib/service-taxonomy
       bcrypt:
         specifier: ^6.0.0
         version: 6.0.0
@@ -212,6 +215,9 @@ importers:
       '@workspace/api-client-react':
         specifier: workspace:*
         version: link:../../lib/api-client-react
+      '@workspace/service-taxonomy':
+        specifier: workspace:*
+        version: link:../../lib/service-taxonomy
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -478,7 +484,19 @@ importers:
         specifier: ^0.31.10
         version: 0.31.10
 
+  lib/service-taxonomy: {}
+
   scripts:
+    dependencies:
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../lib/db
+      '@workspace/service-taxonomy':
+        specifier: workspace:*
+        version: link:../lib/service-taxonomy
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@types/pg@8.20.0)(pg@8.22.0)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

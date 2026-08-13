@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { LayoutGrid, Search, Flame, Truck, ShieldCheck, PackageCheck } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { ShopProductCard } from "@/features/shop/components/ShopProductCard";
+import { ChinaMarketDialog } from "@/features/shop/components/ChinaMarketDialog";
 import {
   SHOP_CATEGORIES,
   shopProductsByCategory,
@@ -52,6 +53,8 @@ export default function ShopPage() {
 
   return (
     <PageLayout mainClassName="pt-20">
+      <ChinaMarketDialog />
+
       {/* Hero / promo banner */}
       <section className="bg-gradient-to-r from-[#08275B] via-[#0a2f6e] to-[#FF6A00]">
         <div className="container-app py-8 sm:py-10">

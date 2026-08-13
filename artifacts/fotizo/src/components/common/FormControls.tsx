@@ -58,6 +58,37 @@ export function NativeSelect({
   );
 }
 
+export interface SelectOptionGroup {
+  label: string;
+  options: { value: string; label: string }[];
+}
+
+// Same styling as NativeSelect, but the options are bucketed under <optgroup>
+// headings — used where the choice itself carries a grouping (service
+// categories under Freelancers / Artisans / Business Owners).
+export function GroupedNativeSelect({
+  groups,
+  placeholder = "Select…",
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & { groups: SelectOptionGroup[]; placeholder?: string }) {
+  return (
+    <select className={selectClass} {...props}>
+      <option value="" disabled>
+        {placeholder}
+      </option>
+      {groups.map((g) => (
+        <optgroup key={g.label} label={g.label}>
+          {g.options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </select>
+  );
+}
+
 // Downscale a picked/captured photo on a canvas so multi-MB camera shots become
 // reasonably-sized data URLs (kept in memory / mock data; a real backend would
 // receive file uploads instead).

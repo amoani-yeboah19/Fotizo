@@ -1,4 +1,5 @@
 import { useRoute, Link, useLocation } from "wouter";
+import { serviceCategoryLabel, serviceGroupLabel } from "@workspace/service-taxonomy";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { useService } from "@/features/artisans/hooks";
@@ -74,7 +75,9 @@ export default function ServiceDetail() {
         <ChevronRight className="w-4 h-4 mx-2" />
         <Link href="/services"><span className="hover:text-primary cursor-pointer">Services</span></Link>
         <ChevronRight className="w-4 h-4 mx-2" />
-        <span>{service.category}</span>
+        <span>{serviceGroupLabel(service.group)}</span>
+        <ChevronRight className="w-4 h-4 mx-2" />
+        <span>{serviceCategoryLabel(service.category)}</span>
       </nav>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mb-16">
@@ -92,7 +95,7 @@ export default function ServiceDetail() {
                   <p className="font-semibold">{service.provider}</p>
                   <CheckCircle2 className="w-4 h-4 text-primary" />
                 </div>
-                <p className="text-xs text-muted-foreground">{service.category} Expert</p>
+                <p className="text-xs text-muted-foreground">{serviceCategoryLabel(service.category)}</p>
               </div>
             </div>
             <div className="h-8 w-px bg-border hidden sm:block" />
