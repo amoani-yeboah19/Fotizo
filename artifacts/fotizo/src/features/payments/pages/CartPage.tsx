@@ -25,8 +25,8 @@ export default function CartPage() {
           <p className="text-muted-foreground mb-8">
             Looks like you haven't added any products to your cart yet.
           </p>
-          <Link href="/products">
-            <Button size="lg" className="rounded-full px-8">Browse Products</Button>
+          <Link href="/shop">
+            <Button size="lg" className="rounded-full px-8">Browse the Shop</Button>
           </Link>
         </SurfaceCard>
       ) : (
@@ -107,7 +107,7 @@ export default function CartPage() {
             </SurfaceCard>
 
             <div className="mt-6 flex justify-between items-center">
-              <Link href="/products">
+              <Link href="/shop">
                 <Button variant="outline">Continue Shopping</Button>
               </Link>
             </div>

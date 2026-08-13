@@ -40,7 +40,7 @@ export default function OrderConfirmation() {
             <Link href="/dashboard/buyer">
               <Button className="w-full py-6 text-lg rounded-xl">Track Your Order</Button>
             </Link>
-            <Link href="/products">
+            <Link href="/shop">
               <Button variant="outline" className="w-full py-6 text-lg rounded-xl">Continue Shopping</Button>
             </Link>
           </div>

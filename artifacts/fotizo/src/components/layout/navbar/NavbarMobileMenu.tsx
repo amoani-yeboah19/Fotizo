@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Search } from "lucide-react";
+import { SERVICE_GROUPS } from "@workspace/service-taxonomy";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/contexts/MessagesContext";
@@ -8,6 +9,9 @@ import { dashboardNavItems, dashboardHref } from "@/features/profile/dashboardNa
 
 const linkClass =
   "block px-4 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg cursor-pointer";
+
+const sectionClass =
+  "px-4 pt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground";
 
 export function NavbarMobileMenu({
   onSignIn,
@@ -40,10 +44,20 @@ export function NavbarMobileMenu({
           className="w-full pl-10 pr-4 py-3 bg-muted border border-transparent rounded-lg text-sm outline-none"
         />
       </div>
-      <nav className="flex flex-col gap-2">
-        <Link href="/shop" onClick={onClose}><span className="block px-4 py-3 text-sm font-semibold text-[#FF6A00] hover:bg-muted rounded-lg cursor-pointer">Shop</span></Link>
-        <Link href="/products" onClick={onClose}><span className={linkClass}>Products</span></Link>
-        <Link href="/services" onClick={onClose}><span className={linkClass}>Services</span></Link>
+      {/* Mirrors the desktop grouping: buy something, or hire someone. The local
+          seller Marketplace (/products) is omitted while its catalog is empty. */}
+      <nav className="flex flex-col gap-1">
+        <p className={sectionClass}>Buy</p>
+        <Link href="/shop" onClick={onClose}><span className="block px-4 py-3 text-sm font-semibold text-[#FF6A00] hover:bg-muted rounded-lg cursor-pointer">Fotizo Shop</span></Link>
+        <Link href="/autos" onClick={onClose}><span className={linkClass}>Fotizo Autos</span></Link>
+
+        <p className={`${sectionClass} mt-3`}>Hire</p>
+        {SERVICE_GROUPS.map((group) => (
+          <Link key={group.id} href={`/services?group=${group.id}`} onClick={onClose}>
+            <span className={linkClass}>{group.label}</span>
+          </Link>
+        ))}
+        <Link href="/services" onClick={onClose}><span className={linkClass}>All services</span></Link>
       </nav>
       <div className="h-px bg-border my-2" />
 

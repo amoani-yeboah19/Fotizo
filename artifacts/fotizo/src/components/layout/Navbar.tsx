@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useMessages } from "@/contexts/MessagesContext";
-import { ProductsMegaMenu } from "@/components/layout/navbar/ProductsMegaMenu";
+import { BuyMegaMenu } from "@/components/layout/navbar/BuyMegaMenu";
+import { HireMegaMenu } from "@/components/layout/navbar/HireMegaMenu";
 import { UserMenu } from "@/components/layout/navbar/UserMenu";
 import { NavbarMobileMenu } from "@/components/layout/navbar/NavbarMobileMenu";
 import { AuthModal, type AuthView } from "@/features/auth/components/AuthModal";
@@ -51,18 +52,10 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Nav */}
+          {/* Two groups, split by intent: buy something, or hire someone. */}
           <nav className="hidden md:flex items-center gap-8">
-            <ProductsMegaMenu />
-            <Link href="/shop">
-              <span className="text-sm font-semibold text-[#FF6A00] hover:opacity-80 transition-opacity cursor-pointer">
-                Shop
-              </span>
-            </Link>
-            <Link href="/services">
-              <span className="text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer">
-                Services
-              </span>
-            </Link>
+            <BuyMegaMenu />
+            <HireMegaMenu />
           </nav>
 
           {/* Search Bar (Desktop) */}

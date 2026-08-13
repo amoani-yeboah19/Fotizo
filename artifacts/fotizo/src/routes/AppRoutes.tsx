@@ -12,6 +12,8 @@ const ProductsPage = lazy(() => import("@/features/marketplace/pages/ProductsPag
 const ProductDetail = lazy(() => import("@/features/marketplace/pages/ProductDetailPage"));
 const ShopPage = lazy(() => import("@/features/shop/pages/ShopPage"));
 const ShopProductPage = lazy(() => import("@/features/shop/pages/ShopProductPage"));
+const AutosPage = lazy(() => import("@/features/autos/pages/AutosPage"));
+const VehicleDetail = lazy(() => import("@/features/autos/pages/VehicleDetailPage"));
 const ServicesPage = lazy(() => import("@/features/artisans/pages/ServicesPage"));
 const ServiceDetail = lazy(() => import("@/features/artisans/pages/ServiceDetailPage"));
 const CartPage = lazy(() => import("@/features/payments/pages/CartPage"));
@@ -46,6 +48,8 @@ export function AppRoutes() {
         <Route path="/products/:id" component={ProductDetail} />
         <Route path="/shop" component={ShopPage} />
         <Route path="/shop/:id" component={ShopProductPage} />
+        <Route path="/autos" component={AutosPage} />
+        <Route path="/autos/:id" component={VehicleDetail} />
         <Route path="/services" component={ServicesPage} />
         <Route path="/services/:id" component={ServiceDetail} />
         <Route path="/guides" component={GuidesPage} />
