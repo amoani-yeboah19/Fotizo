@@ -63,7 +63,7 @@ const COLUMNS: { heading: string; links: FooterLink[] }[] = [
     heading: "Company",
     links: [
       { label: "About Fotizo", href: "#" },
-      { label: "Help Center", href: "#" },
+      { label: "Help & Support", href: "/support" },
       { label: "Trust & Safety", href: "#" },
       { label: "Careers", href: "#" },
       { label: "Terms of Service", href: "#" },

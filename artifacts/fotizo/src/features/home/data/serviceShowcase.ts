@@ -12,7 +12,6 @@ import {
 // The trade photographs are Creative Commons stand-ins (no free stock library
 // carries Ghanaian trade photography); swap them for your own shoot when you
 // have one. Credits, required by the BY licences:
-//   barbering: "Lakeforest Elementary Haircuts" by Greenville, NC (pdm) — https://www.flickr.com/photos/156869144@N02/52444206925
 //   hairdressing: "'Quick!! I need a model...'" by Jaako (by) — https://www.flickr.com/photos/56944727@N00/267975094
 //   nail-tech: "Degradê" by Lelê Breveglieri (by) — https://www.flickr.com/photos/52215361@N02/7903657610
 //   lash-tech: "facial" by Zenspa1 (by) — https://www.flickr.com/photos/93609956@N05/9865582355
@@ -39,7 +38,6 @@ export interface ShowcaseCategory {
 }
 
 const SHOWCASE: ShowcaseCategory[] = [
-  { id: "barbering", image: "https://live.staticflickr.com/65535/52444206925_668a4316ab_b.jpg", accent: "#2B1B12" },
   { id: "fashion-design", image: "https://live.staticflickr.com/65535/49482217643_6de3d5b587_b.jpg", accent: "#3D2B1F" },
   { id: "plumbing", image: "https://live.staticflickr.com/117/294035300_9ad54d2409_b.jpg", accent: "#123040" },
   { id: "graphic-design", image: UNSPLASH("photo-1626785774573-4b799315345d"), accent: "#0D2A4A" },

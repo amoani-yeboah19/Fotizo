@@ -10,6 +10,7 @@
 // VITE_USE_MOCK_ARTISANS — same, but for the services (artisans) catalog only.
 // VITE_USE_MOCK_MESSAGES — same, but for conversations/messaging only.
 // VITE_USE_MOCK_AUTOS   — same, but for Fotizo Autos vehicle enquiries only.
+// VITE_USE_MOCK_SUPPORT — same, but for customer-support requests only.
 //
 // A backend developer connects a real backend by setting these; no UI code changes.
 
@@ -34,3 +35,6 @@ export const MESSAGES_USE_MOCKS =
 
 export const AUTOS_USE_MOCKS =
   (import.meta.env.VITE_USE_MOCK_AUTOS ?? import.meta.env.VITE_USE_MOCKS ?? "true") !== "false";
+
+export const SUPPORT_USE_MOCKS =
+  (import.meta.env.VITE_USE_MOCK_SUPPORT ?? import.meta.env.VITE_USE_MOCKS ?? "true") !== "false";

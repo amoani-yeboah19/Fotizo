@@ -9,4 +9,5 @@ export {
   ARTISANS_USE_MOCKS,
   MESSAGES_USE_MOCKS,
   AUTOS_USE_MOCKS,
+  SUPPORT_USE_MOCKS,
 } from "./config";

@@ -6,8 +6,6 @@ export interface MegaMenuItem {
   href: string;
   description: string;
   icon: LucideIcon;
-  /** Renders the label in the Shop orange, for the flagship destination in a group. */
-  accent?: boolean;
 }
 
 // Shared dropdown for the two top-level nav groups. Opens on hover, and on
@@ -32,20 +30,15 @@ export function NavMegaMenu({
         </span>
       </Link>
 
-      <div className="invisible absolute left-1/2 top-full w-[420px] -translate-x-1/2 rounded-xl border border-border bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+      <div className="invisible absolute left-1/2 top-full w-105 -translate-x-1/2 rounded-xl border border-border bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
         <ul>
           {items.map((item) => (
             <li key={item.href}>
               <Link href={item.href}>
                 <span className="flex cursor-pointer items-start gap-3 rounded-lg p-3 transition-colors hover:bg-muted">
-                  <item.icon
-                    className={`mt-0.5 h-5 w-5 shrink-0 ${item.accent ? "text-[#FF6A00]" : "text-primary"}`}
-                    aria-hidden="true"
-                  />
+                  <item.icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
                   <span className="min-w-0">
-                    <span
-                      className={`block text-sm font-semibold ${item.accent ? "text-[#FF6A00]" : "text-foreground"}`}
-                    >
+                    <span className="block text-sm font-semibold text-foreground">
                       {item.label}
                     </span>
                     <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">

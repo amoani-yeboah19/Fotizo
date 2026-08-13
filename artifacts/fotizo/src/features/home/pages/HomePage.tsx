@@ -7,6 +7,7 @@ import { ServicesSection } from "@/features/home/components/ServicesSection";
 import { PopularServices } from "@/features/home/components/PopularServices";
 import { ProviderGroups } from "@/features/home/components/ProviderGroups";
 import { MakeItHappen } from "@/features/home/components/MakeItHappen";
+import { SupportBand } from "@/features/home/components/SupportBand";
 import { Guides } from "@/features/home/components/Guides";
 import { Newsletter } from "@/features/home/components/Newsletter";
 import { PersonalizedHome } from "@/features/home/components/PersonalizedHome";
@@ -29,6 +30,7 @@ export default function Home() {
           <MakeItHappen />
           <ProductsSection />
           <ServicesSection />
+          <SupportBand />
           <Guides />
           <Newsletter />
         </>
