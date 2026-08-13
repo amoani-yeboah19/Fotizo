@@ -11,7 +11,6 @@ const ITEMS: MegaMenuItem[] = [
     href: "/shop",
     description: "Everyday goods sourced from our China supplier network, delivered in 7–21 days.",
     icon: Store,
-    accent: true,
   },
   {
     label: "Fotizo Autos",
