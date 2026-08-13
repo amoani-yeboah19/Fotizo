@@ -6,7 +6,14 @@ import * as z from "zod";
 import { Plus, Trash2, Briefcase } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { WizardShell } from "@/components/common/Wizard";
-import { Field, NativeSelect, TagsInput, AvatarUploadInput } from "@/components/common/FormControls";
+import { Field, NativeSelect, GroupedNativeSelect, TagsInput, AvatarUploadInput } from "@/components/common/FormControls";
+import {
+  groupedServiceCategories,
+  groupForCategory,
+  getServiceGroup,
+  isServiceCategoryId,
+  serviceCategoryLabel,
+} from "@workspace/service-taxonomy";
 import { AiAssistButton } from "@/components/common/AiAssistButton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,10 +24,13 @@ import { aiService } from "@/services";
 import { useCreateService } from "@/features/artisans/hooks";
 import type { NewServiceInput } from "@/types";
 
-const SERVICE_CATEGORIES = [
-  "Design & Creative", "Development & Tech", "Writing & Translation", "Marketing & Sales",
-  "Home & Trades", "Consulting & Business", "Photography & Video", "Digital Products",
-];
+// Categories come from the shared taxonomy, bucketed by provider group. Picking
+// "Plumbing" is all a provider does — the group (Artisans & Trades) is derived
+// from it here for the preview and again on the server when the listing saves.
+const CATEGORY_GROUPS = groupedServiceCategories().map(({ group, categories }) => ({
+  label: group.label,
+  options: categories.map((c) => ({ value: c.id, label: c.label })),
+}));
 const EXPERIENCE = ["Less than 1 year", "1–3 years", "3–5 years", "5–10 years", "10+ years"];
 const AVAILABILITY = ["Available now", "Within a few days", "Within a week", "Booking 2+ weeks out"];
 
@@ -28,7 +38,7 @@ const STEPS = ["Basics", "Expertise", "Packages", "Review"];
 
 const schema = z.object({
   title: z.string().min(3, "Give your service a clear title (min 3 characters)"),
-  category: z.string().min(1, "Choose a category"),
+  category: z.string().refine(isServiceCategoryId, "Choose a category"),
   description: z.string().min(20, "Describe your service in at least 20 characters"),
   experience: z.string().min(1, "Select your experience level"),
   hourlyRate: z.string().refine((v) => Number(v) > 0, "Enter an hourly rate greater than 0"),
@@ -66,7 +76,11 @@ export default function OfferServicePage() {
   // any notes typed so far. Skills land in the (later) Expertise step pre-filled.
   const writeWithAi = async () => {
     const { title, category, description } = form.getValues();
-    const draft = await aiService.writeServiceListing({ title, category, notes: description });
+    const draft = await aiService.writeServiceListing({
+      title,
+      category: serviceCategoryLabel(category),
+      notes: description,
+    });
     setValue("description", draft.description, { shouldValidate: true });
     if (draft.skills.length) setSkills(draft.skills);
   };
@@ -128,6 +142,7 @@ export default function OfferServicePage() {
     setPackages((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
 
   const v = watch();
+  const landingGroup = v.category ? getServiceGroup(groupForCategory(v.category) ?? "") : undefined;
 
   return (
     <PageLayout mainClassName="container-app py-24 md:py-28">
@@ -157,8 +172,23 @@ export default function OfferServicePage() {
                 <Field label="Service title" htmlFor="title" required error={errors.title?.message}>
                   <Input id="title" placeholder="e.g. Brand identity & logo design" {...register("title")} />
                 </Field>
-                <Field label="Category" htmlFor="category" required error={errors.category?.message}>
-                  <NativeSelect id="category" options={SERVICE_CATEGORIES} placeholder="Choose a category" {...register("category")} />
+                <Field
+                  label="Category"
+                  htmlFor="category"
+                  required
+                  error={errors.category?.message}
+                  hint={
+                    landingGroup
+                      ? `Listed under ${landingGroup.label} — ${landingGroup.description}`
+                      : "Pick the trade you actually do; we file you under the right side of the platform."
+                  }
+                >
+                  <GroupedNativeSelect
+                    id="category"
+                    groups={CATEGORY_GROUPS}
+                    placeholder="Choose a category"
+                    {...register("category")}
+                  />
                 </Field>
                 <Field label="Experience" htmlFor="experience" required error={errors.experience?.message}>
                   <NativeSelect id="experience" options={EXPERIENCE} placeholder="How long have you been doing this?" {...register("experience")} />
@@ -252,8 +282,15 @@ export default function OfferServicePage() {
                   <h2 className="text-sm font-bold text-foreground mb-2">Review</h2>
                   <p className="font-semibold text-foreground">{v.title || "Untitled service"}</p>
                   <p className="text-sm text-muted-foreground">
-                    {v.category || "No category"} · {v.experience || "—"}
+                    {v.category ? serviceCategoryLabel(v.category) : "No category"} · {v.experience || "—"}
                   </p>
+                  {landingGroup && (
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      Publishes to{" "}
+                      <span className="font-semibold text-primary">{landingGroup.label}</span> on the
+                      services page.
+                    </p>
+                  )}
                   <div className="mt-1 flex items-center gap-2 text-sm">
                     <Price amount={Number(v.hourlyRate) || 0} className="font-bold text-primary" />
                     <span className="text-muted-foreground">/hr · {v.availability || "—"}</span>

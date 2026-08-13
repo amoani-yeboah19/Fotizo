@@ -5,6 +5,7 @@ import { Categories } from "@/features/home/components/Categories";
 import { ProductsSection } from "@/features/home/components/ProductsSection";
 import { ServicesSection } from "@/features/home/components/ServicesSection";
 import { PopularServices } from "@/features/home/components/PopularServices";
+import { ProviderGroups } from "@/features/home/components/ProviderGroups";
 import { MakeItHappen } from "@/features/home/components/MakeItHappen";
 import { Guides } from "@/features/home/components/Guides";
 import { Newsletter } from "@/features/home/components/Newsletter";
@@ -23,6 +24,7 @@ export default function Home() {
         <>
           <Hero />
           <Categories />
+          <ProviderGroups />
           <PopularServices />
           <MakeItHappen />
           <ProductsSection />

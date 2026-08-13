@@ -1,3 +1,5 @@
+import type { ServiceGroupId } from "@workspace/service-taxonomy";
+
 // Canonical domain types — the shapes the services layer returns and the UI consumes.
 // Single source of truth for entities. When the backend contract lands, these should be
 // generated from / reconciled with the OpenAPI spec (see @workspace/api-zod).
@@ -62,7 +64,11 @@ export interface Service {
   reviewCount: number;
   experience: string;
   hourlyRate: number;
+  /** Category id from @workspace/service-taxonomy, e.g. "plumbing". */
   category: string;
+  /** Which side of the platform this lands on. Always derived from `category`
+   *  by the server, so it is read-only to the client. */
+  group: ServiceGroupId;
   availability: string;
   packages: ServicePackage[];
   skills: string[];
