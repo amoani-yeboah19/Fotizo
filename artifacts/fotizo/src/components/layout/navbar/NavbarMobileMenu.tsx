@@ -48,7 +48,7 @@ export function NavbarMobileMenu({
           seller Marketplace (/products) is omitted while its catalog is empty. */}
       <nav className="flex flex-col gap-1">
         <p className={sectionClass}>Buy</p>
-        <Link href="/shop" onClick={onClose}><span className="block px-4 py-3 text-sm font-semibold text-[#FF6A00] hover:bg-muted rounded-lg cursor-pointer">Fotizo Shop</span></Link>
+        <Link href="/shop" onClick={onClose}><span className={linkClass}>Fotizo Shop</span></Link>
         <Link href="/autos" onClick={onClose}><span className={linkClass}>Fotizo Autos</span></Link>
 
         <p className={`${sectionClass} mt-3`}>Hire</p>
@@ -58,6 +58,9 @@ export function NavbarMobileMenu({
           </Link>
         ))}
         <Link href="/services" onClick={onClose}><span className={linkClass}>All services</span></Link>
+
+        <p className={`${sectionClass} mt-3`}>Help</p>
+        <Link href="/support" onClick={onClose}><span className={linkClass}>Customer service</span></Link>
       </nav>
       <div className="h-px bg-border my-2" />
 

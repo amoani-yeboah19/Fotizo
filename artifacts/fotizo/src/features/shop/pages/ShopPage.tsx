@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearch } from "wouter";
 import { LayoutGrid, Search, Flame, Truck, ShieldCheck, PackageCheck } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { ShopProductCard } from "@/features/shop/components/ShopProductCard";
@@ -37,10 +38,25 @@ function sortProducts(list: ShopProduct[], sort: Sort): ShopProduct[] {
   }
 }
 
+// ?category=wigs — how the hero chips and marketing links land straight in a
+// department. An unknown id falls back to the full catalogue rather than an
+// empty page.
+function categoryFromQuery(query: string): string | null {
+  const id = new URLSearchParams(query).get("category");
+  return id && SHOP_CATEGORIES.some((c) => c.id === id) ? id : null;
+}
+
 export default function ShopPage() {
-  const [activeCat, setActiveCat] = useState<string | null>(null);
+  const query = useSearch();
+  const [activeCat, setActiveCat] = useState<string | null>(() => categoryFromQuery(query));
   const [sort, setSort] = useState<Sort>("recommended");
   const [search, setSearch] = useState("");
+
+  // Re-sync when the URL changes under us (another chip clicked while already
+  // on the page, or back/forward), without fighting in-page tab changes.
+  useEffect(() => {
+    setActiveCat(categoryFromQuery(query));
+  }, [query]);
 
   const deals = useMemo(() => flashDeals(12), []);
 
