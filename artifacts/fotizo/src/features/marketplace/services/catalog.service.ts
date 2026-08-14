@@ -3,6 +3,26 @@ import { delay } from "@/services/mocks/delay";
 import * as fx from "@/services/mocks/fixtures";
 import type { Product, Category, SellerProduct, NewProductInput } from "@/types";
 
+// The marketplace (/products) is the LOCAL side: things listed by real sellers.
+// Fotizo Shop stock lives at /shop and must not appear here — right now the
+// backend returns both from GET /products (73 of 76 rows are shop imports), so
+// we filter client-side until it can split them server-side.
+//
+// Matching on the seller name is the only discriminator the API currently
+// exposes; the products table has a `source` column that isn't in the API
+// response or the Drizzle schema, and that's the right long-term key. When the
+// backend exposes it, swap the predicate below and delete this note.
+const SHOP_SELLER_NAMES = new Set(["fotizo shop", "fotizo import"]);
+
+function isShopListing(product: Pick<Product, "seller">): boolean {
+  return SHOP_SELLER_NAMES.has((product.seller ?? "").trim().toLowerCase());
+}
+
+/** Seller listings only — everything the Fotizo Shop supplies is stripped out. */
+function localOnly(products: Product[]): Product[] {
+  return products.filter((p) => !isShopListing(p));
+}
+
 export const catalogService = {
   async createProduct(input: NewProductInput): Promise<Product> {
     if (CATALOG_USE_MOCKS) {
@@ -46,9 +66,9 @@ export const catalogService = {
   async listProducts(): Promise<Product[]> {
     if (CATALOG_USE_MOCKS) {
       await delay();
-      return fx.products;
+      return localOnly(fx.products);
     }
-    return api.get<Product[]>("/products");
+    return localOnly(await api.get<Product[]>("/products"));
   },
 
   async getProduct(id: string): Promise<Product | null> {
@@ -64,11 +84,13 @@ export const catalogService = {
       await delay();
       const product = fx.products.find((p) => p.id === id);
       if (!product) return [];
-      return fx.products
+      return localOnly(fx.products)
         .filter((p) => p.category === product.category && p.id !== id)
         .slice(0, 3);
     }
-    return api.get<Product[]>(`/products/${id}/related`);
+    // "Related" on a seller listing must stay local too, or the shop leaks back
+    // in through the bottom of the product page.
+    return localOnly(await api.get<Product[]>(`/products/${id}/related`));
   },
 
   async listCategories(): Promise<Category[]> {

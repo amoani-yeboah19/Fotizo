@@ -86,7 +86,15 @@ export function ChinaMarketDialog() {
         </div>
 
         <DialogFooter className="gap-2 px-6 pb-6 pt-5 sm:justify-end">
-          <Button variant="outline" onClick={() => setLocation("/products")}>
+          {/* Mark the notice seen on the way out too — otherwise it reappears
+              the moment they come back from the marketplace. */}
+          <Button
+            variant="outline"
+            onClick={() => {
+              sessionStorage.setItem(SEEN_KEY, "1");
+              setLocation("/products");
+            }}
+          >
             Shop local instead
           </Button>
           <Button className="bg-[#FF6A00] text-white hover:bg-[#FF6A00]/90" onClick={dismiss}>
