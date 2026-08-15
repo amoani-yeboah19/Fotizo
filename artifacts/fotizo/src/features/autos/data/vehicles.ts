@@ -26,9 +26,15 @@ import { Fuel, BatteryCharging, Leaf } from "lucide-react";
 //   toyota-rav4:     "2022 MY Toyota RAV4 Hybrid facelift XA50", "TOYOTA RAV4 HYBRID (XA50) China" (CC BY-SA 4.0)
 //   audi-q5:         "2021 Audi Q5 45 TFSI Quattro front/rear", "2023 Audi Q5 quattro front" (CC BY-SA 4.0)
 //   landwind-x7:     "Landwind X7 facelift 003" (CC0), "Landwind X7 01 -- Auto Shanghai" (CC BY-SA 4.0)
+//   toyota-prado:    "2025 Toyota Land Cruiser Prado 250 2.4 Turbo … front left / rear left" (CC BY-SA 4.0)
+//   byd-seal:        "BYD Seal IAA 2023 1X7A0026 / 1X7A0371" (CC BY-SA 4.0)
+//   haval-h6:        "Great Wall Haval H6 Sanming 01", "2021 … China Chic Edition (front)" (CC BY-SA 4.0)
+//   hyundai-tucson:  "Hyundai Tucson (NX4) 1X7A0424", "2022 Hyundai Tucson SEL with HTRAC AWD" (CC BY-SA 4.0)
+//   toyota-camry:    "TOYOTA CAMRY (XV70) China", "Toyota Camry (XV70) IMG 9081" (CC BY-SA 4.0)
+//   honda-crv:       "2023 Honda CR-V EX-L AWD, front right", "Honda CR-V (6th generation) hybrid 1X7A0866" (CC BY-SA 4.0)
 
 export type FuelType = "petrol" | "hybrid" | "electric";
-export type BodyType = "suv" | "coupe-suv" | "sedan";
+export type BodyType = "suv" | "coupe-suv" | "sedan" | "pickup";
 
 export interface Vehicle {
   id: string;
@@ -78,6 +84,7 @@ export const BODY_LABELS: Record<BodyType, string> = {
   suv: "SUV",
   "coupe-suv": "Coupe SUV",
   sedan: "Sedan",
+  pickup: "Pickup",
 };
 
 export const VEHICLES: Vehicle[] = [
@@ -376,6 +383,140 @@ export const VEHICLES: Vehicle[] = [
     highlights: ["Cheapest in the range", "Big-SUV presence", "Simple to maintain"],
     description:
       "The budget entry point: a large-looking SUV for well under the price of anything else here. The trade-off is a plainer interior and less refinement than the newer Chinese marques, but the mechanicals are simple and cheap to keep on the road. Good value if presence matters more than polish.",
+  },
+
+  // ── Pickups, premium marques and mainstream Japanese/Korean options ────────
+  {
+    id: "toyota-land-cruiser-prado",
+    make: "Toyota",
+    model: "Land Cruiser Prado",
+    bodyType: "suv",
+    fuel: "petrol",
+    seats: 7,
+    transmission: "8-speed automatic",
+    drivetrain: "Full-time four-wheel drive",
+    powertrain: "2.4L turbo petrol",
+    efficiency: "≈ 9.5 L/100km combined",
+    landedPrice: 58900,
+    leadTimeWeeks: [12, 20],
+    image: "https://upload.wikimedia.org/wikipedia/commons/e/e5/2025_Toyota_Land_Cruiser_Prado_250_2.4_Turbo_in_White_Pearl_Mica%2C_front_left.jpg",
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/e/e5/2025_Toyota_Land_Cruiser_Prado_250_2.4_Turbo_in_White_Pearl_Mica%2C_front_left.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/8/82/2025_Toyota_Land_Cruiser_Prado_2.4_Turbo_in_White_Pearl_Mica%2C_rear_left.jpg",
+    ],
+    highlights: ["Genuine off-road ability", "Seven seats", "Holds value like nothing else"],
+    description:
+      "The serious end of the range. Ladder-frame, locking differentials and the durability the Land Cruiser name is built on — this is the vehicle NGOs and mining companies buy when failure isn't an option. Long lead time and the highest price here, and still the strongest resale of anything we ship.",
+  },
+  {
+    id: "byd-seal",
+    make: "BYD",
+    model: "Seal",
+    bodyType: "sedan",
+    fuel: "electric",
+    seats: 5,
+    transmission: "Single-speed",
+    drivetrain: "Rear-wheel drive",
+    powertrain: "Single electric motor",
+    efficiency: "≈ 570 km CLTC range",
+    landedPrice: 33900,
+    leadTimeWeeks: [10, 14],
+    image: "https://upload.wikimedia.org/wikipedia/commons/3/34/BYD_Seal_IAA_2023_1X7A0026.jpg",
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/3/34/BYD_Seal_IAA_2023_1X7A0026.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/f/ff/BYD_Seal_IAA_2023_1X7A0371.jpg",
+    ],
+    highlights: ["Rear-wheel drive", "Cell-to-body Blade battery", "Genuinely quick"],
+    description:
+      "BYD's electric saloon and the sharpest thing they build — rear-wheel drive, a low centre of gravity from the battery being structural rather than bolted underneath, and acceleration that embarrasses cars costing twice as much. The enthusiast's pick in the electric range.",
+  },
+  {
+    id: "haval-h6",
+    make: "Haval",
+    model: "H6",
+    bodyType: "suv",
+    fuel: "petrol",
+    seats: 5,
+    transmission: "7-speed dual-clutch",
+    drivetrain: "Front-wheel drive",
+    powertrain: "1.5L / 2.0L turbo petrol",
+    efficiency: "≈ 7.9 L/100km combined",
+    landedPrice: 20400,
+    leadTimeWeeks: [8, 12],
+    image: "https://upload.wikimedia.org/wikipedia/commons/f/f2/Great_Wall_Haval_H6_Sanming_01_2023-03-30.jpg",
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/f/f2/Great_Wall_Haval_H6_Sanming_01_2023-03-30.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/d/db/2021_Great_Wall_Haval_H6_China_Chic_Edition_%28front%29.jpg",
+    ],
+    highlights: ["China's best-selling SUV", "Roomy cabin", "Long warranty"],
+    description:
+      "Great Wall's H6 has been China's best-selling SUV for years, which means the platform is thoroughly debugged and parts are everywhere. Bigger inside than the Coolray or Dashing at a similar price, with a generous warranty. A safe, sensible family choice.",
+  },
+  {
+    id: "hyundai-tucson",
+    make: "Hyundai",
+    model: "Tucson",
+    bodyType: "suv",
+    fuel: "petrol",
+    seats: 5,
+    transmission: "8-speed automatic",
+    drivetrain: "Front-wheel drive",
+    powertrain: "1.6L turbo petrol",
+    efficiency: "≈ 7.4 L/100km combined",
+    landedPrice: 28700,
+    leadTimeWeeks: [8, 12],
+    image: "https://upload.wikimedia.org/wikipedia/commons/f/f1/Hyundai_Tucson_%28NX4%29_1X7A0424.jpg",
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/f/f1/Hyundai_Tucson_%28NX4%29_1X7A0424.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/0/00/2022_Hyundai_Tucson_SEL_with_HTRAC_All_Wheel_Drive.jpg",
+    ],
+    highlights: ["Striking design", "Strong warranty", "Established dealer network"],
+    description:
+      "The Tucson trades on design — the jewelled grille with hidden daytime running lights still stops people in car parks. Underneath it's a thoroughly conventional, well-built family SUV with Hyundai's long warranty and a service network that already exists in most markets.",
+  },
+  {
+    id: "toyota-camry",
+    make: "Toyota",
+    model: "Camry",
+    bodyType: "sedan",
+    fuel: "hybrid",
+    seats: 5,
+    transmission: "E-CVT",
+    drivetrain: "Front-wheel drive",
+    powertrain: "2.5L petrol hybrid",
+    efficiency: "≈ 4.7 L/100km combined",
+    landedPrice: 26400,
+    leadTimeWeeks: [8, 12],
+    image: "https://upload.wikimedia.org/wikipedia/commons/e/e1/TOYOTA_CAMRY_%28XV70%29_China.jpg",
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/e/e1/TOYOTA_CAMRY_%28XV70%29_China.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/e/ef/Toyota_Camry_%28XV70%29_IMG_9081.jpg",
+    ],
+    highlights: ["Executive comfort", "Self-charging hybrid", "Exceptional resale"],
+    description:
+      "The saloon people move up to. Quiet, comfortable and substantially bigger inside than a Corolla, with a self-charging hybrid that returns small-car fuel figures without ever needing a charging point. The default choice for executives, hire fleets and anyone doing serious mileage.",
+  },
+  {
+    id: "honda-crv",
+    make: "Honda",
+    model: "CR-V",
+    bodyType: "suv",
+    fuel: "hybrid",
+    seats: 5,
+    transmission: "E-CVT",
+    drivetrain: "All-wheel drive",
+    powertrain: "2.0L petrol hybrid",
+    efficiency: "≈ 5.5 L/100km combined",
+    landedPrice: 30100,
+    leadTimeWeeks: [8, 12],
+    image: "https://upload.wikimedia.org/wikipedia/commons/1/1e/2023_Honda_CR-V_EX-L_AWD%2C_front_right%2C_11-13-2022.jpg",
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/1/1e/2023_Honda_CR-V_EX-L_AWD%2C_front_right%2C_11-13-2022.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/4/4d/Honda_CR-V_%286th_generation%29_hybrid_1X7A0866.jpg",
+    ],
+    highlights: ["Biggest boot in class", "Honda reliability", "No plug needed"],
+    description:
+      "The RAV4's oldest rival and its equal on reliability. Roomier in the back and the boot than almost anything at this size, with a self-charging hybrid drivetrain and Honda's reputation for engines that simply don't break. The sensible family SUV.",
   },
 ];
 
