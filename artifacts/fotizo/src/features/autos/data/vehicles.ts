@@ -26,9 +26,16 @@ import { Fuel, BatteryCharging, Leaf } from "lucide-react";
 //   toyota-rav4:     "2022 MY Toyota RAV4 Hybrid facelift XA50", "TOYOTA RAV4 HYBRID (XA50) China" (CC BY-SA 4.0)
 //   audi-q5:         "2021 Audi Q5 45 TFSI Quattro front/rear", "2023 Audi Q5 quattro front" (CC BY-SA 4.0)
 //   landwind-x7:     "Landwind X7 facelift 003" (CC0), "Landwind X7 01 -- Auto Shanghai" (CC BY-SA 4.0)
+//   toyota-hilux:    "Toyota HiLux GR Sport 1X7A7281", "A Toyota Hilux pickup truck with a snowplow 01" (CC BY-SA 4.0)
+//   ford-ranger:     "Ford Ranger (T6, P703) Wildtrak IMG 7320 / 7323" (CC BY-SA 4.0)
+//   toyota-prado:    "2025 Toyota Land Cruiser Prado 250 2.4 Turbo … front left / rear left" (CC BY-SA 4.0)
+//   byd-seal:        "BYD Seal IAA 2023 1X7A0026 / 1X7A0371" (CC BY-SA 4.0)
+//   haval-h6:        "Great Wall Haval H6 Sanming 01", "2021 … China Chic Edition (front)" (CC BY-SA 4.0)
+//   hyundai-tucson:  "Hyundai Tucson (NX4) 1X7A0424", "2022 Hyundai Tucson SEL with HTRAC AWD" (CC BY-SA 4.0)
+//   mercedes-glc:    "Mercedes-Benz X254 1X7A6345", "Mercedes-AMG X254 43 IMG 9837" (CC BY-SA 4.0)
 
 export type FuelType = "petrol" | "hybrid" | "electric";
-export type BodyType = "suv" | "coupe-suv" | "sedan";
+export type BodyType = "suv" | "coupe-suv" | "sedan" | "pickup";
 
 export interface Vehicle {
   id: string;
@@ -78,6 +85,7 @@ export const BODY_LABELS: Record<BodyType, string> = {
   suv: "SUV",
   "coupe-suv": "Coupe SUV",
   sedan: "Sedan",
+  pickup: "Pickup",
 };
 
 export const VEHICLES: Vehicle[] = [
@@ -376,6 +384,162 @@ export const VEHICLES: Vehicle[] = [
     highlights: ["Cheapest in the range", "Big-SUV presence", "Simple to maintain"],
     description:
       "The budget entry point: a large-looking SUV for well under the price of anything else here. The trade-off is a plainer interior and less refinement than the newer Chinese marques, but the mechanicals are simple and cheap to keep on the road. Good value if presence matters more than polish.",
+  },
+
+  // ── Pickups, premium marques and mainstream Japanese/Korean options ────────
+  {
+    id: "toyota-hilux",
+    make: "Toyota",
+    model: "Hilux",
+    bodyType: "pickup",
+    fuel: "petrol",
+    seats: 5,
+    transmission: "6-speed automatic",
+    drivetrain: "Selectable four-wheel drive",
+    powertrain: "2.8L turbo diesel",
+    efficiency: "≈ 8.0 L/100km combined",
+    landedPrice: 29800,
+    leadTimeWeeks: [8, 12],
+    image: "https://upload.wikimedia.org/wikipedia/commons/8/81/Toyota_HiLux_GR_Sport_1X7A7281.jpg",
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/8/81/Toyota_HiLux_GR_Sport_1X7A7281.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/e/ec/A_Toyota_Hilux_pickup_truck_with_a_snowplow_01.jpg",
+    ],
+    highlights: ["Near-indestructible", "1-tonne payload", "Fixable anywhere"],
+    description:
+      "The pickup other pickups are measured against. A ladder-frame chassis, a diesel that will run on questionable fuel, and a reputation for surviving conditions that strand everything else. Buy it for work, not comfort — and expect it to outlast the business that bought it.",
+  },
+  {
+    id: "ford-ranger",
+    make: "Ford",
+    model: "Ranger Wildtrak",
+    bodyType: "pickup",
+    fuel: "petrol",
+    seats: 5,
+    transmission: "10-speed automatic",
+    drivetrain: "Selectable four-wheel drive",
+    powertrain: "2.0L bi-turbo diesel",
+    efficiency: "≈ 7.6 L/100km combined",
+    landedPrice: 32400,
+    leadTimeWeeks: [8, 14],
+    image: "https://upload.wikimedia.org/wikipedia/commons/2/28/Ford_Ranger_%28T6%2C_P703%29_Wildtrak_IMG_7320.jpg",
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/2/28/Ford_Ranger_%28T6%2C_P703%29_Wildtrak_IMG_7320.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/5/57/Ford_Ranger_%28T6%2C_P703%29_Wildtrak_IMG_7323.jpg",
+    ],
+    highlights: ["Car-like to drive", "Best cabin in class", "10-speed auto"],
+    description:
+      "The Ranger does the pickup job without punishing you for it — the Wildtrak's cabin and ride are closer to an SUV than a work truck, and the bi-turbo diesel is smooth with the ten-speed box. The one to choose if it doubles as the family car.",
+  },
+  {
+    id: "toyota-land-cruiser-prado",
+    make: "Toyota",
+    model: "Land Cruiser Prado",
+    bodyType: "suv",
+    fuel: "petrol",
+    seats: 7,
+    transmission: "8-speed automatic",
+    drivetrain: "Full-time four-wheel drive",
+    powertrain: "2.4L turbo petrol",
+    efficiency: "≈ 9.5 L/100km combined",
+    landedPrice: 58900,
+    leadTimeWeeks: [12, 20],
+    image: "https://upload.wikimedia.org/wikipedia/commons/e/e5/2025_Toyota_Land_Cruiser_Prado_250_2.4_Turbo_in_White_Pearl_Mica%2C_front_left.jpg",
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/e/e5/2025_Toyota_Land_Cruiser_Prado_250_2.4_Turbo_in_White_Pearl_Mica%2C_front_left.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/8/82/2025_Toyota_Land_Cruiser_Prado_2.4_Turbo_in_White_Pearl_Mica%2C_rear_left.jpg",
+    ],
+    highlights: ["Genuine off-road ability", "Seven seats", "Holds value like nothing else"],
+    description:
+      "The serious end of the range. Ladder-frame, locking differentials and the durability the Land Cruiser name is built on — this is the vehicle NGOs and mining companies buy when failure isn't an option. Long lead time and the highest price here, and still the strongest resale of anything we ship.",
+  },
+  {
+    id: "byd-seal",
+    make: "BYD",
+    model: "Seal",
+    bodyType: "sedan",
+    fuel: "electric",
+    seats: 5,
+    transmission: "Single-speed",
+    drivetrain: "Rear-wheel drive",
+    powertrain: "Single electric motor",
+    efficiency: "≈ 570 km CLTC range",
+    landedPrice: 33900,
+    leadTimeWeeks: [10, 14],
+    image: "https://upload.wikimedia.org/wikipedia/commons/3/34/BYD_Seal_IAA_2023_1X7A0026.jpg",
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/3/34/BYD_Seal_IAA_2023_1X7A0026.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/f/ff/BYD_Seal_IAA_2023_1X7A0371.jpg",
+    ],
+    highlights: ["Rear-wheel drive", "Cell-to-body Blade battery", "Genuinely quick"],
+    description:
+      "BYD's electric saloon and the sharpest thing they build — rear-wheel drive, a low centre of gravity from the battery being structural rather than bolted underneath, and acceleration that embarrasses cars costing twice as much. The enthusiast's pick in the electric range.",
+  },
+  {
+    id: "haval-h6",
+    make: "Haval",
+    model: "H6",
+    bodyType: "suv",
+    fuel: "petrol",
+    seats: 5,
+    transmission: "7-speed dual-clutch",
+    drivetrain: "Front-wheel drive",
+    powertrain: "1.5L / 2.0L turbo petrol",
+    efficiency: "≈ 7.9 L/100km combined",
+    landedPrice: 20400,
+    leadTimeWeeks: [8, 12],
+    image: "https://upload.wikimedia.org/wikipedia/commons/f/f2/Great_Wall_Haval_H6_Sanming_01_2023-03-30.jpg",
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/f/f2/Great_Wall_Haval_H6_Sanming_01_2023-03-30.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/d/db/2021_Great_Wall_Haval_H6_China_Chic_Edition_%28front%29.jpg",
+    ],
+    highlights: ["China's best-selling SUV", "Roomy cabin", "Long warranty"],
+    description:
+      "Great Wall's H6 has been China's best-selling SUV for years, which means the platform is thoroughly debugged and parts are everywhere. Bigger inside than the Coolray or Dashing at a similar price, with a generous warranty. A safe, sensible family choice.",
+  },
+  {
+    id: "hyundai-tucson",
+    make: "Hyundai",
+    model: "Tucson",
+    bodyType: "suv",
+    fuel: "petrol",
+    seats: 5,
+    transmission: "8-speed automatic",
+    drivetrain: "Front-wheel drive",
+    powertrain: "1.6L turbo petrol",
+    efficiency: "≈ 7.4 L/100km combined",
+    landedPrice: 28700,
+    leadTimeWeeks: [8, 12],
+    image: "https://upload.wikimedia.org/wikipedia/commons/f/f1/Hyundai_Tucson_%28NX4%29_1X7A0424.jpg",
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/f/f1/Hyundai_Tucson_%28NX4%29_1X7A0424.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/0/00/2022_Hyundai_Tucson_SEL_with_HTRAC_All_Wheel_Drive.jpg",
+    ],
+    highlights: ["Striking design", "Strong warranty", "Established dealer network"],
+    description:
+      "The Tucson trades on design — the jewelled grille with hidden daytime running lights still stops people in car parks. Underneath it's a thoroughly conventional, well-built family SUV with Hyundai's long warranty and a service network that already exists in most markets.",
+  },
+  {
+    id: "mercedes-glc",
+    make: "Mercedes-Benz",
+    model: "GLC",
+    bodyType: "suv",
+    fuel: "hybrid",
+    seats: 5,
+    transmission: "9-speed automatic",
+    drivetrain: "4MATIC all-wheel drive",
+    powertrain: "2.0L turbo petrol mild hybrid",
+    efficiency: "≈ 7.7 L/100km combined",
+    landedPrice: 61500,
+    leadTimeWeeks: [10, 16],
+    image: "https://upload.wikimedia.org/wikipedia/commons/8/8b/Mercedes-Benz_X254_1X7A6345.jpg",
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/8/8b/Mercedes-Benz_X254_1X7A6345.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/6/6c/Mercedes-AMG_X254_43_IMG_9837.jpg",
+    ],
+    highlights: ["4MATIC all-wheel drive", "MBUX cabin", "The badge"],
+    description:
+      "The most expensive thing we ship, and the one people buy with their eyes. Interior materials, refinement and the MBUX screen setup are a clear step beyond everything else here, with 4MATIC as standard. Servicing and parts cost accordingly — worth confirming what's available locally before you order.",
   },
 ];
 
