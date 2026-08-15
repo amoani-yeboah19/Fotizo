@@ -6,6 +6,8 @@ export interface VehicleEnquiryInput {
   name: string;
   email: string;
   phone: string;
+  /** Where the car is going — duty and freight can't be quoted without it. */
+  destination: string;
   message: string;
 }
 

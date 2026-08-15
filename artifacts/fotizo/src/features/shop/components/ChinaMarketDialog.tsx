@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Globe2, Truck, ShieldCheck, Clock } from "lucide-react";
 import {
@@ -11,10 +11,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-// Shown once per browsing session when a shopper opens the Fotizo Shop, so it's
-// clear these items are sourced from our China supplier network rather than
-// from the local Ghana marketplace.
-const SEEN_KEY = "fotizo_shop_china_notice_seen";
+// Shown every time a shopper opens the Fotizo Shop — on each visit and on each
+// return to the page — so it's always clear these items are imports from our
+// China supplier network rather than listings from local sellers. Deliberately
+// not remembered across visits: the delivery-window expectation is the whole
+// point, and someone who skimmed it the first time still needs it the second.
 
 const POINTS = [
   {
@@ -36,17 +37,11 @@ const POINTS = [
 
 export function ChinaMarketDialog() {
   const [, setLocation] = useLocation();
-  const [open, setOpen] = useState(false);
+  // Open on every mount. ShopPage mounts this fresh each time it's routed to,
+  // so leaving the shop and coming back shows the notice again.
+  const [open, setOpen] = useState(true);
 
-  useEffect(() => {
-    if (sessionStorage.getItem(SEEN_KEY) === "1") return;
-    setOpen(true);
-  }, []);
-
-  const dismiss = () => {
-    sessionStorage.setItem(SEEN_KEY, "1");
-    setOpen(false);
-  };
+  const dismiss = () => setOpen(false);
 
   return (
     <Dialog

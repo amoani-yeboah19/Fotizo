@@ -7,13 +7,15 @@ import {
   BODY_LABELS,
   FUEL_LABELS,
   vehicleMakes,
+  vehicleBodyTypes,
+  vehicleFuelTypes,
   type BodyType,
   type FuelType,
 } from "@/features/autos/data/vehicles";
 
 const ASSURANCES = [
-  { icon: Ship, title: "Shipped to Tema", body: "RoRo freight from the Guangzhou hub, tracked the whole way." },
-  { icon: FileCheck2, title: "Duty & papers handled", body: "Customs clearance, registration and roadworthiness sorted for you." },
+  { icon: Ship, title: "Shipped worldwide", body: "RoRo freight to your nearest port, tracked the whole way." },
+  { icon: FileCheck2, title: "Duty & papers handled", body: "Customs clearance and registration arranged for your country." },
   { icon: ShieldCheck, title: "Inspected before dispatch", body: "Every unit checked at the factory export yard before it sails." },
   { icon: Wrench, title: "After-sales cover", body: "Warranty terms and servicing agreed as part of the quote." },
 ];
@@ -28,6 +30,8 @@ export default function AutosPage() {
   const [fuel, setFuel] = useState<FuelFilter>(null);
 
   const makes = useMemo(() => vehicleMakes(), []);
+  const bodyTypes = useMemo(() => vehicleBodyTypes(), []);
+  const fuelTypes = useMemo(() => vehicleFuelTypes(), []);
 
   const shown = useMemo(
     () =>
@@ -54,11 +58,12 @@ export default function AutosPage() {
         <div className="container-app py-14 sm:py-20">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">Fotizo Autos</p>
           <h1 className="mt-3 max-w-2xl text-3xl font-extrabold leading-tight text-white sm:text-4xl md:text-5xl">
-            Chinese cars, imported to order
+            Cars imported to order, anywhere
           </h1>
           <p className="mt-4 max-w-xl text-white/85">
-            Changan, Jetour and Avatr — sourced new from the manufacturer's export channel, shipped
-            to Tema and handed over registered. Tell us the spec and we'll quote the landed price.
+            Toyota, Audi, BYD, Changan, Jetour, Geely and Landwind — sourced new from the
+            manufacturer's export channel and shipped to your nearest port. Tell us the spec and the
+            destination, and we'll quote the landed price.
           </p>
         </div>
       </section>
@@ -92,7 +97,7 @@ export default function AutosPage() {
 
           <FilterRow label="Body">
             <Chip active={body === null} onClick={() => setBody(null)}>All</Chip>
-            {(Object.keys(BODY_LABELS) as BodyType[]).map((b) => (
+            {bodyTypes.map((b) => (
               <Chip key={b} active={body === b} onClick={() => setBody(b)}>
                 {BODY_LABELS[b]}
               </Chip>
@@ -101,7 +106,7 @@ export default function AutosPage() {
 
           <FilterRow label="Fuel">
             <Chip active={fuel === null} onClick={() => setFuel(null)}>All</Chip>
-            {(Object.keys(FUEL_LABELS) as FuelType[]).map((f) => (
+            {fuelTypes.map((f) => (
               <Chip key={f} active={fuel === f} onClick={() => setFuel(f)}>
                 {FUEL_LABELS[f]}
               </Chip>
@@ -148,10 +153,10 @@ export default function AutosPage() {
         )}
 
         <p className="mt-10 text-xs leading-relaxed text-muted-foreground">
-          Prices shown are landed-Accra estimates including sea freight and duty, converted from the
-          listing currency. They are indicative: the binding quote is confirmed per order, because
-          duty moves with the exchange rate and the spec you choose. Looking for a model that isn't
-          listed? We source across the Chinese market — just ask.
+          Prices shown cover the vehicle and sea freight, converted from the listing currency. They
+          exclude your country's duty and taxes, which vary too much between markets to quote here —
+          the binding figure is confirmed per order once we know the destination port and your
+          chosen spec. Looking for a model that isn't listed? We source globally — just ask.
         </p>
       </section>
     </PageLayout>

@@ -1,10 +1,9 @@
-import { Store, CarFront } from "lucide-react";
+import { Store, CarFront, Users } from "lucide-react";
 import { NavMegaMenu, type MegaMenuItem } from "@/components/layout/navbar/NavMegaMenu";
 
-// The "buy things" side of the header. The local seller Marketplace (/products)
-// is deliberately absent: its catalog is still empty, so linking to it sends
-// customers to a page showing zero results. Add it back once sellers have
-// listed stock.
+// The "buy things" side of the header: imported stock, vehicles, and the local
+// seller marketplace — three distinct supply lines, kept separate so a shopper
+// always knows who they're buying from.
 const ITEMS: MegaMenuItem[] = [
   {
     label: "Fotizo Shop",
@@ -17,6 +16,12 @@ const ITEMS: MegaMenuItem[] = [
     href: "/autos",
     description: "Changan, Jetour and Avatr vehicles imported to order, duty and papers handled.",
     icon: CarFront,
+  },
+  {
+    label: "Local Marketplace",
+    href: "/products",
+    description: "Buy directly from sellers here on Fotizo — no imports, no middleman.",
+    icon: Users,
   },
 ];
 

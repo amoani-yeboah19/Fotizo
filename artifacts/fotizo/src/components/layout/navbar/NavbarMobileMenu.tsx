@@ -44,12 +44,12 @@ export function NavbarMobileMenu({
           className="w-full pl-10 pr-4 py-3 bg-muted border border-transparent rounded-lg text-sm outline-none"
         />
       </div>
-      {/* Mirrors the desktop grouping: buy something, or hire someone. The local
-          seller Marketplace (/products) is omitted while its catalog is empty. */}
+      {/* Mirrors the desktop grouping: buy something, or hire someone. */}
       <nav className="flex flex-col gap-1">
         <p className={sectionClass}>Buy</p>
         <Link href="/shop" onClick={onClose}><span className={linkClass}>Fotizo Shop</span></Link>
         <Link href="/autos" onClick={onClose}><span className={linkClass}>Fotizo Autos</span></Link>
+        <Link href="/products" onClick={onClose}><span className={linkClass}>Local Marketplace</span></Link>
 
         <p className={`${sectionClass} mt-3`}>Hire</p>
         {SERVICE_GROUPS.map((group) => (

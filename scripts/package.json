@@ -6,7 +6,8 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "backfill-service-groups": "tsx ./src/backfill-service-groups.ts"
+    "backfill-service-groups": "tsx ./src/backfill-service-groups.ts",
+    "inspect-services": "tsx ./src/inspect-services.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",

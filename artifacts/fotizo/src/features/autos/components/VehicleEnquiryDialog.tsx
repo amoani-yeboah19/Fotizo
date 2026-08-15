@@ -42,6 +42,7 @@ export function VehicleEnquiryDialog({
         name: String(form.get("name") ?? "").trim(),
         email: String(form.get("email") ?? "").trim(),
         phone: String(form.get("phone") ?? "").trim(),
+        destination: String(form.get("destination") ?? "").trim(),
         message: String(form.get("message") ?? "").trim(),
       });
       setSubmitted(true);
@@ -71,7 +72,7 @@ export function VehicleEnquiryDialog({
             <DialogTitle className="mt-4 text-lg">Enquiry sent</DialogTitle>
             <DialogDescription className="mt-2">
               Thanks — our team will come back to you within one working day with a firm quote for
-              the {vehicleName(vehicle)}, including duty and registration.
+              the {vehicleName(vehicle)}, including freight and the duty for your country.
             </DialogDescription>
             <Button className="mt-6 w-full" onClick={() => handleOpenChange(false)}>
               Done
@@ -82,8 +83,9 @@ export function VehicleEnquiryDialog({
             <DialogHeader>
               <DialogTitle>Enquire about the {vehicleName(vehicle)}</DialogTitle>
               <DialogDescription>
-                Tell us how to reach you and we'll confirm the landed price, available colours and
-                the current lead time ({leadTimeLabel(vehicle)}). No payment is taken at this stage.
+                Tell us where it's going and how to reach you, and we'll confirm the landed price
+                for your country, available colours and the current lead time ({leadTimeLabel(vehicle)}).
+                No payment is taken at this stage.
               </DialogDescription>
             </DialogHeader>
 
@@ -114,6 +116,16 @@ export function VehicleEnquiryDialog({
                     defaultValue={user?.email ?? ""}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="enquiry-destination">Delivering to which country?</Label>
+                <Input
+                  id="enquiry-destination"
+                  name="destination"
+                  required
+                  placeholder="e.g. Ghana, Nigeria, UK"
+                />
               </div>
 
               <div className="space-y-1.5">

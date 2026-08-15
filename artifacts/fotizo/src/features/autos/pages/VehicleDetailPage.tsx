@@ -59,7 +59,7 @@ export default function VehicleDetailPage() {
       <div className="grid gap-10 lg:grid-cols-2">
         {/* Gallery */}
         <div>
-          <div className="aspect-[16/10] overflow-hidden rounded-2xl bg-muted">
+          <div className="aspect-16/10 overflow-hidden rounded-2xl bg-muted">
             <img
               loading="eager"
               decoding="async"
@@ -115,11 +115,11 @@ export default function VehicleDetailPage() {
 
           <div className="mt-6 rounded-2xl border border-border p-5">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-              Landed Accra, estimate
+              Estimate, incl. sea freight
             </p>
             <Price amount={vehicle.landedPrice} className="mt-1 block text-3xl font-extrabold text-foreground" />
             <p className="mt-1 text-xs text-muted-foreground">
-              Includes sea freight and duty. Binding quote confirmed on enquiry.
+              Excludes your country's duty and taxes. Binding quote confirmed on enquiry.
             </p>
 
             <p className="mt-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
