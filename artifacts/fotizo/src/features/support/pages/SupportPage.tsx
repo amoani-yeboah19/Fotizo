@@ -41,7 +41,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "Why does delivery take a few weeks?",
-    a: "Shop orders are consolidated at our Guangzhou hub and shipped to Ghana. Air freight is faster and costs more; sea freight is cheaper and slower. Consolidating is what keeps prices down — the trade-off is the wait.",
+    a: "Shop orders are consolidated at our sourcing hub in China and shipped to your country. Air freight is faster and costs more; sea freight is cheaper and slower. Consolidating is what keeps prices down — the trade-off is the wait.",
   },
   {
     q: "Can I get a refund?",

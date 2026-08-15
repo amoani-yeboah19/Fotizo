@@ -1,5 +1,6 @@
 import { Store, CarFront } from "lucide-react";
 import { NavMegaMenu, type MegaMenuItem } from "@/components/layout/navbar/NavMegaMenu";
+import { DELIVERY_WINDOWS } from "@/features/support/data/channels";
 
 // The "buy things" side of the header: the two storefronts we actively sell.
 // The local seller marketplace (/products) is intentionally not listed here —
@@ -9,7 +10,7 @@ const ITEMS: MegaMenuItem[] = [
   {
     label: "Fotizo Shop",
     href: "/shop",
-    description: "Everyday goods sourced from our China supplier network, delivered in 7–21 days.",
+    description: `Everyday goods sourced from our China supplier network, delivered in ${DELIVERY_WINDOWS.shop}.`,
     icon: Store,
   },
   {

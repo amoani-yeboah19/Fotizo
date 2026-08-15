@@ -31,10 +31,14 @@ export function hasAnyChannel(c: SupportChannel): boolean {
   return Boolean(c.whatsapp || c.phone || c.email);
 }
 
-// Delivery windows quoted to customers, kept here so the support page and the
-// shop's China notice can't drift apart.
+// Every delivery window we quote to a customer, in one place. The shop notice,
+// the support FAQ, How It Works, the About page and the nav all read from here
+// — otherwise the same promise drifts into four slightly different numbers and
+// support ends up arguing about which one the customer saw.
 export const DELIVERY_WINDOWS = {
   air: "5–10 days",
   sea: "2–3 weeks",
+  /** Headline range covering both freight modes, for short marketing copy. */
+  shop: "7–21 days",
   vehicles: "8–16 weeks",
 } as const;

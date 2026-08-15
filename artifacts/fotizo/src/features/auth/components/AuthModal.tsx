@@ -15,7 +15,7 @@ export type AuthView = "signin" | "join";
 const PERKS = [
   "Verified sellers & trusted professionals",
   "Quality products and work, done right",
-  "Buyers & talent across Ghana, the UK & the USA",
+  "Buyers & talent around the world",
 ];
 
 // Fiverr-style auth modal: navy brand panel on the left, email sign-in/join

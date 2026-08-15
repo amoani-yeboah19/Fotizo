@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { DELIVERY_WINDOWS } from "@/features/support/data/channels";
 
 // Shown every time a shopper opens the Fotizo Shop — on each visit and on each
 // return to the page — so it's always clear these items are imports from our
@@ -21,12 +22,14 @@ const POINTS = [
   {
     icon: Truck,
     title: "Ships from China",
-    body: "Orders are consolidated at our Guangzhou hub and flown or shipped to Accra.",
+    body: "Orders are consolidated at our sourcing hub and shipped to your country.",
   },
   {
     icon: Clock,
-    title: "7–21 day delivery",
-    body: "Air freight lands in about a week; sea freight takes up to three weeks.",
+    title: "Delivery windows",
+    // From the shared config so this notice, the support FAQ and How It Works
+    // can never quote different numbers at each other.
+    body: `Air freight lands in ${DELIVERY_WINDOWS.air}; sea freight takes ${DELIVERY_WINDOWS.sea}.`,
   },
   {
     icon: ShieldCheck,
