@@ -250,6 +250,40 @@ export function relatedShopProducts(product: ShopProduct, limit = 6): ShopProduc
   return SHOP_PRODUCTS.filter((p) => p.category === product.category && p.id !== product.id).slice(0, limit);
 }
 
+export interface ShopCategoryCard {
+  id: string;
+  label: string;
+  /** Cover art, taken from a product already in the category. */
+  image: string;
+  count: number;
+  href: string;
+}
+
+/**
+ * Shop departments that actually have stock, biggest first, each with a cover
+ * image lifted from one of its own products.
+ *
+ * Using a real product photo rather than a stock shot means the artwork can
+ * never misrepresent the department, needs no separate asset pipeline, and is
+ * guaranteed to load — every one of these URLs is already rendering elsewhere
+ * in the catalog. Empty departments are omitted: a card promising "Beauty"
+ * that opens an empty grid is worse than no card.
+ */
+export function shopCategoryCards(): ShopCategoryCard[] {
+  return SHOP_CATEGORIES.map((cat) => {
+    const items = SHOP_PRODUCTS.filter((p) => p.category === cat.id);
+    return {
+      id: cat.id,
+      label: cat.label,
+      image: items[0]?.image ?? "",
+      count: items.length,
+      href: `/shop?category=${cat.id}`,
+    };
+  })
+    .filter((c) => c.count > 0 && c.image)
+    .sort((a, b) => b.count - a.count);
+}
+
 export function categoryLabel(id: string): string {
   return SHOP_CATEGORIES.find((c) => c.id === id)?.label ?? id;
 }
