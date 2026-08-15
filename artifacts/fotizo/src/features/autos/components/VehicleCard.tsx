@@ -20,7 +20,7 @@ export const VehicleCard = memo(function VehicleCard({ vehicle }: { vehicle: Veh
   return (
     <Link href={`/autos/${vehicle.id}`}>
       <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-white transition-shadow hover:shadow-lg cursor-pointer">
-        <div className="relative aspect-[16/10] overflow-hidden bg-muted">
+        <div className="relative aspect-16/10 overflow-hidden bg-muted">
           <img
             loading="lazy"
             decoding="async"
@@ -65,7 +65,7 @@ export const VehicleCard = memo(function VehicleCard({ vehicle }: { vehicle: Veh
 
           <div className="mt-auto pt-4">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-              Landed Accra, est.
+              Est. incl. freight
             </p>
             <div className="mt-0.5 flex items-baseline justify-between gap-2">
               <Price amount={vehicle.landedPrice} className="text-xl font-extrabold text-foreground" />
