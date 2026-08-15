@@ -26,7 +26,6 @@ import { Fuel, BatteryCharging, Leaf } from "lucide-react";
 //   toyota-rav4:     "2022 MY Toyota RAV4 Hybrid facelift XA50", "TOYOTA RAV4 HYBRID (XA50) China" (CC BY-SA 4.0)
 //   audi-q5:         "2021 Audi Q5 45 TFSI Quattro front/rear", "2023 Audi Q5 quattro front" (CC BY-SA 4.0)
 //   landwind-x7:     "Landwind X7 facelift 003" (CC0), "Landwind X7 01 -- Auto Shanghai" (CC BY-SA 4.0)
-//   ford-ranger:     "Ford Ranger (T6, P703) Wildtrak IMG 7320 / 7323" (CC BY-SA 4.0)
 //   toyota-prado:    "2025 Toyota Land Cruiser Prado 250 2.4 Turbo … front left / rear left" (CC BY-SA 4.0)
 //   byd-seal:        "BYD Seal IAA 2023 1X7A0026 / 1X7A0371" (CC BY-SA 4.0)
 //   haval-h6:        "Great Wall Haval H6 Sanming 01", "2021 … China Chic Edition (front)" (CC BY-SA 4.0)
@@ -387,28 +386,6 @@ export const VEHICLES: Vehicle[] = [
   },
 
   // ── Pickups, premium marques and mainstream Japanese/Korean options ────────
-  {
-    id: "ford-ranger",
-    make: "Ford",
-    model: "Ranger Wildtrak",
-    bodyType: "pickup",
-    fuel: "petrol",
-    seats: 5,
-    transmission: "10-speed automatic",
-    drivetrain: "Selectable four-wheel drive",
-    powertrain: "2.0L bi-turbo diesel",
-    efficiency: "≈ 7.6 L/100km combined",
-    landedPrice: 32400,
-    leadTimeWeeks: [8, 14],
-    image: "https://upload.wikimedia.org/wikipedia/commons/2/28/Ford_Ranger_%28T6%2C_P703%29_Wildtrak_IMG_7320.jpg",
-    images: [
-      "https://upload.wikimedia.org/wikipedia/commons/2/28/Ford_Ranger_%28T6%2C_P703%29_Wildtrak_IMG_7320.jpg",
-      "https://upload.wikimedia.org/wikipedia/commons/5/57/Ford_Ranger_%28T6%2C_P703%29_Wildtrak_IMG_7323.jpg",
-    ],
-    highlights: ["Car-like to drive", "Best cabin in class", "10-speed auto"],
-    description:
-      "The Ranger does the pickup job without punishing you for it — the Wildtrak's cabin and ride are closer to an SUV than a work truck, and the bi-turbo diesel is smooth with the ten-speed box. The one to choose if it doubles as the family car.",
-  },
   {
     id: "toyota-land-cruiser-prado",
     make: "Toyota",
