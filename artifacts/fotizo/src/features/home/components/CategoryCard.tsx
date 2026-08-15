@@ -7,14 +7,17 @@ export const CARD_W = 280;
 export interface Category {
   id: string;
   name: string;
+  /** Small line above the title — item count, or a short descriptor. */
   count: string;
   image: string;
   accent: string;
+  /** Where the card goes. Always a real, filtered destination. */
+  href: string;
 }
 
 export function CategoryCard({ cat, index }: { cat: Category; index: number }) {
   return (
-    <Link href={`/products?category=${encodeURIComponent(cat.name)}`}>
+    <Link href={cat.href}>
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -23,7 +26,6 @@ export function CategoryCard({ cat, index }: { cat: Category; index: number }) {
         className="group relative shrink-0 snap-start cursor-pointer overflow-hidden rounded-3xl shadow-md hover:shadow-xl transition-shadow duration-300"
         style={{ width: CARD_W, height: 360 }}
       >
-        {/* image */}
         <img
           src={cat.image}
           alt={cat.name}
@@ -32,7 +34,6 @@ export function CategoryCard({ cat, index }: { cat: Category; index: number }) {
           decoding="async"
         />
 
-        {/* gradient overlay */}
         <div
           className="absolute inset-0 transition-opacity duration-300"
           style={{
@@ -40,21 +41,17 @@ export function CategoryCard({ cat, index }: { cat: Category; index: number }) {
           }}
         />
 
-        {/* content */}
         <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col gap-1">
           <span className="text-white/70 text-xs font-medium">{cat.count}</span>
           <h3 className="text-white text-lg font-bold leading-tight">{cat.name}</h3>
           <div className="flex items-center gap-1 mt-2 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
             <span className="text-white text-xs font-semibold">Shop now</span>
-            <ArrowRight className="w-3.5 h-3.5 text-white" />
+            <ArrowRight className="w-3.5 h-3.5 text-white" aria-hidden="true" />
           </div>
         </div>
 
-        {/* top tag */}
         <div className="absolute top-4 left-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full px-3 py-1">
-          <span className="text-white text-[10px] font-semibold uppercase tracking-wider">
-            {cat.name.split(" ")[0]}
-          </span>
+          <span className="text-white text-[10px] font-semibold uppercase tracking-wider">Shop</span>
         </div>
       </motion.div>
     </Link>
