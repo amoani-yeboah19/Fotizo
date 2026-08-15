@@ -29,6 +29,11 @@ const DashboardRepresentative = lazy(() => import("@/features/profile/pages/Repr
 const PostProduct = lazy(() => import("@/features/marketplace/pages/PostProductPage"));
 const OfferService = lazy(() => import("@/features/artisans/pages/OfferServicePage"));
 const SupportPage = lazy(() => import("@/features/support/pages/SupportPage"));
+const AboutPage = lazy(() => import("@/features/company/pages/AboutPage"));
+const HowItWorksPage = lazy(() => import("@/features/company/pages/HowItWorksPage"));
+const TrustSafetyPage = lazy(() => import("@/features/company/pages/TrustSafetyPage"));
+const TermsPage = lazy(() => import("@/features/company/pages/TermsPage"));
+const PrivacyPage = lazy(() => import("@/features/company/pages/PrivacyPage"));
 const GuidesPage = lazy(() => import("@/features/guides/pages/GuidesPage"));
 const GuideArticle = lazy(() => import("@/features/guides/pages/GuideArticlePage"));
 
@@ -54,6 +59,11 @@ export function AppRoutes() {
         <Route path="/services" component={ServicesPage} />
         <Route path="/services/:id" component={ServiceDetail} />
         <Route path="/support" component={SupportPage} />
+        <Route path="/about" component={AboutPage} />
+        <Route path="/how-it-works" component={HowItWorksPage} />
+        <Route path="/trust-safety" component={TrustSafetyPage} />
+        <Route path="/terms" component={TermsPage} />
+        <Route path="/privacy" component={PrivacyPage} />
         <Route path="/guides" component={GuidesPage} />
         <Route path="/guides/:slug" component={GuideArticle} />
         <Route path="/cart" component={CartPage} />
