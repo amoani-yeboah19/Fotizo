@@ -15,7 +15,7 @@ const ITEMS: MegaMenuItem[] = [
   {
     label: "Fotizo Autos",
     href: "/autos",
-    description: "Changan, Jetour and Avatr vehicles imported to order, duty and papers handled.",
+    description: "New vehicles imported to order and shipped worldwide, duty and papers handled.",
     icon: CarFront,
   },
 ];
