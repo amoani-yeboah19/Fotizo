@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Store, CarFront, Users, Globe2 } from "lucide-react";
 import { ContentPage, Section, Bullets } from "@/features/company/components/ContentPage";
+import { DELIVERY_WINDOWS } from "@/features/support/data/channels";
 
 // Written from what Fotizo demonstrably is today — three storefronts and a
 // sourcing operation — rather than aspirational marketing. Deliberately no
@@ -9,7 +10,7 @@ const ARMS = [
   {
     icon: Store,
     title: "Fotizo Shop",
-    body: "Everyday goods sourced through our supplier network in China, consolidated and shipped in 7–21 days.",
+    body: `Everyday goods sourced through our supplier network in China, consolidated and shipped in ${DELIVERY_WINDOWS.shop}.`,
     href: "/shop",
     cta: "Browse the shop",
   },
