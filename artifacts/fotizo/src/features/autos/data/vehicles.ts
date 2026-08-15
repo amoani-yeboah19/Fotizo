@@ -26,13 +26,13 @@ import { Fuel, BatteryCharging, Leaf } from "lucide-react";
 //   toyota-rav4:     "2022 MY Toyota RAV4 Hybrid facelift XA50", "TOYOTA RAV4 HYBRID (XA50) China" (CC BY-SA 4.0)
 //   audi-q5:         "2021 Audi Q5 45 TFSI Quattro front/rear", "2023 Audi Q5 quattro front" (CC BY-SA 4.0)
 //   landwind-x7:     "Landwind X7 facelift 003" (CC0), "Landwind X7 01 -- Auto Shanghai" (CC BY-SA 4.0)
-//   toyota-hilux:    "Toyota HiLux GR Sport 1X7A7281", "A Toyota Hilux pickup truck with a snowplow 01" (CC BY-SA 4.0)
 //   ford-ranger:     "Ford Ranger (T6, P703) Wildtrak IMG 7320 / 7323" (CC BY-SA 4.0)
 //   toyota-prado:    "2025 Toyota Land Cruiser Prado 250 2.4 Turbo … front left / rear left" (CC BY-SA 4.0)
 //   byd-seal:        "BYD Seal IAA 2023 1X7A0026 / 1X7A0371" (CC BY-SA 4.0)
 //   haval-h6:        "Great Wall Haval H6 Sanming 01", "2021 … China Chic Edition (front)" (CC BY-SA 4.0)
 //   hyundai-tucson:  "Hyundai Tucson (NX4) 1X7A0424", "2022 Hyundai Tucson SEL with HTRAC AWD" (CC BY-SA 4.0)
-//   mercedes-glc:    "Mercedes-Benz X254 1X7A6345", "Mercedes-AMG X254 43 IMG 9837" (CC BY-SA 4.0)
+//   toyota-camry:    "TOYOTA CAMRY (XV70) China", "Toyota Camry (XV70) IMG 9081" (CC BY-SA 4.0)
+//   honda-crv:       "2023 Honda CR-V EX-L AWD, front right", "Honda CR-V (6th generation) hybrid 1X7A0866" (CC BY-SA 4.0)
 
 export type FuelType = "petrol" | "hybrid" | "electric";
 export type BodyType = "suv" | "coupe-suv" | "sedan" | "pickup";
@@ -388,28 +388,6 @@ export const VEHICLES: Vehicle[] = [
 
   // ── Pickups, premium marques and mainstream Japanese/Korean options ────────
   {
-    id: "toyota-hilux",
-    make: "Toyota",
-    model: "Hilux",
-    bodyType: "pickup",
-    fuel: "petrol",
-    seats: 5,
-    transmission: "6-speed automatic",
-    drivetrain: "Selectable four-wheel drive",
-    powertrain: "2.8L turbo diesel",
-    efficiency: "≈ 8.0 L/100km combined",
-    landedPrice: 29800,
-    leadTimeWeeks: [8, 12],
-    image: "https://upload.wikimedia.org/wikipedia/commons/8/81/Toyota_HiLux_GR_Sport_1X7A7281.jpg",
-    images: [
-      "https://upload.wikimedia.org/wikipedia/commons/8/81/Toyota_HiLux_GR_Sport_1X7A7281.jpg",
-      "https://upload.wikimedia.org/wikipedia/commons/e/ec/A_Toyota_Hilux_pickup_truck_with_a_snowplow_01.jpg",
-    ],
-    highlights: ["Near-indestructible", "1-tonne payload", "Fixable anywhere"],
-    description:
-      "The pickup other pickups are measured against. A ladder-frame chassis, a diesel that will run on questionable fuel, and a reputation for surviving conditions that strand everything else. Buy it for work, not comfort — and expect it to outlast the business that bought it.",
-  },
-  {
     id: "ford-ranger",
     make: "Ford",
     model: "Ranger Wildtrak",
@@ -520,26 +498,48 @@ export const VEHICLES: Vehicle[] = [
       "The Tucson trades on design — the jewelled grille with hidden daytime running lights still stops people in car parks. Underneath it's a thoroughly conventional, well-built family SUV with Hyundai's long warranty and a service network that already exists in most markets.",
   },
   {
-    id: "mercedes-glc",
-    make: "Mercedes-Benz",
-    model: "GLC",
+    id: "toyota-camry",
+    make: "Toyota",
+    model: "Camry",
+    bodyType: "sedan",
+    fuel: "hybrid",
+    seats: 5,
+    transmission: "E-CVT",
+    drivetrain: "Front-wheel drive",
+    powertrain: "2.5L petrol hybrid",
+    efficiency: "≈ 4.7 L/100km combined",
+    landedPrice: 26400,
+    leadTimeWeeks: [8, 12],
+    image: "https://upload.wikimedia.org/wikipedia/commons/e/e1/TOYOTA_CAMRY_%28XV70%29_China.jpg",
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/e/e1/TOYOTA_CAMRY_%28XV70%29_China.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/e/ef/Toyota_Camry_%28XV70%29_IMG_9081.jpg",
+    ],
+    highlights: ["Executive comfort", "Self-charging hybrid", "Exceptional resale"],
+    description:
+      "The saloon people move up to. Quiet, comfortable and substantially bigger inside than a Corolla, with a self-charging hybrid that returns small-car fuel figures without ever needing a charging point. The default choice for executives, hire fleets and anyone doing serious mileage.",
+  },
+  {
+    id: "honda-crv",
+    make: "Honda",
+    model: "CR-V",
     bodyType: "suv",
     fuel: "hybrid",
     seats: 5,
-    transmission: "9-speed automatic",
-    drivetrain: "4MATIC all-wheel drive",
-    powertrain: "2.0L turbo petrol mild hybrid",
-    efficiency: "≈ 7.7 L/100km combined",
-    landedPrice: 61500,
-    leadTimeWeeks: [10, 16],
-    image: "https://upload.wikimedia.org/wikipedia/commons/8/8b/Mercedes-Benz_X254_1X7A6345.jpg",
+    transmission: "E-CVT",
+    drivetrain: "All-wheel drive",
+    powertrain: "2.0L petrol hybrid",
+    efficiency: "≈ 5.5 L/100km combined",
+    landedPrice: 30100,
+    leadTimeWeeks: [8, 12],
+    image: "https://upload.wikimedia.org/wikipedia/commons/1/1e/2023_Honda_CR-V_EX-L_AWD%2C_front_right%2C_11-13-2022.jpg",
     images: [
-      "https://upload.wikimedia.org/wikipedia/commons/8/8b/Mercedes-Benz_X254_1X7A6345.jpg",
-      "https://upload.wikimedia.org/wikipedia/commons/6/6c/Mercedes-AMG_X254_43_IMG_9837.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/1/1e/2023_Honda_CR-V_EX-L_AWD%2C_front_right%2C_11-13-2022.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/4/4d/Honda_CR-V_%286th_generation%29_hybrid_1X7A0866.jpg",
     ],
-    highlights: ["4MATIC all-wheel drive", "MBUX cabin", "The badge"],
+    highlights: ["Biggest boot in class", "Honda reliability", "No plug needed"],
     description:
-      "The most expensive thing we ship, and the one people buy with their eyes. Interior materials, refinement and the MBUX screen setup are a clear step beyond everything else here, with 4MATIC as standard. Servicing and parts cost accordingly — worth confirming what's available locally before you order.",
+      "The RAV4's oldest rival and its equal on reliability. Roomier in the back and the boot than almost anything at this size, with a self-charging hybrid drivetrain and Honda's reputation for engines that simply don't break. The sensible family SUV.",
   },
 ];
 
