@@ -30,6 +30,16 @@ export default function AutosPage() {
   const [fuel, setFuel] = useState<FuelFilter>(null);
 
   const makes = useMemo(() => vehicleMakes(), []);
+  // Built from the catalogue so the hero can't name a marque we've dropped, or
+  // miss one we've added — the exact drift that left "Changan, Jetour and
+  // Avatr" sitting there after five more makes arrived.
+  const makeList = useMemo(
+    () =>
+      makes.length > 1
+        ? `${makes.slice(0, -1).join(", ")} and ${makes[makes.length - 1]}`
+        : (makes[0] ?? "New vehicles"),
+    [makes],
+  );
   const bodyTypes = useMemo(() => vehicleBodyTypes(), []);
   const fuelTypes = useMemo(() => vehicleFuelTypes(), []);
 
@@ -61,9 +71,8 @@ export default function AutosPage() {
             Cars imported to order, anywhere
           </h1>
           <p className="mt-4 max-w-xl text-white/85">
-            Toyota, Audi, BYD, Changan, Jetour, Geely and Landwind — sourced new from the
-            manufacturer's export channel and shipped to your nearest port. Tell us the spec and the
-            destination, and we'll quote the landed price.
+            {makeList} — sourced new from the manufacturer's export channel and shipped to your
+            nearest port. Tell us the spec and the destination, and we'll quote the landed price.
           </p>
         </div>
       </section>
