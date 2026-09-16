@@ -4,7 +4,17 @@ import type { ServiceGroupId } from "@workspace/service-taxonomy";
 // Single source of truth for entities. When the backend contract lands, these should be
 // generated from / reconciled with the OpenAPI spec (see @workspace/api-zod).
 
-export type UserRole = "buyer" | "seller" | "manager" | "developer" | "representative";
+// "representative" is the USA regional rep (the selling side). "china_representative"
+// is the sourcing side — the Shop supplier network and the Autos import pipeline —
+// so the two have almost nothing in common beyond the word. The role id doubles as
+// the dashboard path (`/dashboard/${user.role}`), which is why it is not shortened.
+export type UserRole =
+  | "buyer"
+  | "seller"
+  | "manager"
+  | "developer"
+  | "representative"
+  | "china_representative";
 
 export interface User {
   id: string;

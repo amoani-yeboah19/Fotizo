@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "wouter";
 import { LayoutGrid, Search, Flame, Truck, ShieldCheck, PackageCheck } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
+import { Loading, ErrorState } from "@/components/common/QueryStates";
+import { useShopProducts } from "@/features/shop/hooks";
 import { ShopProductCard } from "@/features/shop/components/ShopProductCard";
 import { ChinaMarketDialog } from "@/features/shop/components/ChinaMarketDialog";
 import {
@@ -58,14 +60,17 @@ export default function ShopPage() {
     setActiveCat(categoryFromQuery(query));
   }, [query]);
 
-  const deals = useMemo(() => flashDeals(12), []);
+  const { data: catalogue, isLoading, isError } = useShopProducts();
+  const all = useMemo(() => catalogue ?? [], [catalogue]);
+
+  const deals = useMemo(() => flashDeals(all, 12), [all]);
 
   const products = useMemo(() => {
-    const base = shopProductsByCategory(activeCat);
+    const base = shopProductsByCategory(all, activeCat);
     const q = search.trim().toLowerCase();
     const filtered = q ? base.filter((p) => p.title.toLowerCase().includes(q)) : base;
     return sortProducts(filtered, sort);
-  }, [activeCat, sort, search]);
+  }, [all, activeCat, sort, search]);
 
   return (
     <PageLayout mainClassName="pt-20">
@@ -178,10 +183,18 @@ export default function ShopPage() {
         </div>
 
         {/* Product grid */}
-        {products.length === 0 ? (
+        {isLoading ? (
+          <Loading label="Loading the shop…" />
+        ) : isError ? (
+          <ErrorState label="The shop could not be loaded. Please try again." />
+        ) : products.length === 0 ? (
           <div className="py-20 text-center text-muted-foreground">
             <Search className="mx-auto mb-3 h-8 w-8 opacity-40" aria-hidden="true" />
-            <p>No products match your search.</p>
+            <p>
+              {all.length === 0
+                ? "No products are listed yet."
+                : "No products match your search."}
+            </p>
           </div>
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">

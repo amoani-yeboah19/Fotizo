@@ -1,4 +1,4 @@
-import { api, CATALOG_USE_MOCKS } from "@/api";
+import { api, CATALOG_USE_MOCKS, SELLER_CATALOG_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import * as fx from "@/services/mocks/fixtures";
 import type { Product, Category, SellerProduct, NewProductInput } from "@/types";
@@ -25,7 +25,7 @@ function localOnly(products: Product[]): Product[] {
 
 export const catalogService = {
   async createProduct(input: NewProductInput): Promise<Product> {
-    if (CATALOG_USE_MOCKS) {
+    if (SELLER_CATALOG_USE_MOCKS) {
       await delay();
       const id = `p-${Date.now()}`;
       const product: Product = {
@@ -76,6 +76,13 @@ export const catalogService = {
       await delay();
       return fx.products.find((p) => p.id === id) ?? null;
     }
+    // Mixed config (demo): a real public catalog alongside a mocked seller
+    // dashboard, so an id can belong to either side. Check the fixtures first —
+    // the seller's edit flow passes mock ids, and a real lookup would 404 on them.
+    if (SELLER_CATALOG_USE_MOCKS) {
+      const seeded = fx.products.find((p) => p.id === id);
+      if (seeded) return seeded;
+    }
     return api.get<Product>(`/products/${id}`);
   },
 
@@ -102,7 +109,7 @@ export const catalogService = {
   },
 
   async listSellerProducts(): Promise<SellerProduct[]> {
-    if (CATALOG_USE_MOCKS) {
+    if (SELLER_CATALOG_USE_MOCKS) {
       await delay();
       return fx.sellerProducts;
     }
@@ -110,7 +117,7 @@ export const catalogService = {
   },
 
   async updateProduct(id: string, input: Partial<NewProductInput>): Promise<Product> {
-    if (CATALOG_USE_MOCKS) {
+    if (SELLER_CATALOG_USE_MOCKS) {
       await delay();
       const idx = fx.products.findIndex((p) => p.id === id);
       if (idx === -1) throw new Error("Product not found.");
@@ -139,7 +146,7 @@ export const catalogService = {
 
   // Soft delete — hides the listing from the catalog rather than erasing it.
   async deleteProduct(id: string): Promise<void> {
-    if (CATALOG_USE_MOCKS) {
+    if (SELLER_CATALOG_USE_MOCKS) {
       await delay();
       const idx = fx.products.findIndex((p) => p.id === id);
       if (idx !== -1) fx.products.splice(idx, 1);

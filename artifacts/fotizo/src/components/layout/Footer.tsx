@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Facebook, Twitter, Instagram, Linkedin, Globe } from "lucide-react";
 import { SERVICE_CATEGORIES, serviceCategoryLabel } from "@workspace/service-taxonomy";
 import { CurrencySwitcher } from "@/components/layout/navbar/CurrencySwitcher";
-import { categoryLabel as shopCategoryLabel } from "@/features/shop/data/products";
+import { categoryLabel as shopCategoryLabel } from "@/features/shop/data/categories";
 
 interface FooterLink {
   label: string;
@@ -47,7 +47,6 @@ const COLUMNS: { heading: string; links: FooterLink[] }[] = [
       { label: "Fotizo Shop", href: "/shop" },
       { label: "Fotizo Autos", href: "/autos" },
       { label: "Hire a professional", href: "/services" },
-      { label: "Local marketplace", href: "/products" },
       { label: "How Fotizo works", href: "/how-it-works" },
     ],
   },

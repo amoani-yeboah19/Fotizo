@@ -38,6 +38,13 @@ export const DASHBOARD_NAV: Record<string, DashboardNavItem[]> = {
     { label: "US Orders", tab: "orders" },
     { label: "Approvals", tab: "approvals" },
   ],
+  china_representative: [
+    { label: "Overview", tab: "overview" },
+    { label: "Shop Supply", tab: "shop" },
+    { label: "Autos Pipeline", tab: "autos" },
+    { label: "Freight", tab: "freight" },
+    { label: "Suppliers", tab: "suppliers" },
+  ],
 };
 
 export function dashboardNavItems(role?: string): DashboardNavItem[] {
