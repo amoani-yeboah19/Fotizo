@@ -29,7 +29,6 @@ import {
   Hammer,
   Laptop,
   Car,
-  ChefHat,
   Snowflake,
   PawPrint,
   Scissors,
@@ -64,7 +63,6 @@ export const SHOP_CATEGORIES: ShopCategory[] = [
   { id: "improvement", label: "Home Improvement", icon: Hammer },
   { id: "computers", label: "Computers", icon: Laptop },
   { id: "car", label: "Car Accessories", icon: Car },
-  { id: "special-food", label: "Special Food", icon: ChefHat },
 ];
 
 export function categoryLabel(id: string): string {
