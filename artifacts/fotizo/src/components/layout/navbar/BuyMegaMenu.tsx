@@ -17,12 +17,12 @@ const ITEMS: MegaMenuItem[] = [
   },
   {
     label: "Fotizo Marketplace",
-    href: "/products",
+    href: "https://fotizo.vercel.app/products",
     description: "Browse local seller listings and community marketplace products in one place.",
     icon: StoreIcon,
   },
 ];
 
 export function BuyMegaMenu() {
-  return <NavMegaMenu label="Shop" href="/shop" items={ITEMS} />;
+  return <NavMegaMenu label="Shop" href="/shop" items={ITEMS} showMenu={false} />;
 }
