@@ -46,9 +46,10 @@ export function NavbarMobileMenu({
       </div>
       {/* Mirrors the desktop grouping: buy something, or hire someone. */}
       <nav className="flex flex-col gap-1">
-        <p className={sectionClass}>Buy</p>
+        <p className={sectionClass}>Shop</p>
         <Link href="/shop" onClick={onClose}><span className={linkClass}>Fotizo Shop</span></Link>
         <Link href="/autos" onClick={onClose}><span className={linkClass}>Fotizo Autos</span></Link>
+        <Link href="https://fotizo.vercel.app/products" onClick={onClose}><span className={linkClass}>Fotizo Marketplace</span></Link>
 
         <p className={`${sectionClass} mt-3`}>Hire</p>
         {SERVICE_GROUPS.map((group) => (
