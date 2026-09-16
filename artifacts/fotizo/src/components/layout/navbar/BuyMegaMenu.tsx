@@ -24,5 +24,5 @@ const ITEMS: MegaMenuItem[] = [
 ];
 
 export function BuyMegaMenu() {
-  return <NavMegaMenu label="Shop" href="/shop" items={ITEMS} />;
+  return <NavMegaMenu label="Shop" href="/shop" items={ITEMS} showMenu={false} />;
 }

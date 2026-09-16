@@ -16,12 +16,26 @@ export function NavMegaMenu({
   href,
   items,
   footer,
+  showMenu = true,
 }: {
   label: string;
   href: string;
   items: MegaMenuItem[];
   footer?: { text: string; linkText: string; href: string };
+  showMenu?: boolean;
 }) {
+  if (!showMenu) {
+    return (
+      <div className="relative">
+        <Link href={href}>
+          <span className="flex items-center gap-1 py-8 text-sm font-medium text-foreground transition-colors hover:text-primary cursor-pointer">
+            {label}
+          </span>
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="relative group">
       <Link href={href}>
