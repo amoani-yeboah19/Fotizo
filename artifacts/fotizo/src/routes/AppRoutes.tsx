@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { Switch, Route } from "wouter";
 import { Loading } from "@/components/common/QueryStates";
 import NotFound from "@/routes/NotFound";
+import { DEMO_MODE } from "@/api";
 
 // Route-level code splitting: each page (and its heavy deps like recharts on the
 // dashboards) loads only when its route is visited.
@@ -26,6 +27,7 @@ const DashboardSeller = lazy(() => import("@/features/profile/pages/SellerDashbo
 const DashboardManager = lazy(() => import("@/features/profile/pages/ManagerDashboard"));
 const DashboardDeveloper = lazy(() => import("@/features/profile/pages/DeveloperDashboard"));
 const DashboardRepresentative = lazy(() => import("@/features/profile/pages/RepresentativeDashboard"));
+const DashboardChinaRepresentative = lazy(() => import("@/features/profile/pages/ChinaRepresentativeDashboard"));
 const PostProduct = lazy(() => import("@/features/marketplace/pages/PostProductPage"));
 const OfferService = lazy(() => import("@/features/artisans/pages/OfferServicePage"));
 const SupportPage = lazy(() => import("@/features/support/pages/SupportPage"));
@@ -36,6 +38,17 @@ const TermsPage = lazy(() => import("@/features/company/pages/TermsPage"));
 const PrivacyPage = lazy(() => import("@/features/company/pages/PrivacyPage"));
 const GuidesPage = lazy(() => import("@/features/guides/pages/GuidesPage"));
 const GuideArticle = lazy(() => import("@/features/guides/pages/GuideArticlePage"));
+// Demo-build only: role picker that signs a reviewer into any dashboard.
+//
+// The env check is written inline rather than via the DEMO_MODE re-export because
+// Vite substitutes `import.meta.env.VITE_DEMO_MODE` with a literal at build time.
+// That makes the whole ternary dead code in a normal build, so Rollup drops the
+// dynamic import and never emits the chunk. Going through the imported constant
+// leaves the import reachable and ships the page into production untouched.
+const DemoLanding =
+  import.meta.env.VITE_DEMO_MODE === "true"
+    ? lazy(() => import("@/features/demo/pages/DemoLandingPage"))
+    : null;
 
 export function AppRoutes() {
   return (
@@ -79,6 +92,8 @@ export function AppRoutes() {
         <Route path="/dashboard/manager" component={DashboardManager} />
         <Route path="/dashboard/developer" component={DashboardDeveloper} />
         <Route path="/dashboard/representative" component={DashboardRepresentative} />
+        <Route path="/dashboard/china_representative" component={DashboardChinaRepresentative} />
+        {DEMO_MODE && DemoLanding && <Route path="/demo" component={DemoLanding} />}
         <Route component={NotFound} />
       </Switch>
     </Suspense>

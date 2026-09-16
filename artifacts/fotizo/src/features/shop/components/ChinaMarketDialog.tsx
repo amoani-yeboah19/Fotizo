@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Globe2, Truck, ShieldCheck, Clock } from "lucide-react";
 import {
@@ -12,11 +12,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { DELIVERY_WINDOWS } from "@/features/support/data/channels";
 
-// Shown every time a shopper opens the Fotizo Shop — on each visit and on each
-// return to the page — so it's always clear these items are imports from our
-// China supplier network rather than listings from local sellers. Deliberately
-// not remembered across visits: the delivery-window expectation is the whole
-// point, and someone who skimmed it the first time still needs it the second.
+// Shown once per browsing session when a shopper opens the Fotizo Shop, so it's
+// clear these items are imports from our China supplier network rather than
+// listings from local sellers.
+//
+// Once per SESSION, not once per mount: ShopPage remounts on every return to
+// it, so opening a product and pressing back used to put this dialog in the
+// way again — the shopper had dismissed it seconds earlier and was sent back to
+// the start of the shop instead of the grid they left. It still reappears in a
+// new session, so the delivery-window expectation is never silently dropped for
+// someone coming back another day.
 
 const POINTS = [
   {
@@ -38,11 +43,37 @@ const POINTS = [
   },
 ];
 
+const SEEN_KEY = "fotizo.shop.china-notice-seen";
+
+// sessionStorage throws outright in some privacy modes, so every access is
+// guarded. Failing to read is treated as "not seen" — showing the notice once
+// more is harmless, whereas suppressing it would hide the import terms.
+function seenThisSession(): boolean {
+  try {
+    return sessionStorage.getItem(SEEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markSeen() {
+  try {
+    sessionStorage.setItem(SEEN_KEY, "1");
+  } catch {
+    // Storage unavailable — the notice simply shows again next time.
+  }
+}
+
 export function ChinaMarketDialog() {
   const [, setLocation] = useLocation();
-  // Open on every mount. ShopPage mounts this fresh each time it's routed to,
-  // so leaving the shop and coming back shows the notice again.
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(() => !seenThisSession());
+
+  // Recorded when it is shown rather than when it is dismissed, so navigating
+  // away with it still open (browser back, or "Shop local instead") also counts
+  // as having seen it. Otherwise that route back into the shop reopens it.
+  useEffect(() => {
+    if (open) markSeen();
+  }, [open]);
 
   const dismiss = () => setOpen(false);
 

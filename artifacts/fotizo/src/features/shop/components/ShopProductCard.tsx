@@ -69,14 +69,21 @@ export const ShopProductCard = memo(function ShopProductCard({ product }: { prod
             )}
           </div>
 
-          <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span className="inline-flex items-center gap-0.5">
-              <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden="true" />
-              {product.rating.toFixed(1)}
-            </span>
-            <span>·</span>
-            <span>{soldLabel(product.sold)}</span>
-          </div>
+          {/* Supplier-imported listings carry no rating or units-sold yet. Showing
+              "0.0 · 0 sold" reads as a bad product rather than missing data, so the
+              row only renders once there is something real to report. */}
+          {(product.rating > 0 || product.sold > 0) && (
+            <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+              {product.rating > 0 && (
+                <span className="inline-flex items-center gap-0.5">
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden="true" />
+                  {product.rating.toFixed(1)}
+                </span>
+              )}
+              {product.rating > 0 && product.sold > 0 && <span>·</span>}
+              {product.sold > 0 && <span>{soldLabel(product.sold)}</span>}
+            </div>
+          )}
 
           {product.freeShipping && (
             <span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">

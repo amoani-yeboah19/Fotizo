@@ -2,11 +2,17 @@ import { pgTable, pgEnum, uuid, text, boolean, timestamp } from "drizzle-orm/pg-
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
+// Staff roles are never self-assignable at signup (see routes/auth.ts) — they
+// are set server-side. "representative" is the USA regional rep;
+// "china_representative" owns the sourcing side and is the account the imported
+// shop catalogue is listed under, so it needs to own products like a seller.
 export const userRoleEnum = pgEnum("user_role", [
   "buyer",
   "seller",
   "manager",
   "developer",
+  "representative",
+  "china_representative",
 ]);
 
 export const usersTable = pgTable("users", {

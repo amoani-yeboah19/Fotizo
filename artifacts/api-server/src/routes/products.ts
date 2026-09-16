@@ -6,6 +6,12 @@ import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAu
 
 const router: IRouter = Router();
 
+// Roles allowed to own a listing. Sellers are the marketplace side;
+// china_representative is Fotizo's own sourcing account, which the imported
+// shop catalogue is listed under. Everything else (buyer, manager, developer,
+// the USA representative) is read-only here.
+const PRODUCT_OWNER_ROLES = new Set(["seller", "china_representative"]);
+
 const newProductSchema = z.object({
   title: z.string().trim().min(3).max(200),
   category: z.string().trim().min(1).max(80),
@@ -106,8 +112,8 @@ router.get("/products/:id/related", async (req, res) => {
 // Role is enforced server-side, same as auth's signup restriction — a client
 // can't just claim to be a seller by editing the request body.
 router.post("/products", requireAuth, async (req: AuthenticatedRequest, res) => {
-  if (req.auth!.role !== "seller") {
-    res.status(403).json({ error: "Only seller accounts can list products." });
+  if (!PRODUCT_OWNER_ROLES.has(req.auth!.role)) {
+    res.status(403).json({ error: "This account type cannot list products." });
     return;
   }
 

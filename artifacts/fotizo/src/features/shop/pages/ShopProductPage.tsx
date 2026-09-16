@@ -3,13 +3,14 @@ import { useRoute, useLocation, Link } from "wouter";
 import { Star, Truck, ShieldCheck, Flame, Minus, Plus, ShoppingCart, ChevronRight } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { EmptyState } from "@/components/common/EmptyState";
+import { Loading } from "@/components/common/QueryStates";
+import { useShopProduct, useShopProducts } from "@/features/shop/hooks";
 import { Button } from "@/components/ui/button";
 import { Price } from "@/components/common/Price";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { ShopProductCard, SHOP_SELLER } from "@/features/shop/components/ShopProductCard";
 import {
-  getShopProduct,
   relatedShopProducts,
   discountPct,
   soldLabel,
@@ -22,9 +23,21 @@ export default function ShopProductPage() {
   const { addItem } = useCart();
   const { toast } = useToast();
 
-  const product = params?.id ? getShopProduct(params.id) : undefined;
+  // Both queries run unconditionally so hook order stays stable across the
+  // loading and not-found returns below. The catalogue is already cached by the
+  // shop grid, so "related items" costs nothing extra on a normal journey in.
+  const { data: product, isLoading } = useShopProduct(params?.id ?? "");
+  const { data: catalogue } = useShopProducts();
   const [activeImg, setActiveImg] = useState(0);
   const [qty, setQty] = useState(1);
+
+  if (isLoading) {
+    return (
+      <PageLayout footer={false} mainClassName="container-app py-28">
+        <Loading label="Loading product…" />
+      </PageLayout>
+    );
+  }
 
   if (!product) {
     return (
@@ -58,7 +71,7 @@ export default function ShopProductPage() {
     }
   };
 
-  const related = relatedShopProducts(product);
+  const related = relatedShopProducts(catalogue ?? [], product);
 
   return (
     <PageLayout mainClassName="container-app py-24 md:py-28">

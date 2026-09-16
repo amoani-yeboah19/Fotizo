@@ -1,8 +1,9 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { CategoryCard, CARD_W, type Category } from "@/features/home/components/CategoryCard";
 import { shopCategoryCards } from "@/features/shop/data/products";
+import { useShopProducts } from "@/features/shop/hooks";
 
 // Cover art is the first product photo in each department, so the artwork can
 // never advertise something the department doesn't stock, and there's no second
@@ -17,16 +18,24 @@ const ACCENTS = [
   "#0D2A4A", "#1A1A2E", "#3D1F0D", "#123040", "#3A2233", "#2C3038",
 ];
 
-const CATEGORIES: Category[] = shopCategoryCards().map((c, i) => ({
-  id: c.id,
-  name: c.label,
-  count: `${c.count} ${c.count === 1 ? "item" : "items"}`,
-  image: c.image,
-  accent: ACCENTS[i % ACCENTS.length],
-  href: c.href,
-}));
+function toCards(products: Parameters<typeof shopCategoryCards>[0]): Category[] {
+  return shopCategoryCards(products).map((c, i) => ({
+    id: c.id,
+    name: c.label,
+    count: `${c.count} ${c.count === 1 ? "item" : "items"}`,
+    image: c.image,
+    accent: ACCENTS[i % ACCENTS.length],
+    href: c.href,
+  }));
+}
 
 export function Categories() {
+  // Built from the same catalogue the shop renders, so the counts on these
+  // cards can never claim stock the department does not have. Falls back to the
+  // committed catalogue until the query resolves.
+  const { data: catalogue } = useShopProducts();
+  const CATEGORIES = useMemo(() => toCards(catalogue), [catalogue]);
+
   const trackRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);

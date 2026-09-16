@@ -27,6 +27,31 @@ export const CATALOG_USE_MOCKS =
 export const ORDERS_USE_MOCKS =
   (import.meta.env.VITE_USE_MOCK_ORDERS ?? import.meta.env.VITE_USE_MOCKS ?? "true") !== "false";
 
+// VITE_USE_MOCK_SELLER_CATALOG — the seller's own listings (/seller/products and the
+// post/edit/remove mutations), split out from the public catalog above.
+//
+// Those endpoints are session-scoped, while browsing products is not. A demo build
+// signs in through mock auth, so it holds no backend session and any real call here
+// would 401 — yet it still wants the public catalog to serve genuine listings. Falls
+// back to VITE_USE_MOCK_CATALOG when unset, so every existing config is unchanged.
+export const SELLER_CATALOG_USE_MOCKS =
+  (import.meta.env.VITE_USE_MOCK_SELLER_CATALOG ??
+    import.meta.env.VITE_USE_MOCK_CATALOG ??
+    import.meta.env.VITE_USE_MOCKS ??
+    "true") !== "false";
+
+// VITE_USE_MOCK_SHOP — the Fotizo Shop storefront (the departments, not the
+// seller marketplace). Defaults to TRUE independently of VITE_USE_MOCKS.
+//
+// The shop is the one surface still served from a committed file
+// (features/shop/data/products.ts). The catalogue has been seeded into the
+// database — owned by the china_representative account — but it lands as
+// "unpublished" because its prices come from a placeholder markup, and public
+// reads filter on status = "active". Flipping this to "false" before those
+// listings are priced and published would empty the shop, so it stays on mocks
+// until someone deliberately turns it off.
+export const SHOP_USE_MOCKS = (import.meta.env.VITE_USE_MOCK_SHOP ?? "true") !== "false";
+
 export const ARTISANS_USE_MOCKS =
   (import.meta.env.VITE_USE_MOCK_ARTISANS ?? import.meta.env.VITE_USE_MOCKS ?? "true") !== "false";
 
@@ -38,3 +63,9 @@ export const AUTOS_USE_MOCKS =
 
 export const SUPPORT_USE_MOCKS =
   (import.meta.env.VITE_USE_MOCK_SUPPORT ?? import.meta.env.VITE_USE_MOCKS ?? "true") !== "false";
+
+// VITE_DEMO_MODE — "true" only in the shareable demo build (`vite build --mode demo`,
+// see .env.demo). It adds the /demo role-picker route so a reviewer can drop straight
+// into any role's dashboard without needing a real account. Unset everywhere else, so
+// the route does not exist in the production bundle.
+export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
