@@ -43,8 +43,9 @@ const STEP_FIELDS: Record<number, (keyof FormValues)[]> = {
 
 export default function PostProductPage() {
   const [, setLocation] = useLocation();
-  const [isEditRoute, editParams] = useRoute("/dashboard/seller/products/:id/edit");
-  const editingId = isEditRoute ? editParams?.id : undefined;
+  const [isSellerEditRoute, sellerEditParams] = useRoute("/dashboard/seller/products/:id/edit");
+  const [isChinaEditRoute, chinaEditParams] = useRoute("/dashboard/china_representative/products/:id/edit");
+  const editingId = isSellerEditRoute ? sellerEditParams?.id : isChinaEditRoute ? chinaEditParams?.id : undefined;
   const { user } = useAuth();
   const { toast } = useToast();
   const createProduct = useCreateProduct();
@@ -133,7 +134,9 @@ export default function PostProductPage() {
         const created = await createProduct.mutateAsync(input);
         toast({ title: "Product published!", description: `${created.title} is now live on Fotizo.` });
       }
-      setLocation("/dashboard/seller");
+      const dashboardBase =
+        user?.role === "china_representative" ? "/dashboard/china_representative" : "/dashboard/seller";
+      setLocation(dashboardBase);
     } catch {
       toast({
         variant: "destructive",
@@ -163,11 +166,14 @@ export default function PostProductPage() {
       <div className="mx-auto max-w-2xl">
         <header className="mb-8">
           <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-            <Package className="w-3.5 h-3.5" aria-hidden="true" /> Seller tools
+            <Package className="w-3.5 h-3.5" aria-hidden="true" />
+            {user?.role === "china_representative" ? "China desk inventory" : "Seller tools"}
           </span>
-          <h1 className="heading-page text-foreground mt-3">{editingId ? "Edit product" : "Post a product"}</h1>
+          <h1 className="heading-page text-foreground mt-3">{editingId ? "Edit live shop product" : "Publish a shop product"}</h1>
           <p className="text-muted-foreground mt-1">
-            {editingId ? "Update your listing on the Fotizo marketplace." : "List a new product on the Fotizo marketplace."}
+            {editingId
+              ? "Update the live Fotizo shop listing that shoppers see on the storefront."
+              : "Create a new product for the live Fotizo shop catalogue and publish it to the storefront."}
           </p>
         </header>
 

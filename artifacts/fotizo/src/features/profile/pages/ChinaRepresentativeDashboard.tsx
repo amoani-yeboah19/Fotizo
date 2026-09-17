@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
@@ -418,17 +419,30 @@ export default function ChinaRepresentativeDashboard() {
 
   return (
     <DashboardLayout sidebar={sidebar}>
-      <header className="mb-8 flex items-center gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Factory className="w-5 h-5" aria-hidden="true" />
-        </span>
-        <div>
-          <h1 className="heading-page text-foreground">China Representative</h1>
-          <p className="text-muted-foreground mt-0.5">
-            Sourcing and export for Fotizo Shop and Fotizo Autos · China 🇨🇳
-          </p>
+      <header className="mb-8 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Factory className="w-5 h-5" aria-hidden="true" />
+          </span>
+          <div>
+            <h1 className="heading-page text-foreground">China Representative</h1>
+            <p className="text-muted-foreground mt-0.5">
+              Live shop source of truth for Fotizo Shop and Fotizo Autos · China 🇨🇳
+            </p>
+          </div>
         </div>
+
+        <Link href="/dashboard/china_representative/products/new">
+          <Button className="gap-2">
+            <Boxes className="w-4 h-4" aria-hidden="true" />
+            Add live shop item
+          </Button>
+        </Link>
       </header>
+
+      <div className="mb-6 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+        This dashboard manages the live Fotizo shop catalogue and is the source-of-truth for products sold on the storefront.
+      </div>
 
       {section === "overview" && (
         <>

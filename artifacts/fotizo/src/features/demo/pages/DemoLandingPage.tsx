@@ -179,13 +179,11 @@ export default function DemoLandingPage() {
         <SurfaceCard className="p-4 mb-8 border-l-4 border-l-amber-500">
           <p className="text-sm text-muted-foreground">
             <span className="font-semibold text-foreground">
-              The storefront is real; the dashboards are sample data.
+              This preview is for role access testing, not production data entry.
             </span>{" "}
-            The shop, marketplace listings and services directory come from the live Fotizo
-            backend, so what you see there is genuine. The dashboards run on sample records
-            instead, because four of these roles have no real account to sign into. Editing,
-            deleting and posting from a dashboard is safe — none of it reaches live data, and a
-            refresh puts it back.
+            The live storefront is separate from the role dashboards. Use this page only to jump to
+            a specific role and verify the dashboard flow before the real account and source-data
+            setup is live.
           </p>
         </SurfaceCard>
 

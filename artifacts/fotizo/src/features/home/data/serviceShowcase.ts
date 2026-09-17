@@ -12,7 +12,6 @@ import {
 // The trade photographs are Creative Commons stand-ins (no free stock library
 // carries Ghanaian trade photography); swap them for your own shoot when you
 // have one. Credits, required by the BY licences:
-//   hairdressing: "'Quick!! I need a model...'" by Jaako (by) — https://www.flickr.com/photos/56944727@N00/267975094
 //   nail-tech: "Degradê" by Lelê Breveglieri (by) — https://www.flickr.com/photos/52215361@N02/7903657610
 //   lash-tech: "facial" by Zenspa1 (by) — https://www.flickr.com/photos/93609956@N05/9865582355
 //   makeup-artistry: "Makeup Design: Hair Laying/Ventilating/Wigs" by vancouverfilmschool (by) — https://www.flickr.com/photos/38174668@N05/4689344842
@@ -51,7 +50,7 @@ const SHOWCASE: ShowcaseCategory[] = [
   { id: "lash-tech", image: "https://live.staticflickr.com/2888/9865582355_df71d00c02_b.jpg", accent: "#2A2438" },
   { id: "welding-fabrication", image: "https://live.staticflickr.com/7247/7649438312_7ef364fca4_b.jpg", accent: "#1A2430" },
   { id: "photography", image: UNSPLASH("photo-1502920917128-1aa500764cbd"), accent: "#1A3A2A" },
-  { id: "makeup-artistry", image: UNSPLASH("photo-1522335789203-aabd1fc54bc9"), accent: "#3D1F2B" },
+  { id: "makeup-artistry", image: UNSPLASH("photo-1524504388940-b1c1722653e1"), accent: "#3D1F2B" },
   { id: "painting-decorating", image: "https://live.staticflickr.com/2111/1813415211_59a7ced74a.jpg", accent: "#14304A" },
   { id: "cleaning-services", image: UNSPLASH("photo-1581578731548-c64695cc6952"), accent: "#123A3A" },
   { id: "video-animation", image: UNSPLASH("photo-1574717024653-61fd2cf4d44d"), accent: "#3D1F0D" },

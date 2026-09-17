@@ -41,16 +41,15 @@ export const SELLER_CATALOG_USE_MOCKS =
     "true") !== "false";
 
 // VITE_USE_MOCK_SHOP — the Fotizo Shop storefront (the departments, not the
-// seller marketplace). Defaults to TRUE independently of VITE_USE_MOCKS.
+// seller marketplace). Defaults to FALSE so the live shop inventory is used by
+// default and the China representative remains the source-of-truth for the
+// catalogue that shoppers see.
 //
-// The shop is the one surface still served from a committed file
-// (features/shop/data/products.ts). The catalogue has been seeded into the
-// database — owned by the china_representative account — but it lands as
-// "unpublished" because its prices come from a placeholder markup, and public
-// reads filter on status = "active". Flipping this to "false" before those
-// listings are priced and published would empty the shop, so it stays on mocks
-// until someone deliberately turns it off.
-export const SHOP_USE_MOCKS = (import.meta.env.VITE_USE_MOCK_SHOP ?? "true") !== "false";
+// The real Fotizo shop is not a mock catalogue: it is the live stock that is
+// sold through the storefront. The database catalog is already seeded under the
+// china_representative account and should be read as production data unless a
+// deliberate mock override is required for an offline demo.
+export const SHOP_USE_MOCKS = (import.meta.env.VITE_USE_MOCK_SHOP ?? "false") !== "false";
 
 export const ARTISANS_USE_MOCKS =
   (import.meta.env.VITE_USE_MOCK_ARTISANS ?? import.meta.env.VITE_USE_MOCKS ?? "true") !== "false";

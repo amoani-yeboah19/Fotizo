@@ -84,7 +84,6 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
 
   // ── Artisans & Trades ──────────────────────────────────────────────────────
   { id: "barbering", label: "Barbering", group: "artisans", aliases: ["barber", "haircut", "fade", "shave"] },
-  { id: "hairdressing", label: "Hairdressing & Braiding", group: "artisans", aliases: ["hairstylist", "salon", "braids", "weave", "locs"] },
   { id: "nail-tech", label: "Nail Technician", group: "artisans", aliases: ["nail tech", "manicure", "pedicure", "acrylics", "gel"] },
   { id: "lash-tech", label: "Lash & Brow Technician", group: "artisans", aliases: ["lash tech", "eyelash extensions", "microblading", "brows"] },
   { id: "makeup-artistry", label: "Makeup Artistry", group: "artisans", aliases: ["mua", "makeup artist", "bridal makeup", "beautician"] },
