@@ -5,10 +5,9 @@ import { CategoryCard, CARD_W, type Category } from "@/features/home/components/
 import { shopCategoryCards } from "@/features/shop/data/products";
 import { useShopProducts } from "@/features/shop/hooks";
 
-// Cover art is the first product photo in each department, so the artwork can
-// never advertise something the department doesn't stock, and there's no second
-// asset pipeline to keep in sync. Departments with no stock are left out
-// entirely by shopCategoryCards().
+// Cover art is intentionally curated per department so the homepage cards
+// reflect the category theme instead of a random product photo. Departments with
+// no stock are left out entirely by shopCategoryCards().
 //
 // Accents are the gradient scrim colour only — a deep, desaturated palette that
 // keeps the white title legible over any photo. Assigned by position so the

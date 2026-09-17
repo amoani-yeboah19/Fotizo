@@ -18,7 +18,6 @@ const TRENDING = [
   { label: "Fotizo Autos", href: "/autos" },
   { label: "Wigs & Hair", href: "/shop?category=wigs" },
   { label: "Braiding Hair", href: "/shop?category=wigs" },
-  { label: "Hairdressing", href: "/services?category=hairdressing" },
   { label: "Web Development", href: "/services?category=web-development" },
   { label: "Fashion & Tailoring", href: "/services?category=fashion-design" },
 ];
