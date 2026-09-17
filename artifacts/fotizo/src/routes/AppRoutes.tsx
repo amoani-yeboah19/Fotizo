@@ -22,6 +22,7 @@ const CheckoutPage = lazy(() => import("@/features/payments/pages/CheckoutPage")
 const OrderConfirmation = lazy(() => import("@/features/payments/pages/OrderConfirmationPage"));
 const MessagesPage = lazy(() => import("@/features/messaging/pages/MessagesPage"));
 const MessageThread = lazy(() => import("@/features/messaging/pages/MessageThreadPage"));
+const DashboardLanding = lazy(() => import("@/features/profile/pages/DashboardLandingPage"));
 const DashboardBuyer = lazy(() => import("@/features/profile/pages/BuyerDashboard"));
 const DashboardSeller = lazy(() => import("@/features/profile/pages/SellerDashboard"));
 const DashboardManager = lazy(() => import("@/features/profile/pages/ManagerDashboard"));
@@ -84,6 +85,7 @@ export function AppRoutes() {
         <Route path="/order-confirmation" component={OrderConfirmation} />
         <Route path="/messages" component={MessagesPage} />
         <Route path="/messages/:id" component={MessageThread} />
+        <Route path="/dashboard" component={DashboardLanding} />
         <Route path="/dashboard/buyer" component={DashboardBuyer} />
         <Route path="/dashboard/seller/products/new" component={PostProduct} />
         <Route path="/dashboard/seller/products/:id/edit" component={PostProduct} />
