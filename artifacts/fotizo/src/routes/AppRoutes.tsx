@@ -89,6 +89,8 @@ export function AppRoutes() {
         <Route path="/dashboard/buyer" component={DashboardBuyer} />
         <Route path="/dashboard/seller/products/new" component={PostProduct} />
         <Route path="/dashboard/seller/products/:id/edit" component={PostProduct} />
+        <Route path="/dashboard/china_representative/products/new" component={PostProduct} />
+        <Route path="/dashboard/china_representative/products/:id/edit" component={PostProduct} />
         <Route path="/dashboard/seller/services/new" component={OfferService} />
         <Route path="/dashboard/seller" component={DashboardSeller} />
         <Route path="/dashboard/manager" component={DashboardManager} />
