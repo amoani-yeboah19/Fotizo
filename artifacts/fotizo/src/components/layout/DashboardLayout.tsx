@@ -1,7 +1,6 @@
-import { ReactNode, useEffect } from "react";
-import { useLocation } from "wouter";
+import { ReactNode } from "react";
 import { Navbar } from "@/components/layout/Navbar";
-import { useAuth } from "@/contexts/AuthContext";
+
 
 // Dashboard shell. Owns the auth guard so individual dashboards no longer repeat it.
 export function DashboardLayout({
@@ -11,15 +10,6 @@ export function DashboardLayout({
   sidebar: ReactNode;
   children: ReactNode;
 }) {
-  const { isAuthenticated, user } = useAuth();
-  const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (!isAuthenticated) setLocation("/login");
-  }, [isAuthenticated, setLocation]);
-
-  if (!user) return null;
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />

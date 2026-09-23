@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Router as WouterRouter } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SessionScope, SessionNotice } from "@/contexts/SessionScope";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,15 +10,6 @@ import { CartProvider } from "@/contexts/CartContext";
 import { MessagesProvider } from "@/contexts/MessagesContext";
 import { AppRoutes } from "@/routes/AppRoutes";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60_000,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -33,9 +24,10 @@ function GoogleAuthWrapper({ children }: { children: ReactNode }) {
 function App() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
         <GoogleAuthWrapper>
         <AuthProvider>
+        <SessionNotice />
+        <SessionScope>
         <CurrencyProvider>
           <CartProvider>
             <MessagesProvider>
@@ -48,9 +40,9 @@ function App() {
             </MessagesProvider>
           </CartProvider>
         </CurrencyProvider>
+        </SessionScope>
       </AuthProvider>
       </GoogleAuthWrapper>
-      </QueryClientProvider>
     </ErrorBoundary>
   );
 }

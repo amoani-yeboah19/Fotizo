@@ -39,6 +39,8 @@ export interface ProductSpec {
 
 export interface Product {
   id: string;
+  channel?: "marketplace" | "shop";
+  status?: "active" | "unpublished";
   title: string;
   description: string;
   price: number;

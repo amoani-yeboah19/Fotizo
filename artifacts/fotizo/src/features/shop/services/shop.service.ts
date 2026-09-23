@@ -1,4 +1,4 @@
-import { api, SHOP_USE_MOCKS } from "@/api";
+import { api, ApiError, SHOP_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import type { Product } from "@/types";
 import { SHOP_CATEGORIES } from "@/features/shop/data/categories";
@@ -31,6 +31,7 @@ export function toShopProduct(p: Product): ShopProduct {
 
   return {
     id: p.id,
+    stockCount: p.stockCount,
     title: p.title,
     category: specs.department ?? ID_BY_LABEL.get(p.category?.toLowerCase() ?? "") ?? p.category,
     price: p.price,
@@ -58,7 +59,7 @@ export const shopService = {
     // fetching it once keeps search, sorting and the deal strip working across
     // the full set rather than within a page. Worth revisiting in the
     // thousands, not the hundreds.
-    const products = await api.get<Product[]>("/products");
+    const products = await api.get<Product[]>("/products", { channel: "shop" });
     return products.map(toShopProduct);
   },
 
@@ -68,8 +69,10 @@ export const shopService = {
       return SHOP_PRODUCTS.find((p) => p.id === id) ?? null;
     }
     try {
-      return toShopProduct(await api.get<Product>(`/products/${id}`));
-    } catch {
+      const product = await api.get<Product>(`/products/${id}`);
+      return product.channel === "shop" ? toShopProduct(product) : null;
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 404) throw error;
       // A missing or unpublished listing is a 404 — a normal outcome here, not
       // an error state, so the page can show "not found" instead of a failure.
       return null;

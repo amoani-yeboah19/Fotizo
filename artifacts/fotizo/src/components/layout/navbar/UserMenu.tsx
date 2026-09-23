@@ -1,3 +1,4 @@
+import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import { ChevronDown, MessageSquare, LogOut, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,8 +10,10 @@ export function UserMenu() {
   const [, setLocation] = useLocation();
 
   const dashboardLink = user ? `/dashboard/${user.role}` : "/login";
-  const handleLogout = () => {
-    logout();
+  const { toast } = useToast();
+  const handleLogout = async () => {
+    const result = await logout();
+    if (!result.success) { toast({ variant: "destructive", title: "Could not sign out", description: result.error }); return; }
     setLocation("/");
   };
 

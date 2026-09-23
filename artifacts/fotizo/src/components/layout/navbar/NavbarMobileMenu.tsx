@@ -1,3 +1,4 @@
+import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import { Search } from "lucide-react";
 import { SERVICE_GROUPS } from "@workspace/service-taxonomy";
@@ -27,8 +28,10 @@ export function NavbarMobileMenu({
   const [, setLocation] = useLocation();
 
   const dashboardPages = dashboardNavItems(user?.role);
-  const handleLogout = () => {
-    logout();
+  const { toast } = useToast();
+  const handleLogout = async () => {
+    const result = await logout();
+    if (!result.success) { toast({ variant: "destructive", title: "Could not sign out", description: result.error }); return; }
     onClose?.();
     setLocation("/");
   };

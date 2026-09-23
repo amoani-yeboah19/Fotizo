@@ -12,6 +12,7 @@ export type { ShopCategory } from "@/features/shop/data/categories";
 // GHS rate). Images are hosted by the supplier and load over HTTPS.
 
 export interface ShopProduct {
+  stockCount?: number;
   id: string;
   title: string;
   category: string;

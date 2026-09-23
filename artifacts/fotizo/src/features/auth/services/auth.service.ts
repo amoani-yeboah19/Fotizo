@@ -1,4 +1,4 @@
-import { api, AUTH_USE_MOCKS } from "@/api";
+import { api, ApiError, AUTH_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import * as fx from "@/services/mocks/fixtures";
 import type { User, SignupData } from "@/types";
@@ -102,8 +102,9 @@ export const authService = {
     }
     try {
       return await api.get<User>("/auth/me");
-    } catch {
-      return null;
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) return null;
+      throw error;
     }
   },
 
@@ -111,11 +112,11 @@ export const authService = {
     if (AUTH_USE_MOCKS) localStorage.setItem(SESSION_KEY, JSON.stringify(user));
   },
 
-  clearSession(): void {
+  async clearSession(): Promise<void> {
     if (AUTH_USE_MOCKS) {
       localStorage.removeItem(SESSION_KEY);
     } else {
-      void api.post("/auth/logout").catch(() => {});
+      await api.post("/auth/logout");
     }
   },
 };

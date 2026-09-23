@@ -1,3 +1,4 @@
+import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
@@ -24,22 +25,13 @@ export function useDashboardSection<T extends string>(valid: readonly T[], fallb
   return [section, setSection] as const;
 }
 
-// Purchases — items the current user bought.
-export const useOrders = () =>
-  useQuery({ queryKey: ["orders"], queryFn: ordersService.listOrders });
-
-// Sales — items bought from the current user (seller fulfilment queue).
-export const useSales = () =>
-  useQuery({ queryKey: ["sales"], queryFn: ordersService.listSales });
-
-export const useBookings = () =>
-  useQuery({ queryKey: ["bookings"], queryFn: bookingsService.listBookings });
-
-export const useSellerProducts = () =>
-  useQuery({ queryKey: ["seller-products"], queryFn: catalogService.listSellerProducts });
-
-export const useManagerMetrics = () =>
-  useQuery({ queryKey: ["manager-metrics"], queryFn: dashboardService.getManagerMetrics });
-
-export const useDeveloperStats = () =>
-  useQuery({ queryKey: ["developer-stats"], queryFn: dashboardService.getDeveloperStats });
+function useAccountQuery<T>(name: string, queryFn: () => Promise<T>) {
+  const { user, isAuthenticated } = useAuth();
+  return useQuery({ queryKey: [name, user?.id], queryFn, enabled: isAuthenticated });
+}
+export const useOrders = () => useAccountQuery("orders", ordersService.listOrders);
+export const useSales = () => useAccountQuery("sales", ordersService.listSales);
+export const useBookings = () => useAccountQuery("bookings", bookingsService.listBookings);
+export const useSellerProducts = () => useAccountQuery("seller-products", catalogService.listSellerProducts);
+export const useManagerMetrics = () => useAccountQuery("manager-metrics", dashboardService.getManagerMetrics);
+export const useDeveloperStats = () => useAccountQuery("developer-stats", dashboardService.getDeveloperStats);

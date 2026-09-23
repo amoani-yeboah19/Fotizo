@@ -1,3 +1,4 @@
+import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { catalogService } from "@/features/marketplace/services";
 
@@ -7,6 +8,8 @@ export const useCreateProduct = () => {
     mutationFn: catalogService.createProduct,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["shop"] });
+      qc.invalidateQueries({ queryKey: ["owned-product"] });
       qc.invalidateQueries({ queryKey: ["seller-products"] });
     },
   });
@@ -39,6 +42,8 @@ export const useUpdateProduct = () => {
       catalogService.updateProduct(id, input),
     onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["shop"] });
+      qc.invalidateQueries({ queryKey: ["owned-product"] });
       qc.invalidateQueries({ queryKey: ["seller-products"] });
       qc.invalidateQueries({ queryKey: ["product", id] });
     },
@@ -51,7 +56,14 @@ export const useDeleteProduct = () => {
     mutationFn: (id: string) => catalogService.deleteProduct(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["shop"] });
+      qc.invalidateQueries({ queryKey: ["owned-product"] });
       qc.invalidateQueries({ queryKey: ["seller-products"] });
     },
   });
 };
+
+export function useOwnedProduct(id: string) {
+  const { user, isAuthenticated } = useAuth();
+  return useQuery({ queryKey: ["owned-product", user?.id, id], queryFn: () => catalogService.getOwnedProduct(id), enabled: isAuthenticated && !!id });
+}

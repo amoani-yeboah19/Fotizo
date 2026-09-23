@@ -4,7 +4,6 @@ import { eq, or } from "drizzle-orm";
 import { db, usersTable, type UserRow } from "@workspace/db";
 import { hashPassword, verifyPassword } from "../lib/password";
 import {
-  signAuthToken,
   signPendingGoogleSignupToken,
   verifyPendingGoogleSignupToken,
 } from "../lib/jwt";
@@ -12,12 +11,17 @@ import { verifyGoogleCredential, GoogleNotConfiguredError } from "../lib/googleA
 import { AUTH_COOKIE_NAME, authCookieOptions } from "../lib/cookies";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
 
+import { issueSession, revokeSession } from "../lib/sessions";
+import { limitAuthAttempts } from "../middlewares/security";
+
 const router: IRouter = Router();
+router.use((_req, res, next) => { res.setHeader("Cache-Control", "no-store"); next(); });
+router.use(limitAuthAttempts);
 
 const signupSchema = z.object({
   name: z.string().trim().min(1).max(120),
   email: z.string().trim().toLowerCase().email().max(255),
-  password: z.string().min(8).max(72),
+  password: z.string().min(8).refine((value) => Buffer.byteLength(value, "utf8") <= 72, "Password must not exceed 72 UTF-8 bytes."),
   // Public signup can only ever create buyer/seller accounts — manager and
   // developer are staff roles and must never be self-assignable from a
   // client-supplied field, no matter what the frontend form currently offers.
@@ -26,7 +30,7 @@ const signupSchema = z.object({
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
-  password: z.string().min(1),
+  password: z.string().min(1).max(1024),
 });
 
 // Shape returned to the client — deliberately excludes passwordHash.
@@ -64,8 +68,7 @@ router.post("/register", async (req, res) => {
     .values({ name, email, passwordHash, role })
     .returning();
 
-  const token = signAuthToken({ sub: created.id, role: created.role });
-  res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
+  if (!(await issueSession(res, created))) return;
   res.status(201).json(toPublicUser(created));
 });
 
@@ -89,8 +92,7 @@ router.post("/login", async (req, res) => {
     return;
   }
 
-  const token = signAuthToken({ sub: user.id, role: user.role });
-  res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
+  if (!(await issueSession(res, user))) return;
   res.json(toPublicUser(user));
 });
 
@@ -149,8 +151,7 @@ router.post("/google", async (req, res) => {
             .returning()
         )[0];
 
-    const token = signAuthToken({ sub: user.id, role: user.role });
-    res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
+    if (!(await issueSession(res, user))) return;
     res.json({ kind: "user", user: toPublicUser(user) });
     return;
   }
@@ -209,12 +210,12 @@ router.post("/google/complete", async (req, res) => {
           .returning()
       )[0];
 
-  const token = signAuthToken({ sub: user.id, role: user.role });
-  res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
+  if (!(await issueSession(res, user))) return;
   res.status(201).json(toPublicUser(user));
 });
 
-router.post("/logout", (_req, res) => {
+router.post("/logout", async (req, res) => {
+  await revokeSession(req.cookies?.[AUTH_COOKIE_NAME]);
   res.clearCookie(AUTH_COOKIE_NAME, authCookieOptions);
   res.status(204).end();
 });

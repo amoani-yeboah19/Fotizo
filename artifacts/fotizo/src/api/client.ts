@@ -53,7 +53,7 @@ async function request<T>(
   options: { params?: QueryParams; body?: unknown } = {},
 ): Promise<T> {
   const url = buildUrl(path, options.params);
-  const headers: Record<string, string> = { Accept: "application/json" };
+  const headers: Record<string, string> = { Accept: "application/json", "X-Fotizo-Request": "1" };
 
   let body: string | undefined;
   if (options.body !== undefined) {

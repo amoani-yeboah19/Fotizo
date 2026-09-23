@@ -27,6 +27,7 @@ export const usersTable = pgTable("users", {
   role: userRoleEnum("role").notNull().default("buyer"),
   avatar: text("avatar"),
   verified: boolean("verified").notNull().default(false),
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -34,6 +35,7 @@ export const insertUserSchema = createInsertSchema(usersTable).omit({
   id: true,
   passwordHash: true,
   verified: true,
+  suspendedAt: true,
   createdAt: true,
 });
 
