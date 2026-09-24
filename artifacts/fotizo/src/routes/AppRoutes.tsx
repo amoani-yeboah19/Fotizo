@@ -1,5 +1,8 @@
-import { lazy, Suspense } from "react";
-import { Switch, Route } from "wouter";
+import { lazy, Suspense, useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
+import { useAuthModal } from "@/contexts/AuthModalContext";
+import { useAuth } from "@/contexts/AuthContext";
+import type { AuthView } from "@/features/auth/components/AuthModal";
 import { Loading } from "@/components/common/QueryStates";
 import NotFound from "@/routes/NotFound";
 import { RequireSession } from "@/components/common/RequireSession";
@@ -9,8 +12,6 @@ import { DEMO_MODE } from "@/api";
 // dashboards) loads only when its route is visited.
 const Home = lazy(() => import("@/features/home/pages/HomePage"));
 const Settings = lazy(() => import("@/features/settings/pages/SettingsPage"));
-const Login = lazy(() => import("@/features/auth/pages/LoginPage"));
-const Signup = lazy(() => import("@/features/auth/pages/SignupPage"));
 const ProductsPage = lazy(
   () => import("@/features/marketplace/pages/ProductsPage"),
 );
@@ -97,6 +98,22 @@ const DemoLanding =
     ? lazy(() => import("@/features/demo/pages/DemoLandingPage"))
     : null;
 
+// /login and /signup links (bookmarks, emails, redirects) open the sign-in
+// modal over the home page; there is no separate authentication page.
+function OpenAuthModal({ view }: { view: AuthView }) {
+  const openAuth = useAuthModal();
+  const { status, user } = useAuth();
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    // Wait for session restoration: it remounts the app (clearing private
+    // state), which would also discard a modal opened before it finished.
+    if (status === "loading" || status === "signing-out") return;
+    if (!user) openAuth(view);
+    navigate("/", { replace: true });
+  }, [status, user, openAuth, navigate, view]);
+  return null;
+}
+
 export function AppRoutes() {
   return (
     <Suspense
@@ -108,8 +125,12 @@ export function AppRoutes() {
     >
       <Switch>
         <Route path="/" component={Home} />
-        <Route path="/login" component={Login} />
-        <Route path="/signup" component={Signup} />
+        <Route path="/login">
+          <OpenAuthModal view="signin" />
+        </Route>
+        <Route path="/signup">
+          <OpenAuthModal view="join" />
+        </Route>
         <Route path="/settings">
           {() => (
             <RequireSession>

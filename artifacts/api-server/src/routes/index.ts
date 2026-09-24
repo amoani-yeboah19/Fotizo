@@ -13,6 +13,7 @@ import vehiclesRouter from "./vehicles";
 import currencyRouter from "./currency";
 import operationsRouter from "./operations";
 import developerRouter from "./developer";
+import wishlistRouter from "./wishlist";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(vehiclesRouter);
 router.use(currencyRouter);
 router.use(operationsRouter);
 router.use(developerRouter);
+router.use(wishlistRouter);
 
 export default router;

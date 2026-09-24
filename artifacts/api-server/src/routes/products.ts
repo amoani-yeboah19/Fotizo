@@ -57,7 +57,7 @@ const updateProductSchema = newProductSchema.partial().extend({
 
 // Shape returned to the client — seller name is looked up via the FK at read
 // time rather than stored on the row, so a renamed seller never goes stale.
-function toPublicProduct(
+export function toPublicProduct(
   row: ProductRow,
   sellerName: string,
 ): CatalogueProduct {

@@ -9,19 +9,20 @@ import { BuyMegaMenu } from "@/components/layout/navbar/BuyMegaMenu";
 import { HireMegaMenu } from "@/components/layout/navbar/HireMegaMenu";
 import { UserMenu } from "@/components/layout/navbar/UserMenu";
 import { NavbarMobileMenu } from "@/components/layout/navbar/NavbarMobileMenu";
-import { AuthModal, type AuthView } from "@/features/auth/components/AuthModal";
+import type { AuthView } from "@/features/auth/components/AuthModal";
+import { useAuthModal } from "@/contexts/AuthModalContext";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [authView, setAuthView] = useState<AuthView | null>(null);
   const { isAuthenticated } = useAuth();
   const { count } = useCart();
   const { totalUnread } = useMessages();
 
+  const openAuthModal = useAuthModal();
   const openAuth = (view: AuthView) => {
     setMobileMenuOpen(false);
-    setAuthView(view);
+    openAuthModal(view);
   };
 
   useEffect(() => {
@@ -156,11 +157,6 @@ export function Navbar() {
         />
       )}
 
-      <AuthModal
-        open={authView !== null}
-        initialView={authView ?? "signin"}
-        onOpenChange={(open) => !open && setAuthView(null)}
-      />
     </header>
   );
 }

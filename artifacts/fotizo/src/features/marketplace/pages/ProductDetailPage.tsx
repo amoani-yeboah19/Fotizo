@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useRoute, Link, useLocation } from "wouter";
+import { useAuthModal } from "@/contexts/AuthModalContext";
+import { useWishlistToggle } from "@/features/wishlist/hooks";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { ProductCard } from "@/features/marketplace/components/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -15,9 +17,11 @@ import { Star, Heart, MessageSquare, ChevronRight, Minus, Plus, Truck, ShieldChe
 
 export default function ProductDetail() {
   const [, params] = useRoute("/products/:id");
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const openAuth = useAuthModal();
   const id = params?.id ?? "";
   const { data: product, isLoading } = useProduct(id);
+  const wishlist = useWishlistToggle();
   const { data: related = [] } = useRelatedProducts(id);
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("description");
@@ -68,7 +72,7 @@ export default function ProductDetail() {
   const handleMessageSeller = async () => {
     if (!user) {
       toast({ title: "Sign in to message", description: "Please log in to contact this seller." });
-      setLocation("/login");
+      openAuth("signin", location);
       return;
     }
     if (user.id === product.sellerId) {
@@ -184,8 +188,15 @@ export default function ProductDetail() {
                 Add to Cart
               </Button>
               
-              <Button aria-label="Add to wishlist" variant="outline" size="icon" className="w-12 h-12 rounded-full shrink-0">
-                <Heart className="w-5 h-5" />
+              <Button
+                aria-label={wishlist.isSaved(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+                aria-pressed={wishlist.isSaved(product.id)}
+                variant="outline"
+                size="icon"
+                className="w-12 h-12 rounded-full shrink-0"
+                onClick={() => wishlist.toggle(product)}
+              >
+                <Heart className={`w-5 h-5 ${wishlist.isSaved(product.id) ? "fill-accent text-accent" : ""}`} />
               </Button>
             </div>
 

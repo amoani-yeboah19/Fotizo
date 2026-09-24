@@ -63,8 +63,8 @@ export default function ShopProductPage() {
 
   const off = discountPct(product);
 
+  // Shop goods are sourced to order, so local stock does not limit the cart.
   const add = (goToCart: boolean) => {
-    if (product.stockCount === 0) return;
     for (let i = 0; i < qty; i++) {
       addItem({
         id: `shop-${product.id}`,
@@ -204,9 +204,7 @@ export default function ShopProductPage() {
               <button
                 type="button"
                 aria-label="Increase quantity"
-                onClick={() =>
-                  setQty((q) => Math.min(product.stockCount ?? 99, q + 1))
-                }
+                onClick={() => setQty((q) => Math.min(99, q + 1))}
                 className="px-3 py-2 text-muted-foreground hover:text-foreground"
               >
                 <Plus className="h-4 w-4" aria-hidden="true" />
@@ -219,7 +217,6 @@ export default function ShopProductPage() {
             <Button
               variant="outline"
               className="flex-1 gap-2"
-              disabled={product.stockCount === 0}
               onClick={() => add(false)}
             >
               <ShoppingCart className="h-4 w-4" aria-hidden="true" /> Add to
@@ -227,7 +224,6 @@ export default function ShopProductPage() {
             </Button>
             <Button
               className="flex-1 bg-[#FF6A00] text-white hover:bg-[#FF6A00]/90"
-              disabled={product.stockCount === 0}
               onClick={() => add(true)}
             >
               Buy now

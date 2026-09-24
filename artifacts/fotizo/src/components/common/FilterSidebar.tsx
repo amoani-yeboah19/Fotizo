@@ -45,7 +45,8 @@ export function FilterSidebar({
   onInStockChange,
 }: FilterSidebarProps) {
   return (
-    <aside className="w-full md:w-64 shrink-0 space-y-8">
+    // Sticky beside the results on wider screens so only the listing scrolls.
+    <aside className="w-full md:w-64 shrink-0 space-y-8 md:sticky md:top-28 md:self-start md:max-h-[calc(100vh-8rem)] md:overflow-y-auto md:pr-2">
       <div>
         <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
           <SlidersHorizontal className="w-5 h-5" /> Filters

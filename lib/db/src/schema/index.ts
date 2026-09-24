@@ -6,3 +6,4 @@ export * from "./messages";
 export * from "./sessions";
 export * from "./account-audit";
 export * from "./operations";
+export * from "./wishlists";

@@ -1,4 +1,5 @@
 import { useRoute, Link, useLocation } from "wouter";
+import { useAuthModal } from "@/contexts/AuthModalContext";
 import { serviceCategoryLabel, serviceGroupLabel } from "@workspace/service-taxonomy";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,8 @@ import { Star, CheckCircle2, ChevronRight, MessageSquare, Clock, Briefcase } fro
 
 export default function ServiceDetail() {
   const [, params] = useRoute("/services/:id");
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const openAuth = useAuthModal();
   const id = params?.id ?? "";
   const { data: service, isLoading } = useService(id);
   const { startConversation } = useMessages();
@@ -48,7 +50,7 @@ export default function ServiceDetail() {
   const handleMessageProvider = async () => {
     if (!user) {
       toast({ title: "Sign in to message", description: "Please log in to contact this provider." });
-      setLocation("/login");
+      openAuth("signin", location);
       return;
     }
     try {

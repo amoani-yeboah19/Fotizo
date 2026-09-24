@@ -43,7 +43,10 @@ vi.mock("@/features/messaging/services", () => ({
 }));
 vi.mock("wouter", () => ({
   Redirect: ({ to }: { to: string }) => <span>redirect:{to}</span>,
+  useLocation: () => ["/dashboard/manager", vi.fn()],
 }));
+const openAuth = vi.hoisted(() => vi.fn());
+vi.mock("@/contexts/AuthModalContext", () => ({ useAuthModal: () => openAuth }));
 vi.mock("@/api", () => ({ MESSAGES_USE_MOCKS: false }));
 const alice: User = {
   id: "alice",
@@ -149,11 +152,18 @@ describe("session lifecycle and private state", () => {
     const pending = deferred<User | null>();
     vi.mocked(authService.getSession).mockReturnValue(pending.promise);
     render(<Harness guarded />);
-    expect(screen.queryByText("redirect:/login")).toBeNull();
+    expect(screen.queryByText("redirect:/")).toBeNull();
+    expect(openAuth).not.toHaveBeenCalled();
     expect(screen.queryByText("private-page")).toBeNull();
     expect(messagesService.listConversations).not.toHaveBeenCalled();
     await act(async () => pending.resolve(alice));
     expect(screen.getByText("private-page")).toBeTruthy();
+  });
+  it("asks a signed-out visitor to sign in and returns them to the private page", async () => {
+    render(<Harness guarded />);
+    await screen.findByText("redirect:/");
+    expect(screen.queryByText("private-page")).toBeNull();
+    expect(openAuth).toHaveBeenCalledWith("signin", "/dashboard/manager");
   });
   it("never mounts staff content for a buyer", async () => {
     vi.mocked(authService.getSession).mockResolvedValue(alice);
@@ -289,7 +299,7 @@ describe("session lifecycle and private state", () => {
       .mockResolvedValue(alice);
     render(<Harness guarded />);
     await screen.findByRole("alert");
-    expect(screen.queryByText("redirect:/login")).toBeNull();
+    expect(screen.queryByText("redirect:/")).toBeNull();
     await act(async () => {
       await session.retrySession();
     });

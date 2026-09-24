@@ -4,6 +4,9 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Price } from "@/components/common/Price";
 import { RatingStars } from "@/components/common/RatingStars";
+import { useWishlistToggle } from "@/features/wishlist/hooks";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface Product {
   id: string;
@@ -15,9 +18,30 @@ interface Product {
   seller: string;
   category: string;
   image: string;
+  inStock?: boolean;
 }
 
 export const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
+  const wishlist = useWishlistToggle();
+  const saved = wishlist.isSaved(product.id);
+  const { addItem } = useCart();
+  const { toast } = useToast();
+  // Marketplace sellers hold their own stock, so sold-out listings cannot be added.
+  const addToCart = () => {
+    if (product.inStock === false) {
+      toast({ variant: "destructive", title: "Out of stock", description: product.title });
+      return;
+    }
+    addItem({
+      id: product.id,
+      productId: product.id,
+      title: product.title,
+      price: product.price,
+      image: product.image,
+      seller: product.seller,
+    });
+    toast({ title: "Added to cart", description: product.title });
+  };
   return (
     <Link href={`/products/${product.id}`}>
       <div className="group flex flex-col bg-white rounded-2xl border border-border overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer h-full">
@@ -28,11 +52,12 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
             className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
           />
           <button
-            aria-label="Add to wishlist"
+            aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
+            aria-pressed={saved}
             className="absolute top-4 right-4 p-2 rounded-full bg-white/80 backdrop-blur-sm text-muted-foreground hover:text-accent hover:bg-white transition-colors"
-            onClick={(e) => { e.preventDefault(); /* Add wishlist logic */ }}
+            onClick={(e) => { e.preventDefault(); wishlist.toggle(product); }}
           >
-            <Heart className="w-5 h-5" />
+            <Heart className={`w-5 h-5 ${saved ? "fill-accent text-accent" : ""}`} />
           </button>
           {product.originalPrice && (
             <div className="absolute top-4 left-4 px-2.5 py-1 bg-accent text-white text-xs font-bold rounded-full">
@@ -70,8 +95,8 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
               size="icon"
               className="rounded-full bg-primary hover:bg-primary/90 text-white w-10 h-10 shadow-sm"
               onClick={(e) => {
-                e.preventDefault(); 
-                // Context Add logic goes here, handled in detailed view usually but could be here
+                e.preventDefault();
+                addToCart();
               }}
             >
               <ShoppingCart className="w-4 h-4" />

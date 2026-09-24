@@ -356,3 +356,42 @@ describe("catalogue best-selling sort", () => {
     expect(body.items.map((p) => p.title)).toEqual(["Many", "Few", "Unknown"]);
   });
 });
+
+describe("wishlist", () => {
+  const put = (path: string, cookie?: string) =>
+    fetch(`${base}/api${path}`, { method: "PUT", headers: { ...headers, ...(cookie ? { Cookie: cookie } : {}) } });
+  const del = (path: string, cookie?: string) =>
+    fetch(`${base}/api${path}`, { method: "DELETE", headers: { ...headers, ...(cookie ? { Cookie: cookie } : {}) } });
+
+  it("saves published products per account, idempotently, and hides unpublished ones", async () => {
+    const seller = await account("seller");
+    const { rows } = await database.query<{ id: string; title: string }>(
+      `INSERT INTO products (title, description, price, seller_id, category, stock_count, status) VALUES
+       ('Kettle', 'd', 20, $1, 'Home', 2, 'active'),
+       ('Lamp', 'd', 30, $1, 'Home', 2, 'active'),
+       ('Hidden', 'd', 30, $1, 'Home', 2, 'unpublished') RETURNING id, title`,
+      [seller.id],
+    );
+    const [kettle, lamp, hidden] = rows;
+    const alice = await account();
+    const bob = await account();
+    expect((await get("/wishlist")).status).toBe(401);
+    expect((await put(`/wishlist/${kettle.id}`)).status).toBe(401);
+
+    expect((await put(`/wishlist/${kettle.id}`, alice.cookie)).status).toBe(204);
+    expect((await put(`/wishlist/${kettle.id}`, alice.cookie)).status).toBe(204);
+    expect((await put(`/wishlist/${lamp.id}`, alice.cookie)).status).toBe(204);
+    expect((await put(`/wishlist/${hidden.id}`, alice.cookie)).status).toBe(404);
+    expect((await put(`/wishlist/not-a-uuid`, alice.cookie)).status).toBe(404);
+
+    const saved = (await (await get("/wishlist", alice.cookie)).json()) as { title: string }[];
+    expect(saved.map((p) => p.title).sort()).toEqual(["Kettle", "Lamp"]);
+    expect(await (await get("/wishlist", bob.cookie)).json()).toEqual([]);
+
+    await database.query("UPDATE products SET status = 'unpublished' WHERE id = $1", [lamp.id]);
+    expect(((await (await get("/wishlist", alice.cookie)).json()) as { title: string }[]).map((p) => p.title)).toEqual(["Kettle"]);
+
+    expect((await del(`/wishlist/${kettle.id}`, alice.cookie)).status).toBe(204);
+    expect(await (await get("/wishlist", alice.cookie)).json()).toEqual([]);
+  });
+});

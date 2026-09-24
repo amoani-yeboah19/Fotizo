@@ -9,6 +9,7 @@ import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { MessagesProvider } from "@/contexts/MessagesContext";
 import { AppRoutes } from "@/routes/AppRoutes";
+import { AuthModalProvider } from "@/contexts/AuthModalContext";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -33,7 +34,9 @@ function App() {
             <MessagesProvider>
               <TooltipProvider>
                 <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                  <AppRoutes />
+                  <AuthModalProvider>
+                    <AppRoutes />
+                  </AuthModalProvider>
                 </WouterRouter>
                 <Toaster />
               </TooltipProvider>
