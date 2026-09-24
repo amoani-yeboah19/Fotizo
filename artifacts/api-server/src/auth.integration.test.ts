@@ -1156,7 +1156,7 @@ describe("bounded public catalogue", () => {
       "pageSize=NaN",
       "pageSize=2&pageSize=3",
       "channel=secret",
-      "sort=best-selling",
+      "sort=popular",
       "minPrice=-1",
       "maxPrice=100000000",
       "minPrice=50&maxPrice=5",

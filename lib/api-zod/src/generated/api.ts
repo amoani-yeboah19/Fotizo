@@ -201,7 +201,14 @@ export const ListCatalogueProductsQueryParams = zod.object({
     .max(listCatalogueProductsQueryCategoryMax)
     .optional(),
   sort: zod
-    .enum(["newest", "price-asc", "price-desc", "rating", "discount"])
+    .enum([
+      "newest",
+      "price-asc",
+      "price-desc",
+      "rating",
+      "discount",
+      "best-selling",
+    ])
     .default(listCatalogueProductsQuerySortDefault),
   minPrice: zod.coerce
     .number()

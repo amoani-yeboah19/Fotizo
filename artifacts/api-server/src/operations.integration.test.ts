@@ -339,3 +339,20 @@ describe("currency rates", () => {
     }
   });
 });
+
+describe("catalogue best-selling sort", () => {
+  it("orders shop listings by recorded units sold, treating missing counts as zero", async () => {
+    const rep = await account("china_representative");
+    await database.query(
+      `INSERT INTO products (title, description, price, seller_id, category, stock_count, channel, specs) VALUES
+       ('Few', 'd', 5, $1, 'phones', 3, 'shop', '{"unitsSold":"12"}'),
+       ('Many', 'd', 5, $1, 'phones', 3, 'shop', '{"unitsSold":"1800"}'),
+       ('Unknown', 'd', 5, $1, 'phones', 3, 'shop', '{"unitsSold":"n/a"}')`,
+      [rep.id],
+    );
+    const response = await get("/products?channel=shop&sort=best-selling");
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { items: { title: string }[] };
+    expect(body.items.map((p) => p.title)).toEqual(["Many", "Few", "Unknown"]);
+  });
+});

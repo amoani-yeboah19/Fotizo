@@ -1,35 +1,249 @@
+import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "wouter";
+import { LayoutGrid, Search, Flame, Truck, ShieldCheck, PackageCheck } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { CatalogueBrowser } from "@/features/marketplace/components/CatalogueBrowser";
-import { ShopProductCard } from "../components/ShopProductCard";
-import { ChinaMarketDialog } from "../components/ChinaMarketDialog";
-import { toShopProduct } from "../services/shop.service";
+import { Loading, ErrorState } from "@/components/common/QueryStates";
+import { LoadMoreSentinel } from "@/components/common/LoadMoreSentinel";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useCatalogueInfinite, useCataloguePage } from "@/features/marketplace/hooks/useCatalogue";
+import type { CatalogueFilters } from "@/features/marketplace/services/catalogue-page";
+import { toShopProduct } from "@/features/shop/services/shop.service";
+import { ShopProductCard } from "@/features/shop/components/ShopProductCard";
+import { ChinaMarketDialog } from "@/features/shop/components/ChinaMarketDialog";
+import { SHOP_CATEGORIES, categoryLabel } from "@/features/shop/data/products";
+import type { Product } from "@/types";
+
+type Sort = "recommended" | "price-asc" | "price-desc" | "best-selling" | "discount";
+
+// Sorting, search and department filtering run on the server over the whole
+// published shop; the grid appends 48-item pages as it scrolls.
+const SERVER_SORT: Record<Sort, NonNullable<CatalogueFilters["sort"]>> = {
+  recommended: "newest",
+  "best-selling": "best-selling",
+  discount: "discount",
+  "price-asc": "price-asc",
+  "price-desc": "price-desc",
+};
+const toCards = (items: unknown[]) => items.map((p) => toShopProduct(p as Product));
+
+const SORTS: { value: Sort; label: string }[] = [
+  { value: "recommended", label: "Recommended" },
+  { value: "best-selling", label: "Best selling" },
+  { value: "discount", label: "Biggest discount" },
+  { value: "price-asc", label: "Price: Low to High" },
+  { value: "price-desc", label: "Price: High to Low" },
+];
+
+// ?category=wigs — how the hero chips and marketing links land straight in a
+// department. An unknown id falls back to the full catalogue rather than an
+// empty page.
+function categoryFromQuery(query: string): string | null {
+  const id = new URLSearchParams(query).get("category");
+  return id && SHOP_CATEGORIES.some((c) => c.id === id) ? id : null;
+}
+
 export default function ShopPage() {
   const query = useSearch();
-  const category = new URLSearchParams(query).get("category") ?? "";
+  const [activeCat, setActiveCat] = useState<string | null>(() => categoryFromQuery(query));
+  const [sort, setSort] = useState<Sort>("recommended");
+  const [search, setSearch] = useState("");
+
+  // Re-sync when the URL changes under us (another chip clicked while already
+  // on the page, or back/forward), without fighting in-page tab changes.
+  useEffect(() => {
+    setActiveCat(categoryFromQuery(query));
+  }, [query]);
+
+  const q = useDebouncedValue(search.trim());
+  const grid = useCatalogueInfinite("shop", {
+    category: activeCat ?? undefined,
+    q: q || undefined,
+    sort: SERVER_SORT[sort],
+  });
+  const { isLoading, isError } = grid;
+  const products = useMemo(
+    () => toCards(grid.data?.pages.flatMap((p) => p.items) ?? []),
+    [grid.data],
+  );
+  const total = grid.data?.pages[0]?.total ?? 0;
+
+  // Most-discounted published items, for the "Lightning Deals" strip.
+  const dealsQuery = useCataloguePage("shop", { discounted: true, sort: "discount", pageSize: 12 });
+  const deals = useMemo(() => toCards(dealsQuery.data?.items ?? []), [dealsQuery.data]);
+
   return (
     <PageLayout mainClassName="pt-20">
       <ChinaMarketDialog />
-      <header className="bg-gradient-to-r from-[#08275B] via-[#0a2f6e] to-[#FF6A00] text-white">
+
+      {/* Hero / promo banner */}
+      <section className="bg-gradient-to-r from-[#08275B] via-[#0a2f6e] to-[#FF6A00]">
         <div className="container-app py-8 sm:py-10">
-          <p className="text-xs font-semibold uppercase tracking-widest">
-            Fotizo Shop
-          </p>
-          <h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">
-            Explore imported products
-          </h1>
-          <p className="mt-2 text-sm text-white/80">
-            Browse published listings by department, price and availability.
-          </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-white">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">Fotizo Shop</p>
+              <h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">Imported straight from the source</h1>
+              <p className="mt-1 text-sm text-white/80">
+                Thousands of styles from our global suppliers — up to 70% off, shipped to your door.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { icon: Truck, label: "Free shipping" },
+                { icon: ShieldCheck, label: "Buyer protection" },
+                { icon: PackageCheck, label: "Quality checked" },
+              ].map(({ icon: Icon, label }) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur"
+                >
+                  <Icon className="h-3.5 w-3.5" aria-hidden="true" /> {label}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
-      </header>
-      <div className="container-app py-8">
-        <CatalogueBrowser
-          channel="shop"
-          initialCategory={category}
-          renderProduct={(p) => <ShopProductCard product={toShopProduct(p)} />}
-        />
+      </section>
+
+      <div className="container-app py-6">
+        {/* Category tiles */}
+        <div className="-mx-4 overflow-x-auto px-4" style={{ scrollbarWidth: "none" }}>
+          <div className="flex w-max gap-3 pb-2">
+            <CategoryTile
+              label="All"
+              icon={<LayoutGrid className="h-6 w-6" aria-hidden="true" />}
+              active={activeCat === null}
+              onClick={() => setActiveCat(null)}
+            />
+            {SHOP_CATEGORIES.map((c) => {
+              const Icon = c.icon;
+              return (
+                <CategoryTile
+                  key={c.id}
+                  label={c.label}
+                  icon={<Icon className="h-6 w-6" aria-hidden="true" />}
+                  active={activeCat === c.id}
+                  onClick={() => setActiveCat(c.id)}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Lightning deals (only on the "All" view) */}
+        {activeCat === null && !search && (
+          <section className="mt-6 rounded-2xl border border-[#FF6A00]/20 bg-[#FF6A00]/5 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Flame className="h-5 w-5 text-[#FF6A00]" aria-hidden="true" />
+              <h2 className="text-lg font-extrabold text-foreground">Lightning Deals</h2>
+              <span className="ml-auto text-xs font-semibold text-[#FF6A00]">Ends soon</span>
+            </div>
+            <div className="-mx-1 overflow-x-auto px-1" style={{ scrollbarWidth: "none" }}>
+              <div className="flex w-max gap-3">
+                {deals.map((p) => (
+                  <div key={p.id} className="w-36 shrink-0 sm:w-40">
+                    <ShopProductCard product={p} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Grid header: title + search + sort */}
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-xl font-bold text-foreground">
+            {activeCat ? categoryLabel(activeCat) : "All products"}
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              ({total})
+            </span>
+          </h2>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search the shop…"
+                aria-label="Search the shop"
+                className="w-40 rounded-lg border border-border bg-white py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 sm:w-56"
+              />
+            </div>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as Sort)}
+              aria-label="Sort products"
+              className="rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              {SORTS.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Product grid */}
+        {isLoading ? (
+          <Loading label="Loading the shop…" />
+        ) : isError ? (
+          <ErrorState label="The shop could not be loaded. Please try again." />
+        ) : products.length === 0 ? (
+          <div className="py-20 text-center text-muted-foreground">
+            <Search className="mx-auto mb-3 h-8 w-8 opacity-40" aria-hidden="true" />
+            <p>
+              {activeCat === null && !q
+                ? "No products are listed yet."
+                : "No products match your search."}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+              {products.map((p) => (
+                <ShopProductCard key={p.id} product={p} />
+              ))}
+            </div>
+            <LoadMoreSentinel
+              hasMore={Boolean(grid.hasNextPage)}
+              loading={grid.isFetchingNextPage}
+              onLoadMore={() => void grid.fetchNextPage()}
+            />
+          </>
+        )}
       </div>
     </PageLayout>
+  );
+}
+
+function CategoryTile({
+  label,
+  icon,
+  active,
+  onClick,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className="flex w-16 shrink-0 flex-col items-center gap-1.5 sm:w-20"
+    >
+      <span
+        className={`flex h-14 w-14 items-center justify-center rounded-full transition-colors sm:h-16 sm:w-16 ${
+          active ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary"
+        }`}
+      >
+        {icon}
+      </span>
+      <span
+        className={`text-center text-[11px] leading-tight ${active ? "font-semibold text-primary" : "text-muted-foreground"}`}
+      >
+        {label}
+      </span>
+    </button>
   );
 }

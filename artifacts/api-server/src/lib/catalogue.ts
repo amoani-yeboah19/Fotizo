@@ -62,6 +62,8 @@ export const categoryKey = sql<string>`case when ${p.channel} = 'shop' then case
   ),
   sql` `,
 )} else ${rawCategory} end else ${p.category} end`;
+// Imported shop listings carry their supplier sales count in specs.unitsSold.
+export const unitsSold = sql<number>`case when coalesce(${p.specs}->>'unitsSold', '') ~ '^[0-9]+$' then (${p.specs}->>'unitsSold')::bigint else 0 end`;
 export const discount = sql<number>`case when ${p.originalPrice} > ${p.price} and ${p.originalPrice} > 0 then (${p.originalPrice} - ${p.price}) / ${p.originalPrice} else 0 end`;
 export function catalogueWhere(filter: z.infer<typeof catalogueQuery>) {
   const search = `%${filter.q.replace(/[\\%_]/g, "\\$&")}%`;
@@ -95,6 +97,8 @@ export function catalogueOrder(sort: z.infer<typeof catalogueQuery>["sort"]) {
           ? desc(p.rating)
           : sort === "discount"
             ? desc(discount)
-            : desc(p.createdAt);
+            : sort === "best-selling"
+              ? desc(unitsSold)
+              : desc(p.createdAt);
   return [primary, desc(p.createdAt), desc(p.id)];
 }

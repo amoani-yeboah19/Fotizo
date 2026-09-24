@@ -258,6 +258,7 @@ export const ListCatalogueProductsSort = {
   "price-desc": "price-desc",
   rating: "rating",
   discount: "discount",
+  "best-selling": "best-selling",
 } as const;
 
 export type ListCatalogueCategoriesParams = {
