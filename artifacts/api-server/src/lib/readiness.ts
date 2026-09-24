@@ -8,8 +8,8 @@ export async function checkDatabaseReadiness(): Promise<void> {
   // bounded by the pool's five-second connection timeout.
   // pg supports per-query timeouts; its QueryConfig typings omit this option.
   const query = {
-    text: `SELECT u.suspended_at, p.channel, s.expires_at, a.expires_at
-      FROM users u CROSS JOIN products p CROSS JOIN sessions s CROSS JOIN auth_rate_limits a LIMIT 0`,
+    text: `SELECT u.suspended_at, u.account_status_version, p.channel, s.expires_at, a.expires_at, audit.status_version
+      FROM users u CROSS JOIN products p CROSS JOIN sessions s CROSS JOIN auth_rate_limits a CROSS JOIN account_audit audit LIMIT 0`,
     query_timeout: 2000,
   };
   await pool.query(query);

@@ -22,3 +22,134 @@ export const HealthCheckResponse = zod.object({
 export const ReadinessCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary List buyer and seller accounts (manager only)
+ */
+export const listManagedAccountsQueryPageDefault = 0;
+export const listManagedAccountsQueryPageMin = 0;
+export const listManagedAccountsQueryPageMax = 100000;
+
+export const listManagedAccountsQueryQMax = 120;
+
+export const listManagedAccountsQueryStatusDefault = `all`;
+
+export const ListManagedAccountsQueryParams = zod.object({
+  page: zod.coerce
+    .number()
+    .min(listManagedAccountsQueryPageMin)
+    .max(listManagedAccountsQueryPageMax)
+    .default(listManagedAccountsQueryPageDefault),
+  q: zod.coerce.string().max(listManagedAccountsQueryQMax).optional(),
+  status: zod
+    .enum(["all", "active", "suspended"])
+    .default(listManagedAccountsQueryStatusDefault),
+});
+
+export const listManagedAccountsResponseItemsItemStatusVersionMin = 0;
+
+export const ListManagedAccountsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      name: zod.string(),
+      email: zod.string().email(),
+      role: zod.enum(["buyer", "seller"]),
+      createdAt: zod.coerce.date(),
+      suspendedAt: zod.coerce.date().nullable(),
+      statusVersion: zod
+        .number()
+        .min(listManagedAccountsResponseItemsItemStatusVersionMin),
+    }),
+  ),
+  page: zod.number(),
+  hasMore: zod.boolean(),
+});
+
+/**
+ * @summary Count buyer and seller accounts (manager only)
+ */
+export const getManagedAccountSummaryResponseTotalMin = 0;
+
+export const getManagedAccountSummaryResponseActiveMin = 0;
+
+export const getManagedAccountSummaryResponseSuspendedMin = 0;
+
+export const GetManagedAccountSummaryResponse = zod.object({
+  total: zod.number().min(getManagedAccountSummaryResponseTotalMin),
+  active: zod.number().min(getManagedAccountSummaryResponseActiveMin),
+  suspended: zod.number().min(getManagedAccountSummaryResponseSuspendedMin),
+});
+
+/**
+ * Staff/self changes are forbidden. Status change, session revocation and audit insertion are atomic. A stale version or redundant change returns 409; refresh rather than repeating blindly. Only a successful transition writes an audit record.
+ * @summary Suspend or reactivate a buyer/seller account (manager only)
+ */
+export const ChangeManagedAccountStatusParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ChangeManagedAccountStatusHeader = zod.object({
+  "X-Fotizo-Request": zod.enum(["1"]),
+});
+
+export const changeManagedAccountStatusBodyReasonMin = 10;
+export const changeManagedAccountStatusBodyReasonMax = 1000;
+
+export const changeManagedAccountStatusBodyExpectedVersionMin = 0;
+export const changeManagedAccountStatusBodyExpectedVersionMax = 2147483646;
+
+export const ChangeManagedAccountStatusBody = zod.object({
+  action: zod.enum(["suspend", "reactivate"]),
+  reason: zod
+    .string()
+    .min(changeManagedAccountStatusBodyReasonMin)
+    .max(changeManagedAccountStatusBodyReasonMax),
+  expectedVersion: zod
+    .number()
+    .min(changeManagedAccountStatusBodyExpectedVersionMin)
+    .max(changeManagedAccountStatusBodyExpectedVersionMax),
+});
+
+export const ChangeManagedAccountStatusResponse = zod.object({
+  id: zod.string().uuid(),
+  suspendedAt: zod.coerce.date().nullable(),
+  statusVersion: zod.number(),
+  auditId: zod.string().uuid(),
+});
+
+/**
+ * @summary Read account status history (manager only)
+ */
+export const listAccountAuditQueryPageDefault = 0;
+export const listAccountAuditQueryPageMin = 0;
+export const listAccountAuditQueryPageMax = 100000;
+
+export const ListAccountAuditQueryParams = zod.object({
+  page: zod.coerce
+    .number()
+    .min(listAccountAuditQueryPageMin)
+    .max(listAccountAuditQueryPageMax)
+    .default(listAccountAuditQueryPageDefault),
+  targetId: zod.coerce.string().uuid().optional(),
+});
+
+export const ListAccountAuditResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      actorId: zod.string().uuid(),
+      actorName: zod.string(),
+      targetUserId: zod.string().uuid(),
+      targetName: zod.string(),
+      action: zod.enum(["suspend", "reactivate"]),
+      reason: zod.string(),
+      statusVersion: zod.number(),
+      createdAt: zod.coerce.date(),
+      previousSuspendedAt: zod.coerce.date().nullable(),
+      suspendedAt: zod.coerce.date().nullable(),
+    }),
+  ),
+  page: zod.number(),
+  hasMore: zod.boolean(),
+});

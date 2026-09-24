@@ -8,3 +8,133 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface ApiError {
+  error: string;
+}
+
+export type ManagedAccountRole =
+  (typeof ManagedAccountRole)[keyof typeof ManagedAccountRole];
+
+export const ManagedAccountRole = {
+  buyer: "buyer",
+  seller: "seller",
+} as const;
+
+export interface ManagedAccount {
+  id: string;
+  name: string;
+  email: string;
+  role: ManagedAccountRole;
+  createdAt: string;
+  /** @nullable */
+  suspendedAt: string | null;
+  /** @minimum 0 */
+  statusVersion: number;
+}
+
+export interface ManagedAccountPage {
+  items: ManagedAccount[];
+  page: number;
+  hasMore: boolean;
+}
+
+export interface ManagedAccountSummary {
+  /** @minimum 0 */
+  total: number;
+  /** @minimum 0 */
+  active: number;
+  /** @minimum 0 */
+  suspended: number;
+}
+
+export type AccountStatusChangeAction =
+  (typeof AccountStatusChangeAction)[keyof typeof AccountStatusChangeAction];
+
+export const AccountStatusChangeAction = {
+  suspend: "suspend",
+  reactivate: "reactivate",
+} as const;
+
+export interface AccountStatusChange {
+  action: AccountStatusChangeAction;
+  /**
+   * @minLength 10
+   * @maxLength 1000
+   */
+  reason: string;
+  /**
+   * @minimum 0
+   * @maximum 2147483646
+   */
+  expectedVersion: number;
+}
+
+export interface AccountStatusChangeResult {
+  id: string;
+  /** @nullable */
+  suspendedAt: string | null;
+  statusVersion: number;
+  auditId: string;
+}
+
+export type AccountAuditEntryAction =
+  (typeof AccountAuditEntryAction)[keyof typeof AccountAuditEntryAction];
+
+export const AccountAuditEntryAction = {
+  suspend: "suspend",
+  reactivate: "reactivate",
+} as const;
+
+export interface AccountAuditEntry {
+  id: string;
+  actorId: string;
+  actorName: string;
+  targetUserId: string;
+  targetName: string;
+  action: AccountAuditEntryAction;
+  reason: string;
+  statusVersion: number;
+  createdAt: string;
+  /** @nullable */
+  previousSuspendedAt: string | null;
+  /** @nullable */
+  suspendedAt: string | null;
+}
+
+export interface AccountAuditPage {
+  items: AccountAuditEntry[];
+  page: number;
+  hasMore: boolean;
+}
+
+export type ListManagedAccountsParams = {
+  /**
+   * @minimum 0
+   * @maximum 100000
+   */
+  page?: number;
+  /**
+   * @maxLength 120
+   */
+  q?: string;
+  status?: ListManagedAccountsStatus;
+};
+
+export type ListManagedAccountsStatus =
+  (typeof ListManagedAccountsStatus)[keyof typeof ListManagedAccountsStatus];
+
+export const ListManagedAccountsStatus = {
+  all: "all",
+  active: "active",
+  suspended: "suspended",
+} as const;
+
+export type ListAccountAuditParams = {
+  /**
+   * @minimum 0
+   * @maximum 100000
+   */
+  page?: number;
+  targetId?: string;
+};

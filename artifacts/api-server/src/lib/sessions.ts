@@ -16,7 +16,11 @@ export async function issueSession(
       .from(usersTable)
       .where(eq(usersTable.id, user.id))
       .for("update");
-    if (!current || current.passwordHash !== user.passwordHash)
+    if (
+      !current ||
+      current.passwordHash !== user.passwordHash ||
+      current.accountStatusVersion !== user.accountStatusVersion
+    )
       return { error: 401 as const };
     if (current.suspendedAt) return { error: 403 as const };
     const [session] = await tx
@@ -29,14 +33,12 @@ export async function issueSession(
     return { session, role: current.role };
   });
   if (result.error) {
-    res
-      .status(result.error)
-      .json({
-        error:
-          result.error === 403
-            ? "This account is suspended. Contact support."
-            : "Account credentials changed. Please sign in again.",
-      });
+    res.status(result.error).json({
+      error:
+        result.error === 403
+          ? "This account is suspended. Contact support."
+          : "Account credentials changed. Please sign in again.",
+    });
     return false;
   }
   const { session } = result;

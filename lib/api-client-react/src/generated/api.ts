@@ -5,18 +5,31 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  AccountAuditPage,
+  AccountStatusChange,
+  AccountStatusChangeResult,
+  ApiError,
+  HealthStatus,
+  ListAccountAuditParams,
+  ListManagedAccountsParams,
+  ManagedAccountPage,
+  ManagedAccountSummary,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -186,6 +199,371 @@ export function useReadinessCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getReadinessCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getListManagedAccountsUrl = (
+  params?: ListManagedAccountsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/accounts?${stringifiedParams}`
+    : `/api/admin/accounts`;
+};
+
+/**
+ * @summary List buyer and seller accounts (manager only)
+ */
+export const listManagedAccounts = async (
+  params?: ListManagedAccountsParams,
+  options?: RequestInit,
+): Promise<ManagedAccountPage> => {
+  return customFetch<ManagedAccountPage>(getListManagedAccountsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListManagedAccountsQueryKey = (
+  params?: ListManagedAccountsParams,
+) => {
+  return [`/api/admin/accounts`, ...(params ? [params] : [])] as const;
+};
+
+export const getListManagedAccountsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listManagedAccounts>>,
+  TError = ErrorType<ApiError>,
+>(
+  params?: ListManagedAccountsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listManagedAccounts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListManagedAccountsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listManagedAccounts>>
+  > = ({ signal }) =>
+    listManagedAccounts(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listManagedAccounts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListManagedAccountsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listManagedAccounts>>
+>;
+export type ListManagedAccountsQueryError = ErrorType<ApiError>;
+
+/**
+ * @summary List buyer and seller accounts (manager only)
+ */
+
+export function useListManagedAccounts<
+  TData = Awaited<ReturnType<typeof listManagedAccounts>>,
+  TError = ErrorType<ApiError>,
+>(
+  params?: ListManagedAccountsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listManagedAccounts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListManagedAccountsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetManagedAccountSummaryUrl = () => {
+  return `/api/admin/accounts/summary`;
+};
+
+/**
+ * @summary Count buyer and seller accounts (manager only)
+ */
+export const getManagedAccountSummary = async (
+  options?: RequestInit,
+): Promise<ManagedAccountSummary> => {
+  return customFetch<ManagedAccountSummary>(getGetManagedAccountSummaryUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetManagedAccountSummaryQueryKey = () => {
+  return [`/api/admin/accounts/summary`] as const;
+};
+
+export const getGetManagedAccountSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getManagedAccountSummary>>,
+  TError = ErrorType<ApiError>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getManagedAccountSummary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetManagedAccountSummaryQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getManagedAccountSummary>>
+  > = ({ signal }) => getManagedAccountSummary({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getManagedAccountSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetManagedAccountSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getManagedAccountSummary>>
+>;
+export type GetManagedAccountSummaryQueryError = ErrorType<ApiError>;
+
+/**
+ * @summary Count buyer and seller accounts (manager only)
+ */
+
+export function useGetManagedAccountSummary<
+  TData = Awaited<ReturnType<typeof getManagedAccountSummary>>,
+  TError = ErrorType<ApiError>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getManagedAccountSummary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetManagedAccountSummaryQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getChangeManagedAccountStatusUrl = (id: string) => {
+  return `/api/admin/accounts/${id}/status`;
+};
+
+/**
+ * Staff/self changes are forbidden. Status change, session revocation and audit insertion are atomic. A stale version or redundant change returns 409; refresh rather than repeating blindly. Only a successful transition writes an audit record.
+ * @summary Suspend or reactivate a buyer/seller account (manager only)
+ */
+export const changeManagedAccountStatus = async (
+  id: string,
+  accountStatusChange: AccountStatusChange,
+  options?: RequestInit,
+): Promise<AccountStatusChangeResult> => {
+  return customFetch<AccountStatusChangeResult>(
+    getChangeManagedAccountStatusUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(accountStatusChange),
+    },
+  );
+};
+
+export const getChangeManagedAccountStatusMutationOptions = <
+  TError = ErrorType<ApiError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof changeManagedAccountStatus>>,
+    TError,
+    { id: string; data: BodyType<AccountStatusChange> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof changeManagedAccountStatus>>,
+  TError,
+  { id: string; data: BodyType<AccountStatusChange> },
+  TContext
+> => {
+  const mutationKey = ["changeManagedAccountStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof changeManagedAccountStatus>>,
+    { id: string; data: BodyType<AccountStatusChange> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return changeManagedAccountStatus(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ChangeManagedAccountStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof changeManagedAccountStatus>>
+>;
+export type ChangeManagedAccountStatusMutationBody =
+  BodyType<AccountStatusChange>;
+export type ChangeManagedAccountStatusMutationError = ErrorType<ApiError>;
+
+/**
+ * @summary Suspend or reactivate a buyer/seller account (manager only)
+ */
+export const useChangeManagedAccountStatus = <
+  TError = ErrorType<ApiError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof changeManagedAccountStatus>>,
+    TError,
+    { id: string; data: BodyType<AccountStatusChange> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof changeManagedAccountStatus>>,
+  TError,
+  { id: string; data: BodyType<AccountStatusChange> },
+  TContext
+> => {
+  return useMutation(getChangeManagedAccountStatusMutationOptions(options));
+};
+
+export const getListAccountAuditUrl = (params?: ListAccountAuditParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/account-audit?${stringifiedParams}`
+    : `/api/admin/account-audit`;
+};
+
+/**
+ * @summary Read account status history (manager only)
+ */
+export const listAccountAudit = async (
+  params?: ListAccountAuditParams,
+  options?: RequestInit,
+): Promise<AccountAuditPage> => {
+  return customFetch<AccountAuditPage>(getListAccountAuditUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAccountAuditQueryKey = (
+  params?: ListAccountAuditParams,
+) => {
+  return [`/api/admin/account-audit`, ...(params ? [params] : [])] as const;
+};
+
+export const getListAccountAuditQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAccountAudit>>,
+  TError = ErrorType<ApiError>,
+>(
+  params?: ListAccountAuditParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAccountAudit>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAccountAuditQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAccountAudit>>
+  > = ({ signal }) => listAccountAudit(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAccountAudit>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAccountAuditQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAccountAudit>>
+>;
+export type ListAccountAuditQueryError = ErrorType<ApiError>;
+
+/**
+ * @summary Read account status history (manager only)
+ */
+
+export function useListAccountAudit<
+  TData = Awaited<ReturnType<typeof listAccountAudit>>,
+  TError = ErrorType<ApiError>,
+>(
+  params?: ListAccountAuditParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAccountAudit>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAccountAuditQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

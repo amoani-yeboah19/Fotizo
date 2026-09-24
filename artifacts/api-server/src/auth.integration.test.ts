@@ -24,9 +24,18 @@ vi.mock("@workspace/db", async () => {
     pool: { query: (query: { text: string }) => client.query(query.text) },
   };
 });
+import {
+  ListManagedAccountsResponse,
+  ListAccountAuditResponse,
+} from "@workspace/api-zod";
 import app from "./app";
 import { runtimeState } from "./lib/readiness";
-import { db, usersTable, sessionsTable } from "@workspace/db";
+import {
+  db,
+  usersTable,
+  sessionsTable,
+  accountAuditTable,
+} from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { issueSession, resolveSession } from "./lib/sessions";
 import {
@@ -35,6 +44,7 @@ import {
   verifyAuthToken,
   verifyPendingGoogleSignupToken,
 } from "./lib/jwt";
+import { changeAccountStatus } from "./lib/account-controls";
 import { changeAccountPassword } from "./lib/account";
 import type { Response } from "express";
 import { consumeAuthAttempt } from "./middlewares/security";
@@ -102,6 +112,15 @@ beforeAll(async () => {
   );
   await database.exec(channels);
   await database.exec(channels);
+  const controls = await readFile(
+    new URL(
+      "../../../lib/db/migrations/0003_account_controls.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  await database.exec(controls);
+  await database.exec(controls);
   server = app.listen(0, "127.0.0.1");
   await new Promise<void>((resolve) => server.once("listening", resolve));
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
@@ -616,6 +635,22 @@ describe("readiness and liveness", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(await response.json()).toEqual({ status: "ready" });
   });
+  it("requires the account audit migration before reporting ready", async () => {
+    await database.exec(
+      "ALTER TABLE account_audit RENAME TO hidden_account_audit",
+    );
+    try {
+      const response = await fetch(`${base}/api/readyz`);
+      expect(response.status).toBe(503);
+      expect(await response.json()).toEqual({ status: "not_ready" });
+      expect((await fetch(`${base}/api/healthz`)).status).toBe(200);
+    } finally {
+      await database.exec(
+        "ALTER TABLE hidden_account_audit RENAME TO account_audit",
+      );
+    }
+    expect((await fetch(`${base}/api/readyz`)).status).toBe(200);
+  });
   it("keeps liveness healthy while refusing readiness during shutdown", async () => {
     runtimeState.draining = true;
     try {
@@ -640,5 +675,324 @@ describe("readiness and liveness", () => {
       );
     }
     expect((await fetch(`${base}/api/readyz`)).status).toBe(200);
+  });
+});
+
+describe("manager account controls", () => {
+  async function manager() {
+    const result = await register({ ...account, email: "manager@example.com" });
+    await db
+      .update(usersTable)
+      .set({ role: "manager" })
+      .where(eq(usersTable.id, result.user.id));
+    return result;
+  }
+  function get(path: string, cookie?: string) {
+    return fetch(`${base}/api/admin${path}`, {
+      headers: cookie ? { Cookie: cookie } : {},
+    });
+  }
+  function change(
+    target: string,
+    cookie: string,
+    expectedVersion = 0,
+    action = "suspend",
+    reason = "Repeated policy violations confirmed.",
+  ) {
+    return post(
+      `/admin/accounts/${target}/status`,
+      { action, expectedVersion, reason },
+      cookie,
+    );
+  }
+  it("denies anonymous and every non-manager role access to account controls and audit records", async () => {
+    expect((await get("/accounts")).status).toBe(401);
+    const member = await register();
+    for (const role of [
+      "buyer",
+      "seller",
+      "developer",
+      "representative",
+      "china_representative",
+    ] as const) {
+      await db
+        .update(usersTable)
+        .set({ role })
+        .where(eq(usersTable.id, member.user.id));
+      for (const path of ["/accounts", "/accounts/summary", "/account-audit"])
+        expect((await get(path, member.cookie)).status).toBe(403);
+      expect((await change(member.user.id, member.cookie)).status).toBe(403);
+    }
+    expect(await db.select().from(accountAuditTable)).toHaveLength(0);
+  });
+  it("suspends and reactivates customers with an audit trail and permanent revocation of old sessions", async () => {
+    const staff = await manager();
+    const customer = await register();
+    const snapshot = (await db.query.usersTable.findFirst({
+      where: eq(usersTable.id, customer.user.id),
+    }))!;
+    const second = await post("/auth/login", account);
+    const secondCookie = second.headers.get("set-cookie")!.split(";")[0];
+    const changed = await change(customer.user.id, staff.cookie);
+    expect(changed.status).toBe(200);
+    expect(await changed.json()).toMatchObject({
+      id: customer.user.id,
+      statusVersion: 1,
+      suspendedAt: expect.any(String),
+      auditId: expect.any(String),
+    });
+    for (const cookie of [customer.cookie, secondCookie])
+      expect(
+        (await fetch(`${base}/api/auth/me`, { headers: { Cookie: cookie } }))
+          .status,
+      ).toBe(401);
+    expect((await post("/auth/login", account)).status).toBe(403);
+    expect(
+      (
+        await change(
+          customer.user.id,
+          staff.cookie,
+          1,
+          "reactivate",
+          "Investigation completed; access restored.",
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await fetch(`${base}/api/auth/me`, {
+          headers: { Cookie: customer.cookie },
+        })
+      ).status,
+    ).toBe(401);
+    expect((await post("/auth/login", account)).status).toBe(200);
+    const staleResponse = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+      cookie: vi.fn(),
+    };
+    expect(
+      await issueSession(staleResponse as unknown as Response, snapshot),
+    ).toBe(false);
+    const audit = await get(
+      `/account-audit?targetId=${customer.user.id}`,
+      staff.cookie,
+    );
+    expect(audit.headers.get("cache-control")).toBe("no-store");
+    const auditBody = await audit.json();
+    expect(ListAccountAuditResponse.safeParse(auditBody).success).toBe(true);
+    expect(auditBody).toMatchObject({
+      items: [
+        {
+          action: "reactivate",
+          actorId: staff.user.id,
+          targetUserId: customer.user.id,
+          statusVersion: 2,
+          suspendedAt: null,
+        },
+        {
+          action: "suspend",
+          actorId: staff.user.id,
+          targetUserId: customer.user.id,
+          statusVersion: 1,
+          reason: "Repeated policy violations confirmed.",
+        },
+      ],
+    });
+    const auditId = z
+      .object({ items: z.array(z.object({ id: z.string() })) })
+      .parse(auditBody).items[0].id;
+    expect(
+      (
+        await fetch(`${base}/api/admin/account-audit/${auditId}`, {
+          method: "DELETE",
+          headers: { ...headers, Cookie: staff.cookie },
+        })
+      ).status,
+    ).toBe(404);
+    expect(await db.select().from(accountAuditTable)).toHaveLength(2);
+    // The original active state is not the same version after reactivation.
+    expect((await change(customer.user.id, staff.cookie, 0)).status).toBe(409);
+  });
+  it("protects self and all staff accounts; validates reasons and strips no privileged inputs silently", async () => {
+    const staff = await manager();
+    const other = await register();
+    expect((await change(staff.user.id, staff.cookie)).status).toBe(403);
+    for (const role of [
+      "manager",
+      "developer",
+      "representative",
+      "china_representative",
+    ] as const) {
+      await db
+        .update(usersTable)
+        .set({ role })
+        .where(eq(usersTable.id, other.user.id));
+      expect((await change(other.user.id, staff.cookie)).status).toBe(403);
+    }
+    await db
+      .update(usersTable)
+      .set({ role: "buyer" })
+      .where(eq(usersTable.id, other.user.id));
+    for (const bad of [
+      { reason: "short" },
+      { reason: "x".repeat(1001) },
+      { expectedVersion: -1 },
+      { expectedVersion: 0.1 },
+      { role: "manager" },
+      { action: "delete" },
+    ]) {
+      expect(
+        (
+          await post(
+            `/admin/accounts/${other.user.id}/status`,
+            {
+              action: "suspend",
+              expectedVersion: 0,
+              reason: "Confirmed abuse report.",
+              ...bad,
+            },
+            staff.cookie,
+          )
+        ).status,
+      ).toBe(400);
+    }
+    expect((await change(crypto.randomUUID(), staff.cookie)).status).toBe(404);
+    expect(await db.select().from(accountAuditTable)).toHaveLength(0);
+  });
+  it("allows only one concurrent status change and records exactly one audit event", async () => {
+    const staff = await manager();
+    const customer = await register();
+    const responses = await Promise.all([
+      change(customer.user.id, staff.cookie),
+      change(customer.user.id, staff.cookie),
+    ]);
+    expect(responses.map((r) => r.status).sort()).toEqual([200, 409]);
+    expect(await db.select().from(accountAuditTable)).toHaveLength(1);
+  });
+  it("rolls back suspension and session revocation when the audit cannot be saved", async () => {
+    const staff = await manager();
+    const customer = await register();
+    await database.exec(`CREATE FUNCTION fail_test_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test audit failure'; END $$;
+      CREATE TRIGGER fail_test_audit BEFORE INSERT ON account_audit FOR EACH ROW EXECUTE FUNCTION fail_test_audit();`);
+    try {
+      expect((await change(customer.user.id, staff.cookie)).status).toBe(503);
+      const user = await db.query.usersTable.findFirst({
+        where: eq(usersTable.id, customer.user.id),
+      });
+      expect(user?.suspendedAt).toBeNull();
+      expect(user?.accountStatusVersion).toBe(0);
+      expect(
+        (
+          await fetch(`${base}/api/auth/me`, {
+            headers: { Cookie: customer.cookie },
+          })
+        ).status,
+      ).toBe(200);
+      expect(await db.select().from(accountAuditTable)).toHaveLength(0);
+    } finally {
+      await database.exec(
+        "DROP TRIGGER fail_test_audit ON account_audit; DROP FUNCTION fail_test_audit();",
+      );
+    }
+  });
+  it("rechecks the manager's role and session inside the status transaction", async () => {
+    const staff = await manager();
+    const customer = await register();
+    const claims = verifyAuthToken(staff.cookie.split("=")[1]);
+    const input = {
+      action: "suspend" as const,
+      expectedVersion: 0,
+      reason: "Confirmed abuse report.",
+    };
+    await db
+      .update(usersTable)
+      .set({ role: "buyer" })
+      .where(eq(usersTable.id, staff.user.id));
+    expect(
+      (
+        await changeAccountStatus(
+          staff.user.id,
+          claims.sid,
+          customer.user.id,
+          input,
+        )
+      ).status,
+    ).toBe(403);
+    await db
+      .update(usersTable)
+      .set({ role: "manager" })
+      .where(eq(usersTable.id, staff.user.id));
+    await post("/auth/logout", {}, staff.cookie);
+    expect(
+      (
+        await changeAccountStatus(
+          staff.user.id,
+          claims.sid,
+          customer.user.id,
+          input,
+        )
+      ).status,
+    ).toBe(401);
+    expect(await db.select().from(accountAuditTable)).toHaveLength(0);
+  });
+  it("paginates and filters real customer records without credentials or wildcard search surprises", async () => {
+    const staff = await manager();
+    await db
+      .insert(usersTable)
+      .values(
+        Array.from({ length: 27 }, (_, i) => ({
+          name: `Customer ${i}`,
+          email: `customer${i}@example.com`,
+          role: "buyer" as const,
+        })),
+      );
+    await db
+      .insert(usersTable)
+      .values({
+        name: "Literal %_ user",
+        email: "literal@example.com",
+        role: "seller",
+        suspendedAt: new Date(),
+      });
+    const first = await get("/accounts", staff.cookie);
+    expect(first.headers.get("cache-control")).toBe("no-store");
+    const schema = z.object({
+      items: z.array(
+        z.object({ id: z.string(), name: z.string() }).passthrough(),
+      ),
+      hasMore: z.boolean(),
+    });
+    const firstBody = await first.json();
+    expect(ListManagedAccountsResponse.safeParse(firstBody).success).toBe(true);
+    const one = schema.parse(firstBody);
+    const two = schema.parse(
+      await (await get("/accounts?page=1", staff.cookie)).json(),
+    );
+    expect(one.items).toHaveLength(25);
+    expect(one.hasMore).toBe(true);
+    expect(two.items).toHaveLength(3);
+    expect(two.hasMore).toBe(false);
+    expect(new Set([...one.items, ...two.items].map((i) => i.id)).size).toBe(
+      28,
+    );
+    expect(one.items[0]).not.toHaveProperty("passwordHash");
+    expect(one.items[0]).not.toHaveProperty("googleId");
+    expect(
+      schema.parse(await (await get("/accounts?q=%25_", staff.cookie)).json())
+        .items,
+    ).toHaveLength(1);
+    expect(
+      schema.parse(
+        await (await get("/accounts?status=suspended", staff.cookie)).json(),
+      ).items,
+    ).toHaveLength(1);
+    expect(await (await get("/accounts/summary", staff.cookie)).json()).toEqual(
+      { total: 28, active: 27, suspended: 1 },
+    );
+    expect((await get("/accounts?page=-1", staff.cookie)).status).toBe(400);
+    expect(
+      (await get("/account-audit?targetId=bad", staff.cookie)).status,
+    ).toBe(400);
   });
 });
