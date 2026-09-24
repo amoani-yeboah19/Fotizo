@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Package, ShoppingBag, ShoppingCart, Star, Plus, Edit2, Eye, MessageSquare, Trash2, Loader2 } from "lucide-react";
+import { TrendingUp, Package, ShoppingBag, ShoppingCart, Plus, Edit2, Eye, MessageSquare, Trash2, Loader2 } from "lucide-react";
 import { useSellerProducts, useOrders, useSales, useDashboardSection } from "@/features/profile/hooks";
 import { useDeleteProduct } from "@/features/marketplace/hooks";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -23,10 +23,29 @@ const statusTone = (s: string) =>
 
 type Section = "overview" | "products" | "orders" | "purchases";
 
-const chartData = [
-  { name: "Mon", revenue: 400 }, { name: "Tue", revenue: 300 }, { name: "Wed", revenue: 550 },
-  { name: "Thu", revenue: 450 }, { name: "Fri", revenue: 700 }, { name: "Sat", revenue: 650 }, { name: "Sun", revenue: 800 },
-];
+const lineTotal = (o: Order) => o.price * o.quantity;
+const counted = (o: Order) => o.status !== "cancelled";
+const OPEN_STATUSES = new Set(["pending", "processing"]);
+
+/** Sales figures from the seller's own order lines (dates are UTC order dates). */
+function salesFigures(sales: Order[], now = new Date()) {
+  const month = now.toISOString().slice(0, 7);
+  const valid = sales.filter(counted);
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 6 + i));
+    const key = d.toISOString().slice(0, 10);
+    return {
+      name: d.toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" }),
+      revenue: valid.filter((o) => o.date === key).reduce((sum, o) => sum + lineTotal(o), 0),
+    };
+  });
+  return {
+    monthValue: valid.filter((o) => o.date.startsWith(month)).reduce((sum, o) => sum + lineTotal(o), 0),
+    unitsSold: valid.reduce((sum, o) => sum + o.quantity, 0),
+    toFulfil: sales.filter((o) => OPEN_STATUSES.has(o.status)).length,
+    days,
+  };
+}
 
 export default function DashboardSeller() {
   const { data: sellerProducts = [] } = useSellerProducts();
@@ -36,6 +55,12 @@ export default function DashboardSeller() {
     ["overview", "products", "orders", "purchases"],
     "overview",
   );
+  const figures = useMemo(() => salesFigures(sales), [sales]);
+  const unitsByProduct = useMemo(() => {
+    const units = new Map<string, number>();
+    for (const o of sales) if (counted(o)) units.set(o.productId, (units.get(o.productId) ?? 0) + o.quantity);
+    return units;
+  }, [sales]);
   const deleteProduct = useDeleteProduct();
   const { toast } = useToast();
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
@@ -110,7 +135,7 @@ export default function DashboardSeller() {
                 </td>
                 <td className="px-6 py-4 font-medium"><Price amount={product.price} /></td>
                 <td className="px-6 py-4">{product.stock}</td>
-                <td className="px-6 py-4">{product.sales}</td>
+                <td className="px-6 py-4">{unitsByProduct.get(product.id) ?? 0}</td>
                 <td className="px-6 py-4">
                   <StatusBadge tone={product.status === "active" ? "success" : product.status === "unpublished" ? "warning" : "danger"}>
                     {product.status.replace("_", " ")}
@@ -235,19 +260,20 @@ export default function DashboardSeller() {
       {section === "overview" && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <StatCard label="Revenue (Month)" value="£4,280" valueClassName="text-primary"
-              sub={<p className="text-xs text-green-600 mt-2 flex items-center font-medium"><TrendingUp className="w-3 h-3 mr-1" /> +12.5% vs last month</p>} />
-            <StatCard label="Active Listings" value={String(sellerProducts.length)} />
-            <StatCard label="Orders to Fulfill" value={String(sales.length)} valueClassName="text-accent" />
-            <StatCard label="Average Rating" value={<span className="inline-flex items-center gap-2">4.9 <Star className="w-6 h-6 fill-accent text-accent" /></span>} />
+            <StatCard label="Order value (this month)" value={<Price amount={figures.monthValue} />} valueClassName="text-primary"
+              sub={<p className="text-xs text-muted-foreground mt-2">Excludes cancelled orders</p>} />
+            <StatCard label="Active Listings" value={String(sellerProducts.filter((p) => p.status === "active").length)} />
+            <StatCard label="Orders to Fulfil" value={String(figures.toFulfil)} valueClassName="text-accent" />
+            <StatCard label="Units Sold" value={String(figures.unitsSold)} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
             <SurfaceCard className="lg:col-span-2 p-6">
-              <h3 className="text-lg font-bold mb-6">Revenue Overview</h3>
+              <h3 className="text-lg font-bold">Order value, last 7 days</h3>
+              <p className="text-xs text-muted-foreground mb-6">Your order lines by order date, excluding cancelled</p>
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
+                  <BarChart data={figures.days}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartColors.grid} />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={chartAxisTick} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={chartAxisTick} dx={-10} tickFormatter={(val) => `£${val}`} />
@@ -271,11 +297,11 @@ export default function DashboardSeller() {
                     <div key={order.id} className="flex justify-between items-center">
                       <div>
                         <p className="font-medium text-sm truncate max-w-[150px]">{order.productTitle}</p>
-                        <p className="text-xs text-muted-foreground">{order.id}</p>
+                        <p className="text-xs text-muted-foreground">{order.date} · ×{order.quantity}</p>
                       </div>
                       <div className="text-right">
-                        <Price amount={order.price} className="text-sm font-bold" />
-                        <p className="text-xs text-accent">Pending</p>
+                        <Price amount={lineTotal(order)} className="text-sm font-bold" />
+                        <p className="text-xs text-accent capitalize">{order.status}</p>
                       </div>
                     </div>
                   ))

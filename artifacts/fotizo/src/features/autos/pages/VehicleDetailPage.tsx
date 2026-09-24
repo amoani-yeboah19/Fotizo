@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Price } from "@/components/common/Price";
 import { VehicleCard } from "@/features/autos/components/VehicleCard";
 import { VehicleEnquiryDialog } from "@/features/autos/components/VehicleEnquiryDialog";
+import { Loading, ErrorState } from "@/components/common/QueryStates";
+import { useVehicle, useVehicles } from "@/features/autos/hooks";
 import {
-  getVehicle,
   relatedVehicles,
   leadTimeLabel,
   vehicleName,
@@ -17,9 +18,25 @@ import {
 
 export default function VehicleDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const vehicle = getVehicle(id ?? "");
+  const { data: vehicle, isPending, isError } = useVehicle(id ?? "");
+  const { data: catalogue = [] } = useVehicles();
   const [activeImage, setActiveImage] = useState(0);
   const [enquiryOpen, setEnquiryOpen] = useState(false);
+
+  if (isPending) {
+    return (
+      <PageLayout mainClassName="container-app py-32">
+        <Loading label="Loading vehicle…" />
+      </PageLayout>
+    );
+  }
+  if (isError) {
+    return (
+      <PageLayout mainClassName="container-app py-32">
+        <ErrorState label="We couldn't load this vehicle. Please try again." />
+      </PageLayout>
+    );
+  }
 
   if (!vehicle) {
     return (
@@ -44,7 +61,7 @@ export default function VehicleDetailPage() {
     { icon: Car, label: "Drivetrain", value: vehicle.drivetrain },
   ];
 
-  const related = relatedVehicles(vehicle);
+  const related = relatedVehicles(vehicle, catalogue);
 
   return (
     <PageLayout mainClassName="container-app pt-28 pb-20">

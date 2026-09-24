@@ -1,5 +1,6 @@
-import { api, AUTOS_USE_MOCKS } from "@/api";
+import { api, ApiError, AUTOS_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
+import type { Vehicle } from "@/features/autos/data/vehicles";
 
 export interface VehicleEnquiryInput {
   vehicleId: string;
@@ -13,24 +14,37 @@ export interface VehicleEnquiryInput {
 
 export interface VehicleEnquiry extends VehicleEnquiryInput {
   id: string;
+  /** Quoted back to the customer for follow-up. */
+  reference: string;
+  vehicleName: string;
+  status: string;
   createdAt: string;
 }
 
-// Captured enquiries, mock mode only. A real backend needs POST /vehicle-enquiries
-// writing to a leads table, plus a notification to the sales team — a lead that
-// only lives in browser memory is lost the moment the tab closes.
-export const mockEnquiries: VehicleEnquiry[] = [];
+// The catalogue and enquiries are server-side. Mock mode (demo builds) has no
+// vehicle catalogue and cannot capture leads.
+export const autosService = {
+  async listVehicles(): Promise<Vehicle[]> {
+    if (AUTOS_USE_MOCKS) {
+      await delay();
+      return [];
+    }
+    return api.get<Vehicle[]>("/vehicles");
+  },
+
+  async getVehicle(slug: string): Promise<Vehicle | null> {
+    if (AUTOS_USE_MOCKS) return null;
+    try {
+      return await api.get<Vehicle>(`/vehicles/${encodeURIComponent(slug)}`);
+    } catch (error) {
+      // An unpublished or unknown vehicle is a normal "not found" outcome.
+      if (error instanceof ApiError && error.status === 404) return null;
+      throw error;
+    }
+  },
+};
 
 export async function submitVehicleEnquiry(input: VehicleEnquiryInput): Promise<VehicleEnquiry> {
-  if (AUTOS_USE_MOCKS) {
-    await delay();
-    const enquiry: VehicleEnquiry = {
-      ...input,
-      id: `enq-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
-    mockEnquiries.unshift(enquiry);
-    return enquiry;
-  }
+  if (AUTOS_USE_MOCKS) throw new Error("Vehicle enquiries are unavailable in demo mode.");
   return api.post<VehicleEnquiry>("/vehicle-enquiries", input);
 }

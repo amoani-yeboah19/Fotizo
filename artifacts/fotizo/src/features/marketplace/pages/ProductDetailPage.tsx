@@ -11,7 +11,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useMessages } from "@/contexts/MessagesContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Star, Heart, MessageSquare, ChevronRight, Minus, Plus, Truck, ShieldCheck } from "lucide-react";
+import { Star, Heart, MessageSquare, ChevronRight, Minus, Plus } from "lucide-react";
 
 export default function ProductDetail() {
   const [, params] = useRoute("/products/:id");
@@ -189,14 +189,6 @@ export default function ProductDetail() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground border-t border-border pt-8">
-              <div className="flex items-center gap-2">
-                <Truck className="w-5 h-5 text-primary" /> Free worldwide shipping
-              </div>
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-primary" /> 30-day money-back guarantee
-              </div>
-            </div>
           </div>
         </div>
 
@@ -221,14 +213,15 @@ export default function ProductDetail() {
           <div className="bg-white rounded-2xl border border-border p-8 min-h-[200px]">
             {activeTab === "description" && (
               <div className="prose max-w-none text-muted-foreground">
-                <p>{product.description}</p>
-                <p>Features premium materials and expert craftsmanship designed to last a lifetime. Fully backed by our comprehensive warranty and buyer protection guarantee.</p>
+                <p className="whitespace-pre-line">{product.description}</p>
               </div>
             )}
             
             {activeTab === "specifications" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
-                {product.specs && Object.entries(product.specs).map(([key, val]) => (
+                {!product.specs || Object.keys(product.specs).length === 0 ? (
+                  <p className="text-muted-foreground">The seller has not listed specifications.</p>
+                ) : Object.entries(product.specs).map(([key, val]) => (
                   <div key={key} className="flex justify-between py-3 border-b border-border/50">
                     <span className="text-muted-foreground font-medium">{key}</span>
                     <span className="text-foreground text-right">{val as React.ReactNode}</span>

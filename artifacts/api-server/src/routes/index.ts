@@ -8,6 +8,11 @@ import aiRouter from "./ai";
 import ordersRouter from "./orders";
 import servicesRouter from "./services";
 import conversationsRouter from "./conversations";
+import supportRouter from "./support";
+import vehiclesRouter from "./vehicles";
+import currencyRouter from "./currency";
+import operationsRouter from "./operations";
+import developerRouter from "./developer";
 
 const router: IRouter = Router();
 
@@ -20,5 +25,10 @@ router.use("/ai", aiRouter);
 router.use(ordersRouter);
 router.use(servicesRouter);
 router.use(conversationsRouter);
+router.use(supportRouter);
+router.use(vehiclesRouter);
+router.use(currencyRouter);
+router.use(operationsRouter);
+router.use(developerRouter);
 
 export default router;

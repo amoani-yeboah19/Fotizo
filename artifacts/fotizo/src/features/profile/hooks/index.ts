@@ -3,9 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import { ordersService } from "@/features/payments/services";
-import { bookingsService } from "@/features/bookings/services";
 import { catalogService } from "@/features/marketplace/services";
-import { dashboardService } from "@/features/profile/services";
 
 // Keeps a dashboard's in-page section in sync with the ?tab= query param, so a
 // section is deep-linkable (e.g. from the mobile menu). Falls back to `fallback`
@@ -31,7 +29,4 @@ function useAccountQuery<T>(name: string, queryFn: () => Promise<T>) {
 }
 export const useOrders = () => useAccountQuery("orders", ordersService.listOrders);
 export const useSales = () => useAccountQuery("sales", ordersService.listSales);
-export const useBookings = () => useAccountQuery("bookings", bookingsService.listBookings);
 export const useSellerProducts = () => useAccountQuery("seller-products", catalogService.listSellerProducts);
-export const useManagerMetrics = () => useAccountQuery("manager-metrics", dashboardService.getManagerMetrics);
-export const useDeveloperStats = () => useAccountQuery("developer-stats", dashboardService.getDeveloperStats);

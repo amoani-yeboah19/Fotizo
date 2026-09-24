@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { recordRequestMetrics } from "./lib/request-metrics";
 
 import {
   configuredOrigins,
@@ -44,6 +45,7 @@ app.use(
     credentials: true,
   }),
 );
+app.use("/api", recordRequestMetrics);
 app.use("/api", protectBrowserWrites(origins));
 // Default 100kb body limit is too small for product/service photos, which
 // arrive as base64 data URLs (a single downscaled JPEG easily exceeds it).

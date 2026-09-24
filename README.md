@@ -35,9 +35,9 @@ From the repository root, with artifacts/api-server/.env containing the intended
 node --env-file=artifacts/api-server/.env lib/db/migrate.mjs
 ```
 
-The runner locks concurrent migrations, checks previously applied SQL checksums, and applies pending files in a transaction. Migration 0001 requires the existing users table and adds session/rate-limit storage and suspension state. Migration 0002 adds explicit marketplace/shop channels, classifies existing China representative listings as shop inventory, and adds catalogue indexes and a channel constraint. Migration 0003 adds versioned account status and manager audit records. All three migrations tolerate already-created objects for local schema adoption. They are not a full baseline for an empty database. A reviewed baseline/adoption process is still needed before broad production schema changes.
+The runner locks concurrent migrations, checks previously applied SQL checksums, and applies pending files in a transaction. Migration 0001 requires the existing users table and adds session/rate-limit storage and suspension state. Migration 0002 adds explicit marketplace/shop channels, classifies existing China representative listings as shop inventory, and adds catalogue indexes and a channel constraint. Migration 0003 adds versioned account status and manager audit records. Migration 0004 adds support requests, the vehicle catalogue, vehicle enquiries and the staff case-history table. All four migrations tolerate already-created objects for local schema adoption. They are not a full baseline for an empty database. A reviewed baseline/adoption process is still needed before broad production schema changes.
 
-Deployment order: verify the target and backup/restore procedure, apply all three additive migrations, then deploy the API and frontend together. The new session token format intentionally requires existing users to sign in again. The API must never start with an unmigrated schema. No live migration is run by application startup or the test suite.
+Deployment order: verify the target and backup/restore procedure, apply all four additive migrations, then deploy the API and frontend together. The new session token format intentionally requires existing users to sign in again. The API must never start with an unmigrated schema. No live migration is run by application startup or the test suite.
 
 ## Session and deployment configuration
 
@@ -67,6 +67,15 @@ Production shop pages read published API inventory. An empty shop is expected un
 
 Checkout and online booking are intentionally unavailable until verified payments and real scheduling exist. POST /api/orders returns 503 without changing stock. The frontend never asks for card details or invents booking/order confirmations. Existing order history remains readable.
 
+## Support, vehicles and staff operations
+
+- `POST /api/support-requests` and `POST /api/vehicle-enquiries` are public (a signed-in customer is linked to the record), validated, limited to 10 per client IP per 15 minutes, and return a reference (FZS-/FZV-) for follow-up. Enquiries snapshot the vehicle name and estimate shown to the customer. No email notification is sent yet.
+- Managers work support requests; managers and the China representative work vehicle enquiries and publish/unpublish vehicles. Status changes require the current status version and write a case-history record in the same transaction.
+- `GET /api/vehicles` serves published vehicles only. The catalogue is loaded from a reviewed JSON file with `pnpm --filter @workspace/scripts import-vehicles -- --file <file> [--dry-run] [--publish]` (DATABASE_URL required). Imports land unpublished unless `--publish` is given. `scripts/data/vehicles.candidate.json` holds the list that was previously hard-coded in the frontend; its prices are indicative and its photos are Wikimedia stand-ins, so review it before importing.
+- `GET /api/operations/overview`, `/sellers` and `/orders` give managers and representatives figures computed from stored records (UTC calendar months). Order value excludes cancelled lines and is not collected revenue, because online payment is disabled. Accounts have no region yet, so figures are platform-wide.
+- `GET /api/developer/stats` (developer and manager) reports request counts, 5xx rate, latency and recent route patterns measured in this API process since start, plus database readiness and applied migrations. It keeps no IDs, query strings, bodies or user identities and resets on restart.
+- `GET /api/currency/rates` returns GBP-based display rates for USD and GHS from `CURRENCY_RATES_URL` (default: ExchangeRate-API open endpoint), cached for six hours. It serves the last good rates for up to 48 hours during a source outage, then returns 503 and the frontend stays on GBP. Rates are for display only.
+
 ## Manager account controls
 
 Active managers can use the Users and Account audit dashboard sections to review, suspend and reactivate buyer/seller accounts. Staff accounts, self-suspension and role changes are protected. Every transition requires a reason and the current status version; state changes, session revocation and the audit record commit together. Demo mode disables these controls. See artifacts/fotizo/src/features/profile/ACCOUNT_CONTROLS.md for permissions, API behavior and limits.
@@ -74,7 +83,7 @@ Active managers can use the Users and Account audit dashboard sections to review
 ## API health and shutdown
 
 - `GET /api/healthz` is process liveness and stays 200 while the process can answer, independently of database availability.
-- `GET /api/readyz` returns 200 with `{ "status": "ready" }` after checking database access and the session, catalogue and account-audit schema required by migrations 0001/0002/0003. It returns 503 with `{ "status": "not_ready" }` during draining or failure, without database details. Responses are not cached. Concurrent probes share one check.
+- `GET /api/readyz` returns 200 with `{ "status": "ready" }` after checking database access and the session, catalogue, account-audit and operations schema required by migrations 0001-0004. It returns 503 with `{ "status": "not_ready" }` during draining or failure, without database details. Responses are not cached. Concurrent probes share one check.
 - Database connection acquisition is limited to five seconds. Readiness queries have a two-second client timeout; configure the hosting probe timeout above seven seconds to allow both stages. This probe does not inspect every schema constraint, external provider, or business workflow.
 - Startup validates the TCP port and runs the database/schema check before opening the listener. Missing migrations or unavailable database access make startup fail, so apply migrations first and use the host's restart policy.
 - SIGTERM/SIGINT mark the API unready, stop accepting connections, let active HTTP requests finish, then close the database pool. Shutdown has a ten-second deadline; expiry closes remaining HTTP connections and exits unsuccessfully. The host's termination grace period must exceed ten seconds. Forced termination can interrupt a request after its database commit, so business-write idempotency remains necessary.

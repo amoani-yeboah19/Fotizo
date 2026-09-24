@@ -2,8 +2,10 @@ import { useMemo, useState } from "react";
 import { ShieldCheck, Ship, FileCheck2, Wrench } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { VehicleCard } from "@/features/autos/components/VehicleCard";
+import { Loading, ErrorState } from "@/components/common/QueryStates";
+import { Button } from "@/components/ui/button";
+import { useVehicles } from "@/features/autos/hooks";
 import {
-  VEHICLES,
   BODY_LABELS,
   FUEL_LABELS,
   vehicleMakes,
@@ -29,7 +31,8 @@ export default function AutosPage() {
   const [body, setBody] = useState<BodyFilter>(null);
   const [fuel, setFuel] = useState<FuelFilter>(null);
 
-  const makes = useMemo(() => vehicleMakes(), []);
+  const { data: vehicles = [], isPending, isError, refetch } = useVehicles();
+  const makes = useMemo(() => vehicleMakes(vehicles), [vehicles]);
   // Built from the catalogue so the hero can't name a marque we've dropped, or
   // miss one we've added — the exact drift that left "Changan, Jetour and
   // Avatr" sitting there after five more makes arrived.
@@ -40,18 +43,18 @@ export default function AutosPage() {
         : (makes[0] ?? "New vehicles"),
     [makes],
   );
-  const bodyTypes = useMemo(() => vehicleBodyTypes(), []);
-  const fuelTypes = useMemo(() => vehicleFuelTypes(), []);
+  const bodyTypes = useMemo(() => vehicleBodyTypes(vehicles), [vehicles]);
+  const fuelTypes = useMemo(() => vehicleFuelTypes(vehicles), [vehicles]);
 
   const shown = useMemo(
     () =>
-      VEHICLES.filter(
+      vehicles.filter(
         (v) =>
           (!make || v.make === make) &&
           (!body || v.bodyType === body) &&
           (!fuel || v.fuel === fuel),
       ).sort((a, b) => a.landedPrice - b.landedPrice),
-    [make, body, fuel],
+    [vehicles, make, body, fuel],
   );
 
   const clearAll = () => {
@@ -93,6 +96,22 @@ export default function AutosPage() {
       </section>
 
       <section className="container-app py-10">
+        {isPending ? (
+          <Loading label="Loading vehicles…" />
+        ) : isError ? (
+          <div className="text-center">
+            <ErrorState label="We couldn't load the vehicle catalogue." className="py-12" />
+            <Button variant="outline" onClick={() => refetch()}>Try again</Button>
+          </div>
+        ) : vehicles.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border py-20 text-center">
+            <p className="font-medium text-foreground">No vehicles are listed right now</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              We source to order. Contact customer service with the make and model you want.
+            </p>
+          </div>
+        ) : (
+        <>
         {/* Filters */}
         <div className="flex flex-col gap-4 border-b border-border pb-6">
           <FilterRow label="Make">
@@ -159,6 +178,8 @@ export default function AutosPage() {
               <VehicleCard key={v.id} vehicle={v} />
             ))}
           </div>
+        )}
+        </>
         )}
 
         <p className="mt-10 text-xs leading-relaxed text-muted-foreground">

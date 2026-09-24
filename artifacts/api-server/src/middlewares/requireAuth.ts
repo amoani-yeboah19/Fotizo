@@ -20,3 +20,14 @@ export async function requireAuth(
   res.setHeader("Cache-Control", "no-store");
   next();
 }
+
+/** Use after requireAuth. The role comes from the database on every request. */
+export function requireRole(...roles: string[]) {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.auth || !roles.includes(req.auth.role)) {
+      res.status(403).json({ error: "You do not have access to this area." });
+      return;
+    }
+    next();
+  };
+}

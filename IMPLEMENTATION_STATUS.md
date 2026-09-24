@@ -23,11 +23,17 @@ Updated 24 September 2026. Work is local and has not been deployed. The complete
 | Production data | Shop uses real published API inventory; release build rejects mock overrides/demo identities | Build-policy tests and production build |
 | Account settings | Authenticated display-name editing, current-password changes, atomic all-session revocation, Google-only handling, same-origin cross-tab session checks | HTTP ownership/validation/concurrency/rollback tests and React form/session tests |
 | Manager account controls | Buyer/seller search and counts, suspension/reactivation, session revocation and transactional audit records; protected staff accounts | API role/concurrency/rollback/pagination tests and manager UI/client tests |
-| Display currency | Invalid/unavailable rates retain GBP display and hide unavailable conversions | React currency tests |
+| Support and vehicle enquiries | Persisted public support requests and vehicle enquiries with references, rate limits, account linking and enquiry snapshots; manager/China-desk queues with versioned status changes and transactional case history | HTTP validation, rate-limit, role, concurrency (200/409), transition and history tests; React queue/conflict tests |
+| Vehicle catalogue | Database-backed vehicles, published-only public reads, staff publish/unpublish, reviewed JSON import script defaulting to unpublished; the frontend no longer bundles a vehicle list | HTTP publication/role tests, import dry-run |
+| Staff reporting | Manager, representative and China-desk dashboards read overview figures, seller/order lists and queues from stored records; fabricated sales, sellers, suppliers, shipments, API keys and request logs removed; unavailable workflows say so | HTTP aggregate/role tests (including a correlated-subquery defect found and fixed), React overview/retry tests |
+| Developer console | Measured in-process request statistics, readiness and migration ledger; no identifiers or query strings retained | HTTP redaction and role tests |
+| Display currency | Server rate endpoint with validation, six-hour cache, 48-hour stale limit and 503 on failure; invalid/unavailable rates retain GBP display | HTTP source success/failure/invalid-rate tests and React currency tests |
 | API operations | Separate database/schema readiness, startup prerequisite check, bounded connection acquisition, graceful request draining and database shutdown | HTTP schema/readiness tests, concurrent probe test, actual in-flight HTTP shutdown and deadline tests |
 | Engineering | Versioned migration runner, additive session/channel/account-audit SQL, Windows-compatible scripts, pinned runtime/package manager, CI checks, local API proxy and setup documentation | Locked dependency installation, typechecking, tests and builds |
 
 ## Verification record
+
+Operations batch: `pnpm run check` passed all TypeScript projects, all 105 tests across thirteen files, and API/frontend/mockup production builds. Migrations 0001-0004 were applied with the migration runner to the Supabase database configured in artifacts/api-server/.env at the user's direction; the API reported ready afterwards and live rates, vehicles and the autos/support pages were checked in the browser. No test support requests, enquiries or vehicles were written to that database. Buyer and seller dashboards now derive their figures from the account's own orders and sales; bookings and wishlist state that they are unavailable. Product pages no longer show invented shipping, guarantee or description text.
 
 Catalogue-browsing batch: `pnpm run check` passed all TypeScript projects, all 91 tests across eleven files, and API/frontend/mockup production builds. A pagination test that clicked Next before the reset page had loaded now waits for that page; the component correctly disables pagination while fetching. `git diff --check` passed. Browser acceptance against a running API and database remains pending.
 
@@ -35,7 +41,7 @@ Manager account-controls batch: all TypeScript projects, all 73 tests across nin
 
 Previous account-settings and API-operations batch: `pnpm run check` passed all TypeScript projects, all 55 tests across seven files, and API/frontend/mockup production builds. This includes cross-tab state clearing, password-change concurrency and rollback, stale-credential session issuance, readiness failure/recovery, concurrent probes, active HTTP request draining and shutdown deadlines. API client/schema generation succeeded. A smoke test of the built API against an intentionally unavailable local database exited with code 1 before listening, as expected. The earlier foundation batch passed 29 tests. `git diff --check` passed.
 
-API tests use an isolated PostgreSQL engine in WASM, bcrypt and actual HTTP requests. Session and currency tests use React with jsdom. SQL migration application/reapplication is tested against a synthetic previous schema. The migration runner's lock/checksum/transaction logic is source-reviewed; it has not been exercised against a hosted database or the actual production schema.
+API tests use an isolated PostgreSQL engine in WASM, bcrypt and actual HTTP requests. Session and currency tests use React with jsdom. SQL migration application/reapplication is tested against a synthetic previous schema. The migration runner applied 0001-0004 to the hosted Supabase database on 24 September 2026; rollback and restore have not been rehearsed.
 
 Browser visual/mobile/keyboard acceptance remains pending: the browser tool reported no connected browsers after an initial connection timeout. This is not covered by passing jsdom tests. The temporary frontend server was stopped after the attempt. No live database migration, hosting change, payment, email or production seed was performed.
 
@@ -43,7 +49,7 @@ Builds currently emit source-map warnings for the UI label/tooltip modules and a
 
 ## Deployment prerequisites for these changes
 
-1. Inspect the target schema and take a verified backup. Follow README.md to apply 0001, 0002 and 0003 using the migration runner before this API version starts. Do not use schema push on production.
+1. Inspect the target schema and take a verified backup. Follow README.md to apply 0001-0004 using the migration runner before this API version starts. Do not use schema push on production.
 2. Configure a strong JWT_SECRET, exact CORS_ORIGIN values and the verified trusted-proxy hop count. Existing tokens require a fresh sign-in.
 3. Deploy frontend and API together because writes require X-Fotizo-Request and public product lists now return a bounded page envelope instead of an array. Verify actual proxy forwarding, secure cookies and revocation in staging.
 4. Publish only reviewed shop inventory. Empty/unpublished inventory must stay unavailable.

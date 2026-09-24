@@ -85,3 +85,21 @@ export const api = {
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, { body }),
   del: <T>(path: string, body?: unknown) => request<T>("DELETE", path, { body }),
 };
+
+/**
+ * The server's own explanation for a rejected request (validation, limits,
+ * conflicts), or `fallback` for network and server failures.
+ */
+export function apiErrorMessage(err: unknown, fallback: string): string {
+  if (
+    err instanceof ApiError &&
+    err.status >= 400 &&
+    err.status < 500 &&
+    err.data &&
+    typeof err.data === "object" &&
+    "error" in err.data &&
+    typeof err.data.error === "string"
+  )
+    return err.data.error;
+  return fallback;
+}

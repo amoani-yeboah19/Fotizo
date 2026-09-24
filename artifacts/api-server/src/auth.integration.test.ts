@@ -7,7 +7,6 @@ import {
   expect,
   vi,
 } from "vitest";
-import { readFile } from "node:fs/promises";
 import type { Server } from "node:http";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
@@ -31,6 +30,7 @@ import {
   ListCatalogueCategoriesResponse,
 } from "@workspace/api-zod";
 import app from "./app";
+import { createTestSchema } from "./test-schema";
 import { runtimeState } from "./lib/readiness";
 import {
   db,
@@ -90,40 +90,7 @@ beforeAll(async () => {
       testDatabase: typeof database;
     }
   ).testDatabase;
-  await database.exec(`CREATE TYPE user_role AS ENUM ('buyer','seller','manager','developer','representative','china_representative');
-    CREATE TABLE users (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL, email text NOT NULL UNIQUE,
-    password_hash text, google_id text UNIQUE, role user_role NOT NULL DEFAULT 'buyer', avatar text,
-    verified boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now());`);
-  const migration = await readFile(
-    new URL("../../../lib/db/migrations/0001_sessions.sql", import.meta.url),
-    "utf8",
-  );
-  await database.exec(migration);
-  await database.exec(migration); // Additive migration is safe against an already upgraded schema.
-  await database.exec(`CREATE TYPE product_status AS ENUM ('active','unpublished');
-    CREATE TABLE products (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL, description text NOT NULL,
-    price numeric(10,2) NOT NULL, original_price numeric(10,2), rating real NOT NULL DEFAULT 0, review_count integer NOT NULL DEFAULT 0,
-    seller_id uuid NOT NULL REFERENCES users(id), category text NOT NULL, images text[] NOT NULL DEFAULT '{}',
-    stock_count integer NOT NULL DEFAULT 0, tags text[] NOT NULL DEFAULT '{}', specs jsonb NOT NULL DEFAULT '{}',
-    status product_status NOT NULL DEFAULT 'active', created_at timestamptz NOT NULL DEFAULT now());`);
-  const channels = await readFile(
-    new URL(
-      "../../../lib/db/migrations/0002_product_channels.sql",
-      import.meta.url,
-    ),
-    "utf8",
-  );
-  await database.exec(channels);
-  await database.exec(channels);
-  const controls = await readFile(
-    new URL(
-      "../../../lib/db/migrations/0003_account_controls.sql",
-      import.meta.url,
-    ),
-    "utf8",
-  );
-  await database.exec(controls);
-  await database.exec(controls);
+  await createTestSchema(database);
   server = app.listen(0, "127.0.0.1");
   await new Promise<void>((resolve) => server.once("listening", resolve));
   base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
