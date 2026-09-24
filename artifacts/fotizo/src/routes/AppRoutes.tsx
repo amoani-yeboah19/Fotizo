@@ -225,6 +225,13 @@ export function AppRoutes() {
             </RequireSession>
           )}
         </Route>
+        <Route path="/dashboard/seller/services/:id/edit">
+          {() => (
+            <RequireSession roles={["seller"]}>
+              <OfferService />
+            </RequireSession>
+          )}
+        </Route>
         <Route path="/dashboard/seller/services/new">
           {() => (
             <RequireSession roles={["seller"]}>

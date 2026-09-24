@@ -47,7 +47,17 @@ vi.mock("wouter", () => ({
 }));
 const openAuth = vi.hoisted(() => vi.fn());
 vi.mock("@/contexts/AuthModalContext", () => ({ useAuthModal: () => openAuth }));
-vi.mock("@/api", () => ({ MESSAGES_USE_MOCKS: false }));
+vi.mock("@/api", () => ({ MESSAGES_USE_MOCKS: false, AUTH_USE_MOCKS: false }));
+// Every account starts with an empty saved cart on the server.
+vi.mock("@/services/cart.service", () => ({
+  cartService: {
+    list: vi.fn(async () => []),
+    merge: vi.fn(async () => []),
+    setQuantity: vi.fn(async () => undefined),
+    remove: vi.fn(async () => undefined),
+    clear: vi.fn(async () => undefined),
+  },
+}));
 const alice: User = {
   id: "alice",
   name: "Alice",

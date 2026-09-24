@@ -8,6 +8,7 @@ import {
   productsTable,
   usersTable,
   PAYMENT_METHODS,
+  cartItemsTable,
   type OrderItemRow,
   type OrderRow,
 } from "@workspace/db";
@@ -210,6 +211,10 @@ router.post("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
           quantity: l.quantity,
         })),
       );
+      // Ordered products leave the saved cart with the order.
+      await tx
+        .delete(cartItemsTable)
+        .where(and(eq(cartItemsTable.userId, buyerId), inArray(cartItemsTable.productId, ids)));
       for (const l of lines)
         if (l.product.channel === "marketplace")
           await tx

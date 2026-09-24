@@ -78,4 +78,37 @@ export const artisansService = {
     }
     return normalise(await api.get<Service>(`/services/${id}`));
   },
+
+  // ── The signed-in provider's own listings (including withdrawn ones) ──────
+  async listMyServices(): Promise<Service[]> {
+    if (ARTISANS_USE_MOCKS) return [];
+    return (await api.get<Service[]>("/provider/services")).map(normalise);
+  },
+
+  async getMyService(id: string): Promise<Service> {
+    return normalise(await api.get<Service>(`/provider/services/${id}`));
+  },
+
+  // Sends only the editable fields; ownership, ratings and the group are
+  // decided by the server.
+  async updateService(id: string, input: NewServiceInput): Promise<Service> {
+    const { title, category, description, experience, hourlyRate, availability, skills, avatar, packages } = input;
+    return normalise(
+      await api.patch<Service>(`/services/${id}`, {
+        title,
+        category,
+        description,
+        experience,
+        hourlyRate,
+        availability,
+        skills,
+        avatar,
+        packages,
+      }),
+    );
+  },
+
+  async setServiceStatus(id: string, status: "active" | "unpublished"): Promise<Service> {
+    return normalise(await api.post<Service>(`/services/${id}/status`, { status }));
+  },
 };

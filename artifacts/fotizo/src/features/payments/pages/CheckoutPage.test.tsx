@@ -18,6 +18,7 @@ vi.mock("@/contexts/CartContext", () => ({
   useCart: () => ({
     items: [{ id: "c1", productId: "p1", title: "Kettle", price: 20, image: "", seller: "Ama", quantity: 2 }],
     total: 40,
+    isLoaded: true,
     clearCart,
   }),
 }));

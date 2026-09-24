@@ -603,3 +603,138 @@ describe("service booking requests", () => {
     else expect((await post(path, { status: "cancelled", expectedVersion: 1 }, customer.cookie)).status).toBe(409);
   });
 });
+
+describe("saved cart", () => {
+  const put = (path: string, data: unknown, cookie?: string) =>
+    fetch(`${base}/api${path}`, {
+      method: "PUT",
+      headers: { ...headers, ...(cookie ? { Cookie: cookie } : {}) },
+      body: JSON.stringify(data),
+    });
+  const del = (path: string, cookie?: string) =>
+    fetch(`${base}/api${path}`, { method: "DELETE", headers: { ...headers, ...(cookie ? { Cookie: cookie } : {}) } });
+  async function products() {
+    const seller = await account("seller");
+    const { rows } = await database.query<{ id: string }>(
+      `INSERT INTO products (title, description, price, seller_id, category, stock_count, status) VALUES
+       ('Kettle', 'd', 20, $1, 'Home', 5, 'active'),
+       ('Lamp', 'd', 30, $1, 'Home', 5, 'active'),
+       ('Hidden', 'd', 9, $1, 'Home', 5, 'unpublished') RETURNING id`,
+      [seller.id],
+    );
+    return rows.map((r) => r.id);
+  }
+
+  it("keeps each account's cart on the server with live prices", async () => {
+    const [kettle, lamp, hidden] = await products();
+    const alice = await account();
+    const bob = await account();
+    expect((await get("/cart")).status).toBe(401);
+    expect((await put(`/cart/items/${kettle}`, { quantity: 2 }, alice.cookie)).status).toBe(204);
+    expect((await put(`/cart/items/${kettle}`, { quantity: 3 }, alice.cookie)).status).toBe(204);
+    expect((await put(`/cart/items/${lamp}`, { quantity: 1 }, alice.cookie)).status).toBe(204);
+    expect((await put(`/cart/items/${hidden}`, { quantity: 1 }, alice.cookie)).status).toBe(404);
+    expect((await put(`/cart/items/${lamp}`, { quantity: 100 }, alice.cookie)).status).toBe(400);
+    await database.query("UPDATE products SET price = 25 WHERE id = $1", [kettle]);
+    const cart = (await (await get("/cart", alice.cookie)).json()) as { productId: string; quantity: number; price: number }[];
+    expect(cart.map((i) => [i.productId, i.quantity, i.price])).toEqual([
+      [kettle, 3, 25],
+      [lamp, 1, 30],
+    ]);
+    expect(await (await get("/cart", bob.cookie)).json()).toEqual([]);
+    expect((await del(`/cart/items/${lamp}`, alice.cookie)).status).toBe(204);
+    expect(((await (await get("/cart", alice.cookie)).json()) as unknown[]).length).toBe(1);
+    expect((await del("/cart", alice.cookie)).status).toBe(204);
+    expect(await (await get("/cart", alice.cookie)).json()).toEqual([]);
+  });
+
+  it("merges a signed-out cart by adding quantities and skipping unavailable products", async () => {
+    const [kettle, lamp, hidden] = await products();
+    const alice = await account();
+    await put(`/cart/items/${kettle}`, { quantity: 98 }, alice.cookie);
+    const merged = (await (
+      await post(
+        "/cart/merge",
+        {
+          items: [
+            { productId: kettle, quantity: 5 },
+            { productId: lamp, quantity: 2 },
+            { productId: hidden, quantity: 1 },
+          ],
+        },
+        alice.cookie,
+      )
+    ).json()) as { productId: string; quantity: number }[];
+    expect(merged.map((i) => [i.productId, i.quantity])).toEqual([
+      [kettle, 99],
+      [lamp, 2],
+    ]);
+  });
+
+  it("empties ordered products from the saved cart when the order is placed", async () => {
+    const [kettle, lamp] = await products();
+    const alice = await account();
+    await put(`/cart/items/${kettle}`, { quantity: 1 }, alice.cookie);
+    await put(`/cart/items/${lamp}`, { quantity: 1 }, alice.cookie);
+    const placed = await post(
+      "/orders",
+      {
+        items: [{ productId: kettle, quantity: 1 }],
+        delivery: {
+          name: "Ama", email: "ama@example.com", phone: "0244000000", addressLine1: "1 Road",
+          addressLine2: "", city: "Accra", postalCode: "", country: "GH",
+        },
+        paymentMethod: "pay_on_delivery",
+        idempotencyKey: crypto.randomUUID(),
+      },
+      alice.cookie,
+    );
+    expect(placed.status).toBe(201);
+    const cart = (await (await get("/cart", alice.cookie)).json()) as { productId: string }[];
+    expect(cart.map((i) => i.productId)).toEqual([lamp]);
+  });
+});
+
+describe("provider service management", () => {
+  const patch = (path: string, data: unknown, cookie?: string) =>
+    fetch(`${base}/api${path}`, {
+      method: "PATCH",
+      headers: { ...headers, ...(cookie ? { Cookie: cookie } : {}) },
+      body: JSON.stringify(data),
+    });
+  const listing = {
+    title: "Box braids",
+    category: "plumbing",
+    description: "Neat, long-lasting box braids for all hair types.",
+    experience: "5 years",
+    hourlyRate: 25,
+    availability: "Weekdays",
+    skills: ["Braiding"],
+    avatar: "https://example.com/a.jpg",
+    packages: [{ name: "Basic", price: 30, delivery: "1 day", description: "Shoulder length" }],
+  };
+
+  it("lets only the owner see, edit, withdraw and republish a service", async () => {
+    const provider = await account("seller");
+    const other = await account("seller");
+    const created = (await (await post("/services", listing, provider.cookie)).json()) as { id: string };
+    const id = created.id;
+
+    const edited = await patch(`/services/${id}`, { ...listing, title: "Knotless braids", hourlyRate: 30 }, provider.cookie);
+    expect(edited.status).toBe(200);
+    expect(await edited.json()).toMatchObject({ title: "Knotless braids", hourlyRate: 30, status: "active" });
+    expect((await patch(`/services/${id}`, { ...listing, title: "Stolen" }, other.cookie)).status).toBe(404);
+    expect((await patch(`/services/${id}`, { ...listing, rating: 5 }, provider.cookie)).status).toBe(400);
+    expect((await get(`/provider/services/${id}`, other.cookie)).status).toBe(404);
+
+    expect((await post(`/services/${id}/status`, { status: "unpublished" }, other.cookie)).status).toBe(404);
+    expect((await post(`/services/${id}/status`, { status: "unpublished" }, provider.cookie)).status).toBe(200);
+    expect((await get(`/services/${id}`)).status).toBe(404);
+    const mine = (await (await get("/provider/services", provider.cookie)).json()) as { id: string; status: string }[];
+    expect(mine).toEqual([expect.objectContaining({ id, status: "unpublished" })]);
+    expect(await (await get("/provider/services", other.cookie)).json()).toEqual([]);
+
+    expect((await post(`/services/${id}/status`, { status: "active" }, provider.cookie)).status).toBe(200);
+    expect((await get(`/services/${id}`)).status).toBe(200);
+  });
+});

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { SurfaceCard } from "@/components/common/SurfaceCard";
+import { Loading } from "@/components/common/QueryStates";
 import { Price } from "@/components/common/Price";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +48,7 @@ const REQUIRED: Field[] = ["name", "email", "phone", "addressLine1", "city"];
 
 export default function CheckoutPage() {
   const [, setLocation] = useLocation();
-  const { items, total, clearCart } = useCart();
+  const { items, total, clearCart, isLoaded } = useCart();
   const { user } = useAuth();
   const placeOrder = usePlaceOrder();
   const { toast } = useToast();
@@ -74,11 +75,20 @@ export default function CheckoutPage() {
   const grandTotal = total + (items.length > 0 ? shipping : 0);
   const payment = PAYMENT_OPTIONS.find((p) => p.value === paymentMethod)!;
 
-  // If cart is empty, user shouldn't be here
-  if (items.length === 0 && !isProcessing) {
-    setLocation("/cart");
-    return null;
+  // An empty cart has nothing to check out. Redirect after render (never
+  // during it), and only once the saved cart has loaded.
+  const nothingToBuy = isLoaded && items.length === 0 && !isProcessing;
+  useEffect(() => {
+    if (nothingToBuy) setLocation("/cart");
+  }, [nothingToBuy, setLocation]);
+  if (!isLoaded) {
+    return (
+      <PageLayout mainClassName="container-app py-24">
+        <Loading label="Loading your cart…" />
+      </PageLayout>
+    );
   }
+  if (nothingToBuy) return null;
 
   const set = (field: Field) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setDelivery((d) => ({ ...d, [field]: e.target.value }));

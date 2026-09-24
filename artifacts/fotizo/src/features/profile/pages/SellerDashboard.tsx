@@ -3,8 +3,9 @@ import { Link } from "wouter";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Package, ShoppingBag, ShoppingCart, Star, Plus, Edit2, Eye, MessageSquare, Trash2, Loader2, Calendar } from "lucide-react";
+import { TrendingUp, Package, ShoppingBag, ShoppingCart, Star, Plus, Edit2, Eye, MessageSquare, Trash2, Loader2, Calendar, Briefcase } from "lucide-react";
 import { IncomingBookings } from "@/features/bookings/components/IncomingBookings";
+import { MyServicesTable } from "@/features/artisans/components/MyServicesTable";
 import { useSellerProducts, useOrders, useSales, useDashboardSection } from "@/features/profile/hooks";
 import { useDeleteProduct } from "@/features/marketplace/hooks";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -23,7 +24,7 @@ import { SaleStatusControl } from "@/features/payments/components/SaleStatusCont
 const statusTone = (s: string) =>
   s === "delivered" ? "success" : s === "cancelled" ? "danger" : "warning";
 
-type Section = "overview" | "products" | "orders" | "bookings" | "purchases";
+type Section = "overview" | "products" | "services" | "orders" | "bookings" | "purchases";
 
 const lineTotal = (o: Order) => o.price * o.quantity;
 const OPEN_STATUSES = new Set(["pending", "processing"]);
@@ -58,7 +59,7 @@ export default function DashboardSeller() {
   const { data: sales = [] } = useSales();
   const { data: purchases = [] } = useOrders();
   const [section, setSection] = useDashboardSection<Section>(
-    ["overview", "products", "orders", "bookings", "purchases"],
+    ["overview", "products", "services", "orders", "bookings", "purchases"],
     "overview",
   );
   const figures = useMemo(() => salesFigures(sales), [sales]);
@@ -90,6 +91,7 @@ export default function DashboardSeller() {
       items={[
         { icon: <TrendingUp className="w-4 h-4" />, label: "Dashboard", active: section === "overview", onClick: () => setSection("overview") },
         { icon: <Package className="w-4 h-4" />, label: "My Products", active: section === "products", onClick: () => setSection("products") },
+        { icon: <Briefcase className="w-4 h-4" />, label: "My Services", active: section === "services", onClick: () => setSection("services") },
         { icon: <ShoppingBag className="w-4 h-4" />, label: "Orders", active: section === "orders", onClick: () => setSection("orders") },
         { icon: <Calendar className="w-4 h-4" />, label: "Bookings", active: section === "bookings", onClick: () => setSection("bookings") },
         { icon: <ShoppingCart className="w-4 h-4" />, label: "My Purchases", active: section === "purchases", onClick: () => setSection("purchases") },
@@ -245,7 +247,9 @@ export default function DashboardSeller() {
               ? "Seller Dashboard"
               : section === "products"
                 ? "My Products"
-                : section === "orders"
+                : section === "services"
+                  ? "My Services"
+                  : section === "orders"
                   ? "Orders"
                   : section === "bookings"
                     ? "Bookings"
@@ -328,6 +332,8 @@ export default function DashboardSeller() {
       {section === "products" && ProductsTable}
 
       {section === "orders" && ordersTableCard(sales, "sales")}
+
+      {section === "services" && <MyServicesTable />}
 
       {section === "bookings" && <IncomingBookings />}
 

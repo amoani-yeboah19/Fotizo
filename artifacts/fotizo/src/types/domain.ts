@@ -85,6 +85,8 @@ export interface Service {
   availability: string;
   packages: ServicePackage[];
   skills: string[];
+  /** Withdrawn listings are hidden from customers but kept for their owner. */
+  status?: "active" | "unpublished";
 }
 
 export interface Category {
