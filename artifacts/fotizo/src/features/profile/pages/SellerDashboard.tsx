@@ -3,7 +3,8 @@ import { Link } from "wouter";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Package, ShoppingBag, ShoppingCart, Star, Plus, Edit2, Eye, MessageSquare, Trash2, Loader2 } from "lucide-react";
+import { TrendingUp, Package, ShoppingBag, ShoppingCart, Star, Plus, Edit2, Eye, MessageSquare, Trash2, Loader2, Calendar } from "lucide-react";
+import { IncomingBookings } from "@/features/bookings/components/IncomingBookings";
 import { useSellerProducts, useOrders, useSales, useDashboardSection } from "@/features/profile/hooks";
 import { useDeleteProduct } from "@/features/marketplace/hooks";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -17,11 +18,12 @@ import { chartColors, chartAxisTick, chartTooltipStyle } from "@/constants/chart
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import type { Order } from "@/types";
+import { SaleStatusControl } from "@/features/payments/components/SaleStatusControl";
 
 const statusTone = (s: string) =>
   s === "delivered" ? "success" : s === "cancelled" ? "danger" : "warning";
 
-type Section = "overview" | "products" | "orders" | "purchases";
+type Section = "overview" | "products" | "orders" | "bookings" | "purchases";
 
 const lineTotal = (o: Order) => o.price * o.quantity;
 const OPEN_STATUSES = new Set(["pending", "processing"]);
@@ -56,7 +58,7 @@ export default function DashboardSeller() {
   const { data: sales = [] } = useSales();
   const { data: purchases = [] } = useOrders();
   const [section, setSection] = useDashboardSection<Section>(
-    ["overview", "products", "orders", "purchases"],
+    ["overview", "products", "orders", "bookings", "purchases"],
     "overview",
   );
   const figures = useMemo(() => salesFigures(sales), [sales]);
@@ -89,6 +91,7 @@ export default function DashboardSeller() {
         { icon: <TrendingUp className="w-4 h-4" />, label: "Dashboard", active: section === "overview", onClick: () => setSection("overview") },
         { icon: <Package className="w-4 h-4" />, label: "My Products", active: section === "products", onClick: () => setSection("products") },
         { icon: <ShoppingBag className="w-4 h-4" />, label: "Orders", active: section === "orders", onClick: () => setSection("orders") },
+        { icon: <Calendar className="w-4 h-4" />, label: "Bookings", active: section === "bookings", onClick: () => setSection("bookings") },
         { icon: <ShoppingCart className="w-4 h-4" />, label: "My Purchases", active: section === "purchases", onClick: () => setSection("purchases") },
         { icon: <MessageSquare className="w-4 h-4" />, label: "Messages", href: "/messages" },
       ]}
@@ -216,11 +219,14 @@ export default function DashboardSeller() {
             <tbody className="divide-y border-border">
               {rows.map((order) => (
                 <tr key={order.id} className="hover:bg-muted/30">
-                  <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{order.id.slice(0, 8)}</td>
+                  <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{order.reference ?? order.orderId.slice(0, 8)}</td>
                   <td className="px-6 py-4 font-medium">{order.productTitle}</td>
                   <td className="px-6 py-4">{mode === "purchases" ? order.seller : `×${order.quantity}`}</td>
                   <td className="px-6 py-4"><Price amount={order.price * order.quantity} /></td>
-                  <td className="px-6 py-4 capitalize"><StatusBadge tone={statusTone(order.status)}>{order.status}</StatusBadge></td>
+                  <td className="px-6 py-4 capitalize">
+                    <StatusBadge tone={statusTone(order.status)}>{order.status}</StatusBadge>
+                    {mode === "sales" && <SaleStatusControl line={order} />}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -241,7 +247,9 @@ export default function DashboardSeller() {
                 ? "My Products"
                 : section === "orders"
                   ? "Orders"
-                  : "My Purchases"}
+                  : section === "bookings"
+                    ? "Bookings"
+                    : "My Purchases"}
           </h1>
           <p className="text-muted-foreground mt-1">
             {section === "purchases"
@@ -320,6 +328,8 @@ export default function DashboardSeller() {
       {section === "products" && ProductsTable}
 
       {section === "orders" && ordersTableCard(sales, "sales")}
+
+      {section === "bookings" && <IncomingBookings />}
 
       {section === "purchases" && ordersTableCard(purchases, "purchases")}
 

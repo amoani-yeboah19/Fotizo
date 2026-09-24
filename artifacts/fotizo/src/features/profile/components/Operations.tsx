@@ -9,6 +9,7 @@ import { SurfaceCard } from "@/components/common/SurfaceCard";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Price } from "@/components/common/Price";
 import { vehicleName } from "@/features/autos/data/vehicles";
+import { ordersService } from "@/features/payments/services/orders.service";
 import {
   operationsService,
   type CaseType,
@@ -273,6 +274,85 @@ export function VehicleCatalogueControls() {
           </table>
         </div>
       )}
+    </TableShell>
+  );
+}
+
+const PAYMENT_LABELS: Record<string, string> = {
+  pay_on_delivery: "Pay on delivery",
+  mobile_money: "Mobile money",
+  bank_transfer: "Bank transfer",
+};
+
+/**
+ * Orders grouped by checkout, for staff to arrange offline payment: contact
+ * details, the chosen method, and marking the order paid once money arrives.
+ */
+export function OrderPayments() {
+  const cache = useQueryClient();
+  const [page, setPage] = useState(0);
+  const [error, setError] = useState("");
+  const query = useStaffQuery(["orders", page], () => operationsService.orders(page));
+  const markPaid = useMutation({
+    mutationFn: (orderId: string) => ordersService.markPaid(orderId),
+    onSuccess: () => setError(""),
+    onError: (err) => setError(apiErrorMessage(err, "The order could not be marked paid. Try again.")),
+    onSettled: () => cache.invalidateQueries({ queryKey: ["operations"] }),
+  });
+  const orders = new Map<string, NonNullable<typeof query.data>["items"]>();
+  for (const line of query.data?.items ?? []) orders.set(line.orderId, [...(orders.get(line.orderId) ?? []), line]);
+  return (
+    <TableShell title="Orders and payments">
+      {error && <p role="alert" className="px-6 pt-4 text-sm text-destructive">{error}</p>}
+      {query.isError ? (
+        <div className="p-4"><Failure retry={() => void query.refetch()} /></div>
+      ) : !query.data ? (
+        <p role="status" className="p-6 text-muted-foreground">Loading orders…</p>
+      ) : orders.size === 0 ? (
+        <p className="p-6 text-sm text-muted-foreground">No orders have been placed.</p>
+      ) : (
+        <ul className="divide-y border-border">
+          {[...orders.values()].map((lines) => {
+            const first = lines[0];
+            return (
+              <li key={first.orderId} className="p-4 sm:px-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 text-sm">
+                  <p className="font-mono text-xs text-muted-foreground">
+                    {first.reference ?? first.orderId.slice(0, 8)} · {dateLabel(first.createdAt)}
+                  </p>
+                  <p className="font-medium">
+                    {first.contactName ?? first.buyer}
+                    {first.contactPhone && <span className="text-muted-foreground"> · {first.contactPhone}</span>}
+                    {first.city && <span className="text-muted-foreground"> · {first.city}{first.country ? `, ${first.country}` : ""}</span>}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {lines.map((l) => `${l.quantity}× ${l.productTitle}`).join(", ")}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                  <Price amount={first.orderTotal} className="font-semibold" />
+                  <span className="text-xs text-muted-foreground">
+                    {first.paymentMethod ? PAYMENT_LABELS[first.paymentMethod] : "Placed before checkout records"}
+                  </span>
+                  {first.paymentStatus === "paid" ? (
+                    <StatusBadge tone="success">paid</StatusBadge>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={markPaid.isPending}
+                      onClick={() => markPaid.mutate(first.orderId)}
+                    >
+                      Mark paid
+                    </Button>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {query.data && <Paging page={page} hasMore={query.data.hasMore} pending={query.isFetching} change={setPage} />}
     </TableShell>
   );
 }

@@ -152,6 +152,7 @@ export default function ServiceDetail() {
                     <Clock className="w-4 h-4" /> {pkg.delivery} delivery
                   </div>
                   <BookingDialog
+                    serviceId={service.id}
                     providerName={service.provider}
                     packageName={pkg.name}
                     packagePrice={pkg.price}

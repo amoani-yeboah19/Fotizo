@@ -395,3 +395,211 @@ describe("wishlist", () => {
     expect(await (await get("/wishlist", alice.cookie)).json()).toEqual([]);
   });
 });
+
+describe("checkout with offline payment", () => {
+  const delivery = {
+    name: "Ama Mensah",
+    email: "ama@example.com",
+    phone: "0244000000",
+    addressLine1: "12 Ring Road",
+    addressLine2: "",
+    city: "Accra",
+    postalCode: "",
+    country: "GH",
+  };
+  async function catalogue() {
+    const seller = await account("seller");
+    const rep = await account("china_representative");
+    const { rows } = await database.query<{ id: string; title: string }>(
+      `INSERT INTO products (title, description, price, seller_id, category, stock_count, channel) VALUES
+       ('Kettle', 'd', 20, $1, 'Home', 3, 'marketplace'),
+       ('Wig', 'd', 40, $2, 'wigs', 0, 'shop') RETURNING id, title`,
+      [seller.id, rep.id],
+    );
+    return { seller, kettle: rows[0].id, wig: rows[1].id };
+  }
+  const order = (items: { productId: string; quantity: number }[], key = crypto.randomUUID()) => ({
+    items,
+    delivery,
+    paymentMethod: "pay_on_delivery",
+    idempotencyKey: key,
+  });
+
+  it("prices on the server, reserves marketplace stock and snapshots delivery", async () => {
+    const { kettle, wig } = await catalogue();
+    const buyer = await account();
+    expect((await post("/orders", order([{ productId: kettle, quantity: 1 }]))).status).toBe(401);
+    const response = await post(
+      "/orders",
+      order([
+        { productId: kettle, quantity: 2 },
+        { productId: wig, quantity: 1 },
+      ]),
+      buyer.cookie,
+    );
+    expect(response.status).toBe(201);
+    const placed = (await response.json()) as { orderId: string; reference: string; total: number; shipping: number };
+    // 2 x 20 + 1 x 40 = 80, above the free-delivery threshold.
+    expect(placed).toMatchObject({ total: 80, shipping: 0, reference: expect.stringMatching(/^FTZ-/) });
+    const { rows } = await database.query<{ stock_count: number; title: string }>(
+      "SELECT title, stock_count FROM products ORDER BY title",
+    );
+    // Marketplace stock is reserved; shop goods are sourced to order.
+    expect(rows).toEqual([
+      { title: "Kettle", stock_count: 1 },
+      { title: "Wig", stock_count: 0 },
+    ]);
+    const detail = (await (await get(`/orders/${placed.orderId}`, buyer.cookie)).json()) as {
+      delivery: { city: string };
+      paymentStatus: string;
+      items: unknown[];
+    };
+    expect(detail).toMatchObject({ delivery: { city: "Accra" }, paymentStatus: "unpaid" });
+    expect(detail.items).toHaveLength(2);
+    const other = await account();
+    expect((await get(`/orders/${placed.orderId}`, other.cookie)).status).toBe(404);
+  });
+
+  it("charges delivery on small orders and refuses stock it does not have", async () => {
+    const { kettle } = await catalogue();
+    const buyer = await account();
+    const small = (await (await post("/orders", order([{ productId: kettle, quantity: 1 }]), buyer.cookie)).json()) as {
+      total: number;
+      shipping: number;
+    };
+    expect(small).toMatchObject({ shipping: 5.99, total: 25.99 });
+    const tooMany = await post("/orders", order([{ productId: kettle, quantity: 3 }]), buyer.cookie);
+    expect(tooMany.status).toBe(409);
+    expect(((await tooMany.json()) as { error: string }).error).toContain("Only 2");
+  });
+
+  it("returns the same order for a retried submission and never double-reserves", async () => {
+    const { kettle } = await catalogue();
+    const buyer = await account();
+    const body = order([{ productId: kettle, quantity: 1 }]);
+    const [a, b] = await Promise.all([post("/orders", body, buyer.cookie), post("/orders", body, buyer.cookie)]);
+    const ids = [(await a.json()) as { orderId: string }, (await b.json()) as { orderId: string }].map((o) => o.orderId);
+    expect(ids[0]).toBe(ids[1]);
+    const { rows } = await database.query<{ n: number }>("SELECT count(*)::int n FROM orders");
+    expect(rows[0].n).toBe(1);
+    const stock = await database.query<{ stock_count: number }>("SELECT stock_count FROM products WHERE id = $1", [kettle]);
+    expect(stock.rows[0].stock_count).toBe(2);
+  });
+
+  it("refuses sellers buying their own listing and unknown fields", async () => {
+    const { seller, kettle } = await catalogue();
+    expect((await post("/orders", order([{ productId: kettle, quantity: 1 }]), seller.cookie)).status).toBe(409);
+    const buyer = await account();
+    expect(
+      (await post("/orders", { ...order([{ productId: kettle, quantity: 1 }]), total: 1 }, buyer.cookie)).status,
+    ).toBe(400);
+  });
+
+  it("lets the seller progress their line, restocks cancellations, and lets managers record payment", async () => {
+    const { seller, kettle } = await catalogue();
+    const buyer = await account();
+    const placed = (await (await post("/orders", order([{ productId: kettle, quantity: 2 }]), buyer.cookie)).json()) as {
+      orderId: string;
+    };
+    const [line] = (await (await get("/sales", seller.cookie)).json()) as { id: string; status: string }[];
+    expect(line.status).toBe("pending");
+    expect((await post(`/sales/${line.id}/status`, { status: "processing" }, buyer.cookie)).status).toBe(404);
+    expect((await post(`/sales/${line.id}/status`, { status: "delivered" }, seller.cookie)).status).toBe(409);
+    expect((await post(`/sales/${line.id}/status`, { status: "processing" }, seller.cookie)).status).toBe(200);
+    expect(
+      (await post(`/sales/${line.id}/status`, { status: "shipped", trackingNumber: "TRK-1" }, seller.cookie)).status,
+    ).toBe(200);
+    const [shipped] = (await (await get("/orders", buyer.cookie)).json()) as { status: string; trackingNumber: string }[];
+    expect(shipped).toMatchObject({ status: "shipped", trackingNumber: "TRK-1" });
+
+    const second = (await (await post("/orders", order([{ productId: kettle, quantity: 1 }]), buyer.cookie)).json()) as {
+      orderId: string;
+    };
+    const lines = (await (await get("/sales", seller.cookie)).json()) as { id: string; orderId: string }[];
+    const pendingLine = lines.find((l) => l.orderId === second.orderId)!;
+    expect((await post(`/sales/${pendingLine.id}/status`, { status: "cancelled" }, seller.cookie)).status).toBe(200);
+    const stock = await database.query<{ stock_count: number }>("SELECT stock_count FROM products WHERE id = $1", [kettle]);
+    expect(stock.rows[0].stock_count).toBe(1);
+
+    const manager = await account("manager");
+    const pay = `/operations/orders/${placed.orderId}/payment`;
+    expect((await post(pay, { status: "paid" }, seller.cookie)).status).toBe(403);
+    expect((await post(pay, { status: "paid" }, manager.cookie)).status).toBe(200);
+    expect((await post(pay, { status: "paid" }, manager.cookie)).status).toBe(409);
+    const detail = (await (await get(`/orders/${placed.orderId}`, buyer.cookie)).json()) as { paymentStatus: string };
+    expect(detail.paymentStatus).toBe("paid");
+  });
+});
+
+describe("service booking requests", () => {
+  async function service() {
+    const provider = await account("seller");
+    const { rows } = await database.query<{ id: string }>(
+      `INSERT INTO services (title, description, provider_id, avatar, experience, hourly_rate, category, "group", availability, packages)
+       VALUES ('Braiding', 'd', $1, '', '5 years', 20, 'hair', 'artisans', 'Weekdays',
+       '[{"name":"Basic","price":30,"delivery":"1 day","description":"d"}]') RETURNING id`,
+      [provider.id],
+    );
+    return { provider, serviceId: rows[0].id };
+  }
+  const tomorrow = () => new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const request = (serviceId: string, scheduledFor = tomorrow()) => ({
+    serviceId,
+    packageName: "Basic",
+    scheduledFor,
+    timezone: "Africa/Accra",
+    notes: "Box braids please",
+  });
+
+  it("records a request with a price snapshot for both sides to see", async () => {
+    const { provider, serviceId } = await service();
+    const customer = await account();
+    expect((await post("/bookings", request(serviceId))).status).toBe(401);
+    const created = await post("/bookings", request(serviceId), customer.cookie);
+    expect(created.status).toBe(201);
+    expect(await created.json()).toMatchObject({
+      reference: expect.stringMatching(/^FZB-/),
+      status: "requested",
+      price: 30,
+      package: "Basic",
+      serviceTitle: "Braiding",
+    });
+    await database.query(`UPDATE services SET packages = '[{"name":"Basic","price":99,"delivery":"1 day","description":"d"}]'`);
+    const mine = (await (await get("/bookings", customer.cookie)).json()) as { price: number }[];
+    expect(mine.map((b) => b.price)).toEqual([30]);
+    const incoming = (await (await get("/provider/bookings", provider.cookie)).json()) as { buyer: string }[];
+    expect(incoming).toHaveLength(1);
+    expect(await (await get("/provider/bookings", customer.cookie)).json()).toEqual([]);
+  });
+
+  it("rejects past times, unknown packages, self-booking and duplicate open requests", async () => {
+    const { provider, serviceId } = await service();
+    const customer = await account();
+    expect((await post("/bookings", request(serviceId, new Date(Date.now() - 60_000).toISOString()), customer.cookie)).status).toBe(400);
+    expect((await post("/bookings", { ...request(serviceId), packageName: "Deluxe" }, customer.cookie)).status).toBe(409);
+    expect((await post("/bookings", request(serviceId), provider.cookie)).status).toBe(409);
+    const when = tomorrow();
+    expect((await post("/bookings", request(serviceId, when), customer.cookie)).status).toBe(201);
+    expect((await post("/bookings", request(serviceId, when), customer.cookie)).status).toBe(409);
+  });
+
+  it("lets the provider decide and the customer withdraw, with versioned changes", async () => {
+    const { provider, serviceId } = await service();
+    const customer = await account();
+    const stranger = await account();
+    const booking = (await (await post("/bookings", request(serviceId), customer.cookie)).json()) as { id: string };
+    const path = `/bookings/${booking.id}/status`;
+    expect((await post(path, { status: "confirmed", expectedVersion: 0 }, stranger.cookie)).status).toBe(404);
+    expect((await post(path, { status: "confirmed", expectedVersion: 0 }, customer.cookie)).status).toBe(409);
+    const [a, b] = await Promise.all([
+      post(path, { status: "confirmed", expectedVersion: 0, meetingLink: "https://meet.example.com/x" }, provider.cookie),
+      post(path, { status: "declined", expectedVersion: 0 }, provider.cookie),
+    ]);
+    expect([a.status, b.status].sort()).toEqual([200, 409]);
+    const [current] = (await (await get("/bookings", customer.cookie)).json()) as { status: string; statusVersion: number }[];
+    expect(current.statusVersion).toBe(1);
+    if (current.status === "confirmed")
+      expect((await post(path, { status: "cancelled", expectedVersion: 1 }, customer.cookie)).status).toBe(200);
+    else expect((await post(path, { status: "cancelled", expectedVersion: 1 }, customer.cookie)).status).toBe(409);
+  });
+});

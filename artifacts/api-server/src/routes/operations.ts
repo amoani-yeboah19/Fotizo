@@ -188,6 +188,16 @@ router.get(
         total: sql<number>`(${orderItemsTable.price} * ${orderItemsTable.quantity})::float8`,
         status: orderItemsTable.status,
         createdAt: ordersTable.createdAt,
+        reference: ordersTable.reference,
+        paymentMethod: ordersTable.paymentMethod,
+        paymentStatus: ordersTable.paymentStatus,
+        // Staff arrange offline payment and delivery with the customer.
+        contactName: ordersTable.contactName,
+        contactPhone: ordersTable.contactPhone,
+        contactEmail: ordersTable.contactEmail,
+        city: ordersTable.city,
+        country: ordersTable.country,
+        orderTotal: ordersTable.total,
       })
       .from(orderItemsTable)
       .innerJoin(ordersTable, eq(ordersTable.id, orderItemsTable.orderId))

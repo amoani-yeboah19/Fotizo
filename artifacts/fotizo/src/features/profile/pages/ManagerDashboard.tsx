@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Activity, ShieldAlert, History, LifeBuoy, CarFront } from "lucide-react";
+import { Users, Activity, ShieldAlert, History, LifeBuoy, CarFront, ShoppingBag } from "lucide-react";
 import { AUTH_USE_MOCKS } from "@/api";
 import { useDashboardSection } from "@/features/profile/hooks";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -11,12 +11,12 @@ import {
   AccountAudit,
 } from "../components/AccountControls";
 import type { ManagedAccount } from "../services/admin.service";
-import { CaseQueue } from "../components/Operations";
+import { CaseQueue, OrderPayments } from "../components/Operations";
 
-type Section = "overview" | "users" | "audit" | "support" | "enquiries" | "moderation";
+type Section = "overview" | "users" | "audit" | "orders" | "support" | "enquiries" | "moderation";
 export default function DashboardManager() {
   const [section, setSection] = useDashboardSection<Section>(
-    ["overview", "users", "audit", "support", "enquiries", "moderation"],
+    ["overview", "users", "audit", "orders", "support", "enquiries", "moderation"],
     "overview",
   );
   const [auditTarget, setAuditTarget] = useState<ManagedAccount | null>(null);
@@ -44,6 +44,12 @@ export default function DashboardManager() {
             setAuditTarget(null);
             setSection("audit");
           },
+        },
+        {
+          icon: <ShoppingBag className="w-4 h-4" />,
+          label: "Orders",
+          active: section === "orders",
+          onClick: () => setSection("orders"),
         },
         {
           icon: <LifeBuoy className="w-4 h-4" />,
@@ -76,7 +82,9 @@ export default function DashboardManager() {
               ? "Account audit"
               : section === "moderation"
                 ? "Content moderation"
-                : section === "support"
+                : section === "orders"
+                  ? "Orders and payments"
+                  : section === "support"
                   ? "Support requests"
                   : section === "enquiries"
                     ? "Vehicle enquiries"
@@ -126,6 +134,7 @@ export default function DashboardManager() {
               />
             </div>
           )}
+          {section === "orders" && <OrderPayments />}
           {section === "support" && <CaseQueue type="support" />}
           {section === "enquiries" && <CaseQueue type="vehicle_enquiry" />}
           {section === "moderation" && (

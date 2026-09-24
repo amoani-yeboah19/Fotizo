@@ -14,6 +14,7 @@ import currencyRouter from "./currency";
 import operationsRouter from "./operations";
 import developerRouter from "./developer";
 import wishlistRouter from "./wishlist";
+import bookingsRouter from "./bookings";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(currencyRouter);
 router.use(operationsRouter);
 router.use(developerRouter);
 router.use(wishlistRouter);
+router.use(bookingsRouter);
 
 export default router;

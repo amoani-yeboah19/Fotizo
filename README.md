@@ -35,9 +35,9 @@ From the repository root, with artifacts/api-server/.env containing the intended
 node --env-file=artifacts/api-server/.env lib/db/migrate.mjs
 ```
 
-The runner locks concurrent migrations, checks previously applied SQL checksums, and applies pending files in a transaction. Migration 0001 requires the existing users table and adds session/rate-limit storage and suspension state. Migration 0002 adds explicit marketplace/shop channels, classifies existing China representative listings as shop inventory, and adds catalogue indexes and a channel constraint. Migration 0003 adds versioned account status and manager audit records. Migration 0004 adds support requests, the vehicle catalogue, vehicle enquiries and the staff case-history table. Migration 0005 adds the representative and china_representative roles, which older databases lack. Migration 0006 adds per-account wishlists. All six migrations tolerate already-created objects for local schema adoption. They are not a full baseline for an empty database. A reviewed baseline/adoption process is still needed before broad production schema changes.
+The runner locks concurrent migrations, checks previously applied SQL checksums, and applies pending files in a transaction. Migration 0001 requires the existing users table and adds session/rate-limit storage and suspension state. Migration 0002 adds explicit marketplace/shop channels, classifies existing China representative listings as shop inventory, and adds catalogue indexes and a channel constraint. Migration 0003 adds versioned account status and manager audit records. Migration 0004 adds support requests, the vehicle catalogue, vehicle enquiries and the staff case-history table. Migration 0005 adds the representative and china_representative roles, which older databases lack. Migration 0006 adds per-account wishlists. Migration 0007 adds checkout delivery, payment and idempotency fields to orders. Migration 0008 adds service bookings. All eight migrations tolerate already-created objects for local schema adoption. They are not a full baseline for an empty database. A reviewed baseline/adoption process is still needed before broad production schema changes.
 
-Deployment order: verify the target and backup/restore procedure, apply all six additive migrations, then deploy the API and frontend together. The new session token format intentionally requires existing users to sign in again. The API must never start with an unmigrated schema. No live migration is run by application startup or the test suite.
+Deployment order: verify the target and backup/restore procedure, apply all eight additive migrations, then deploy the API and frontend together. The new session token format intentionally requires existing users to sign in again. The API must never start with an unmigrated schema. No live migration is run by application startup or the test suite.
 
 ## Session and deployment configuration
 
@@ -63,9 +63,14 @@ Storefront browsing now uses bounded server pages, full-catalogue search/filter/
 
 Production shop pages read published API inventory. An empty shop is expected until reviewed inventory is published; fixture data is not a production fallback. Product channel is assigned by the server, and owners can edit or republish their unpublished listings. Product prices currently use GBP as the base; this is not a decision to launch the UK market first. Currency selection stays on GBP if valid rates are unavailable. Market-specific charge currencies and money storage remain completion-plan work.
 
-## Current transaction availability
+## Orders and bookings (offline payment)
 
-Checkout and online booking are intentionally unavailable until verified payments and real scheduling exist. POST /api/orders returns 503 without changing stock. The frontend never asks for card details or invents booking/order confirmations. Existing order history remains readable.
+No payment is taken online; there is no payment provider yet.
+
+- Checkout (`POST /api/orders`) records delivery details and a payment method: pay on delivery, mobile money or bank transfer. The server prices the cart from stored prices, adds GBP 5.99 delivery at or below GBP 50, reserves marketplace stock in the same transaction and returns an FTZ- reference. Fotizo Shop goods are sourced to order and are not stock-limited. Each checkout sends an idempotency key, so a retried or double-clicked submission returns the existing order. Buyers cannot buy their own listings.
+- Sellers move each of their order lines through processing, shipped (optional tracking number) and delivered, or cancel it (`POST /api/sales/:id/status`); cancelled marketplace units are restocked. Managers record offline payment from Orders in the manager dashboard (`POST /api/operations/orders/:id/payment`), where customer contact details are shown.
+- Service bookings are requests (`POST /api/bookings`): the customer chooses a package, date and time (stored as an instant with their time zone); the provider confirms (optionally with a note and meeting link), declines, completes or cancels from Bookings in the seller dashboard, and the customer can cancel an open booking. Status changes require the version the user saw. One open request per customer, service and time.
+- No confirmation emails or SMS are sent yet; customers and providers follow status in their dashboards.
 
 ## Support, vehicles and staff operations
 

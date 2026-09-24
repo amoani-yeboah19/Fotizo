@@ -124,17 +124,14 @@ describe("authentication through the HTTP API and PostgreSQL", () => {
     ).toBe(401);
     expect((await post("/auth/logout", {}, cookie)).status).toBe(204);
   });
-  it("does not create unpaid orders while checkout is unavailable", async () => {
+  it("rejects an order without delivery details or a payment method", async () => {
     const { cookie } = await register();
     const response = await post(
       "/orders",
       { items: [{ productId: crypto.randomUUID(), quantity: 1 }] },
       cookie,
     );
-    expect(response.status).toBe(503);
-    expect(await response.json()).toMatchObject({
-      error: expect.stringContaining("not available yet"),
-    });
+    expect(response.status).toBe(400);
   });
   it("rejects public staff signup and wrong passwords", async () => {
     expect(

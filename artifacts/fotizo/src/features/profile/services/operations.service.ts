@@ -48,6 +48,16 @@ export interface OrderLine {
   total: number;
   status: string;
   createdAt: string;
+  reference: string | null;
+  paymentMethod: "pay_on_delivery" | "mobile_money" | "bank_transfer" | null;
+  paymentStatus: "unpaid" | "paid";
+  contactName: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  city: string | null;
+  country: string | null;
+  /** Whole-order total including delivery. */
+  orderTotal: number;
 }
 
 export type CaseType = "support" | "vehicle_enquiry";
