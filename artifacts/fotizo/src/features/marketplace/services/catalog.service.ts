@@ -1,7 +1,13 @@
+import { cataloguePages } from "./catalogue-page";
 import { api, CATALOG_USE_MOCKS, SELLER_CATALOG_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import * as fx from "@/services/mocks/fixtures";
-import type { Product, Category, SellerProduct, NewProductInput } from "@/types";
+import type {
+  Product,
+  Category,
+  SellerProduct,
+  NewProductInput,
+} from "@/types";
 
 // Production classification is enforced by the API, not display names.
 function localOnly(products: Product[]): Product[] {
@@ -10,7 +16,8 @@ function localOnly(products: Product[]): Product[] {
 
 export const catalogService = {
   async getOwnedProduct(id: string): Promise<Product | null> {
-    if (SELLER_CATALOG_USE_MOCKS) return fx.products.find((p) => p.id === id) ?? null;
+    if (SELLER_CATALOG_USE_MOCKS)
+      return fx.products.find((p) => p.id === id) ?? null;
     return api.get<Product>(`/seller/products/${id}`);
   },
   async createProduct(input: NewProductInput): Promise<Product> {
@@ -52,12 +59,9 @@ export const catalogService = {
     return api.post<Product>("/products", input);
   },
 
+  // Home/dashboard recommendations intentionally request a small preview.
   async listProducts(): Promise<Product[]> {
-    if (CATALOG_USE_MOCKS) {
-      await delay();
-      return localOnly(fx.products);
-    }
-    return api.get<Product[]>("/products", { channel: "marketplace" });
+    return (await cataloguePages.list("marketplace", { pageSize: 10 })).items;
   },
 
   async getProduct(id: string): Promise<Product | null> {
@@ -105,7 +109,10 @@ export const catalogService = {
     return api.get<SellerProduct[]>("/seller/products");
   },
 
-  async updateProduct(id: string, input: Partial<NewProductInput> & { status?: "active" | "unpublished" }): Promise<Product> {
+  async updateProduct(
+    id: string,
+    input: Partial<NewProductInput> & { status?: "active" | "unpublished" },
+  ): Promise<Product> {
     if (SELLER_CATALOG_USE_MOCKS) {
       await delay();
       const idx = fx.products.findIndex((p) => p.id === id);
@@ -113,7 +120,7 @@ export const catalogService = {
       const updated: Product = {
         ...fx.products[idx],
         ...input,
-        image: input.images ? input.images[0] ?? "" : fx.products[idx].image,
+        image: input.images ? (input.images[0] ?? "") : fx.products[idx].image,
         inStock: (input.stockCount ?? fx.products[idx].stockCount) > 0,
       };
       fx.products[idx] = updated;
@@ -140,7 +147,11 @@ export const catalogService = {
       const idx = fx.products.findIndex((p) => p.id === id);
       if (idx !== -1) fx.products.splice(idx, 1);
       const sIdx = fx.sellerProducts.findIndex((p) => p.id === id);
-      if (sIdx !== -1) fx.sellerProducts[sIdx] = { ...fx.sellerProducts[sIdx], status: "unpublished" };
+      if (sIdx !== -1)
+        fx.sellerProducts[sIdx] = {
+          ...fx.sellerProducts[sIdx],
+          status: "unpublished",
+        };
       return;
     }
     await api.del(`/products/${id}`);

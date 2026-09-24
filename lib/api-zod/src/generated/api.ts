@@ -153,3 +153,126 @@ export const ListAccountAuditResponse = zod.object({
   page: zod.number(),
   hasMore: zod.boolean(),
 });
+
+/**
+ * Filters and sorting apply to the whole channel. Pages are zero-based, ordered with deterministic creation-time/ID tie breakers. Offset pages can shift during concurrent catalogue changes. Prices are GBP display prices. Unknown query fields and reversed price ranges return 400.
+ * @summary Browse a bounded page of published products
+ */
+export const listCatalogueProductsQueryChannelDefault = `marketplace`;
+export const listCatalogueProductsQueryPageDefault = 0;
+export const listCatalogueProductsQueryPageMin = 0;
+export const listCatalogueProductsQueryPageMax = 10000;
+
+export const listCatalogueProductsQueryPageSizeDefault = 24;
+export const listCatalogueProductsQueryPageSizeMax = 48;
+
+export const listCatalogueProductsQueryQMax = 120;
+
+export const listCatalogueProductsQueryCategoryMax = 80;
+
+export const listCatalogueProductsQuerySortDefault = `newest`;
+export const listCatalogueProductsQueryMinPriceMin = 0;
+export const listCatalogueProductsQueryMinPriceMax = 99999999.99;
+
+export const listCatalogueProductsQueryMaxPriceMin = 0;
+export const listCatalogueProductsQueryMaxPriceMax = 99999999.99;
+
+export const listCatalogueProductsQueryMinRatingMin = 0;
+export const listCatalogueProductsQueryMinRatingMax = 5;
+
+export const ListCatalogueProductsQueryParams = zod.object({
+  channel: zod
+    .enum(["marketplace", "shop"])
+    .default(listCatalogueProductsQueryChannelDefault),
+  page: zod.coerce
+    .number()
+    .min(listCatalogueProductsQueryPageMin)
+    .max(listCatalogueProductsQueryPageMax)
+    .default(listCatalogueProductsQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(listCatalogueProductsQueryPageSizeMax)
+    .default(listCatalogueProductsQueryPageSizeDefault),
+  q: zod.coerce.string().max(listCatalogueProductsQueryQMax).optional(),
+  category: zod.coerce
+    .string()
+    .min(1)
+    .max(listCatalogueProductsQueryCategoryMax)
+    .optional(),
+  sort: zod
+    .enum(["newest", "price-asc", "price-desc", "rating", "discount"])
+    .default(listCatalogueProductsQuerySortDefault),
+  minPrice: zod.coerce
+    .number()
+    .min(listCatalogueProductsQueryMinPriceMin)
+    .max(listCatalogueProductsQueryMinPriceMax)
+    .optional(),
+  maxPrice: zod.coerce
+    .number()
+    .min(listCatalogueProductsQueryMaxPriceMin)
+    .max(listCatalogueProductsQueryMaxPriceMax)
+    .optional(),
+  minRating: zod.coerce
+    .number()
+    .min(listCatalogueProductsQueryMinRatingMin)
+    .max(listCatalogueProductsQueryMinRatingMax)
+    .optional(),
+  inStock: zod.coerce.boolean().optional(),
+  discounted: zod.coerce.boolean().optional(),
+});
+
+export const listCatalogueProductsResponseTotalMin = 0;
+
+export const listCatalogueProductsResponsePageMin = 0;
+
+export const listCatalogueProductsResponsePageSizeMax = 48;
+
+export const ListCatalogueProductsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      channel: zod.enum(["marketplace", "shop"]),
+      status: zod.enum(["active", "unpublished"]),
+      title: zod.string(),
+      description: zod.string(),
+      price: zod.number(),
+      originalPrice: zod.number().nullable(),
+      rating: zod.number(),
+      reviewCount: zod.number(),
+      seller: zod.string(),
+      sellerId: zod.string().uuid(),
+      category: zod.string(),
+      image: zod.string(),
+      images: zod.array(zod.string()),
+      inStock: zod.boolean(),
+      stockCount: zod.number(),
+      tags: zod.array(zod.string()),
+      specs: zod.record(zod.string(), zod.string()),
+    }),
+  ),
+  total: zod.number().min(listCatalogueProductsResponseTotalMin),
+  page: zod.number().min(listCatalogueProductsResponsePageMin),
+  pageSize: zod.number().min(1).max(listCatalogueProductsResponsePageSizeMax),
+  hasMore: zod.boolean(),
+});
+
+/**
+ * @summary Published product counts by category for the entire channel
+ */
+export const listCatalogueCategoriesQueryChannelDefault = `marketplace`;
+
+export const ListCatalogueCategoriesQueryParams = zod.object({
+  channel: zod
+    .enum(["marketplace", "shop"])
+    .default(listCatalogueCategoriesQueryChannelDefault),
+});
+
+export const ListCatalogueCategoriesResponseItem = zod.object({
+  category: zod.string(),
+  count: zod.number().min(1),
+  image: zod.string(),
+});
+export const ListCatalogueCategoriesResponse = zod.array(
+  ListCatalogueCategoriesResponseItem,
+);

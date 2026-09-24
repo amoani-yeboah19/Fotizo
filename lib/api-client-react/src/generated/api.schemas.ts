@@ -108,6 +108,67 @@ export interface AccountAuditPage {
   hasMore: boolean;
 }
 
+export type CatalogueProductChannel =
+  (typeof CatalogueProductChannel)[keyof typeof CatalogueProductChannel];
+
+export const CatalogueProductChannel = {
+  marketplace: "marketplace",
+  shop: "shop",
+} as const;
+
+export type CatalogueProductStatus =
+  (typeof CatalogueProductStatus)[keyof typeof CatalogueProductStatus];
+
+export const CatalogueProductStatus = {
+  active: "active",
+  unpublished: "unpublished",
+} as const;
+
+export type CatalogueProductSpecs = { [key: string]: string };
+
+export interface CatalogueProduct {
+  id: string;
+  channel: CatalogueProductChannel;
+  status: CatalogueProductStatus;
+  title: string;
+  description: string;
+  price: number;
+  /** @nullable */
+  originalPrice: number | null;
+  rating: number;
+  reviewCount: number;
+  seller: string;
+  sellerId: string;
+  category: string;
+  image: string;
+  images: string[];
+  inStock: boolean;
+  stockCount: number;
+  tags: string[];
+  specs: CatalogueProductSpecs;
+}
+
+export interface CataloguePage {
+  items: CatalogueProduct[];
+  /** @minimum 0 */
+  total: number;
+  /** @minimum 0 */
+  page: number;
+  /**
+   * @minimum 1
+   * @maximum 48
+   */
+  pageSize: number;
+  hasMore: boolean;
+}
+
+export interface CatalogueCategory {
+  category: string;
+  /** @minimum 1 */
+  count: number;
+  image: string;
+}
+
 export type ListManagedAccountsParams = {
   /**
    * @minimum 0
@@ -138,3 +199,75 @@ export type ListAccountAuditParams = {
   page?: number;
   targetId?: string;
 };
+
+export type ListCatalogueProductsParams = {
+  channel?: ListCatalogueProductsChannel;
+  /**
+   * @minimum 0
+   * @maximum 10000
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 48
+   */
+  pageSize?: number;
+  /**
+   * @maxLength 120
+   */
+  q?: string;
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  category?: string;
+  sort?: ListCatalogueProductsSort;
+  /**
+   * @minimum 0
+   * @maximum 99999999.99
+   */
+  minPrice?: number;
+  /**
+   * @minimum 0
+   * @maximum 99999999.99
+   */
+  maxPrice?: number;
+  /**
+   * @minimum 0
+   * @maximum 5
+   */
+  minRating?: number;
+  inStock?: boolean;
+  discounted?: boolean;
+};
+
+export type ListCatalogueProductsChannel =
+  (typeof ListCatalogueProductsChannel)[keyof typeof ListCatalogueProductsChannel];
+
+export const ListCatalogueProductsChannel = {
+  marketplace: "marketplace",
+  shop: "shop",
+} as const;
+
+export type ListCatalogueProductsSort =
+  (typeof ListCatalogueProductsSort)[keyof typeof ListCatalogueProductsSort];
+
+export const ListCatalogueProductsSort = {
+  newest: "newest",
+  "price-asc": "price-asc",
+  "price-desc": "price-desc",
+  rating: "rating",
+  discount: "discount",
+} as const;
+
+export type ListCatalogueCategoriesParams = {
+  channel?: ListCatalogueCategoriesChannel;
+};
+
+export type ListCatalogueCategoriesChannel =
+  (typeof ListCatalogueCategoriesChannel)[keyof typeof ListCatalogueCategoriesChannel];
+
+export const ListCatalogueCategoriesChannel = {
+  marketplace: "marketplace",
+  shop: "shop",
+} as const;

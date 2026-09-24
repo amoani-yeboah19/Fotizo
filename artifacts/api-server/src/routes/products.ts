@@ -1,11 +1,20 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { eq, and, ne, desc } from "drizzle-orm";
+import type { CatalogueProduct } from "@workspace/api-zod";
+import { eq, and, ne, desc, sql } from "drizzle-orm";
 import { db, productsTable, usersTable, type ProductRow } from "@workspace/db";
 import {
   requireAuth,
   type AuthenticatedRequest,
 } from "../middlewares/requireAuth";
+
+import {
+  catalogueQuery,
+  catalogueChannel,
+  catalogueWhere,
+  catalogueOrder,
+  categoryKey,
+} from "../lib/catalogue";
 
 const router: IRouter = Router();
 
@@ -42,7 +51,10 @@ const updateProductSchema = newProductSchema.partial().extend({
 
 // Shape returned to the client — seller name is looked up via the FK at read
 // time rather than stored on the row, so a renamed seller never goes stale.
-function toPublicProduct(row: ProductRow, sellerName: string) {
+function toPublicProduct(
+  row: ProductRow,
+  sellerName: string,
+): CatalogueProduct {
   return {
     id: row.id,
     title: row.title,
@@ -66,31 +78,70 @@ function toPublicProduct(row: ProductRow, sellerName: string) {
 }
 
 router.get("/products", async (req, res) => {
+  const filter = catalogueQuery.safeParse(req.query);
+  if (!filter.success) {
+    res.status(400).json({ error: "Invalid catalogue filters." });
+    return;
+  }
+  const { page, pageSize } = filter.data;
+  const where = catalogueWhere(filter.data);
+  // A shared snapshot keeps the page and its total consistent during writes.
+  const result = await db.transaction(
+    async (tx) => {
+      const [count] = await tx
+        .select({ total: sql<number>`count(*)::int` })
+        .from(productsTable)
+        .leftJoin(usersTable, eq(productsTable.sellerId, usersTable.id))
+        .where(where);
+      const rows = await tx
+        .select({ product: productsTable, sellerName: usersTable.name })
+        .from(productsTable)
+        .leftJoin(usersTable, eq(productsTable.sellerId, usersTable.id))
+        .where(where)
+        .orderBy(...catalogueOrder(filter.data.sort))
+        .limit(pageSize)
+        .offset(page * pageSize);
+      return {
+        items: rows.map((r) =>
+          toPublicProduct(r.product, r.sellerName ?? "Unknown seller"),
+        ),
+        total: count.total,
+        page,
+        pageSize,
+        hasMore: (page + 1) * pageSize < count.total,
+      };
+    },
+    { isolationLevel: "repeatable read", accessMode: "read only" },
+  );
+  res.json(result);
+});
+
+router.get("/products/categories", async (req, res) => {
   const filter = z
-    .object({ channel: z.enum(["marketplace", "shop"]).optional() })
+    .object({ channel: catalogueChannel })
+    .strict()
     .safeParse(req.query);
   if (!filter.success) {
     res.status(400).json({ error: "Invalid catalogue channel." });
     return;
   }
+  // Aggregate all published listings, never just those visible on the current page.
   const rows = await db
-    .select({ product: productsTable, sellerName: usersTable.name })
+    .select({
+      category: categoryKey,
+      count: sql<number>`count(*)::int`,
+      image: sql<string>`coalesce(min(nullif(${productsTable.images}[1], '')), '')`,
+    })
     .from(productsTable)
-    .leftJoin(usersTable, eq(productsTable.sellerId, usersTable.id))
     .where(
       and(
         eq(productsTable.status, "active"),
-        filter.data.channel
-          ? eq(productsTable.channel, filter.data.channel)
-          : undefined,
+        eq(productsTable.channel, filter.data.channel),
       ),
     )
-    .orderBy(desc(productsTable.createdAt));
-  res.json(
-    rows.map((r) =>
-      toPublicProduct(r.product, r.sellerName ?? "Unknown seller"),
-    ),
-  );
+    .groupBy(sql`1`)
+    .orderBy(sql`1`);
+  res.json(rows);
 });
 
 router.get("/products/:id", async (req, res) => {
@@ -139,13 +190,17 @@ router.get("/products/:id/related", async (req, res) => {
     .leftJoin(usersTable, eq(productsTable.sellerId, usersTable.id))
     .where(
       and(
-        eq(productsTable.category, product.category),
+        eq(
+          categoryKey,
+          sql`(select ${categoryKey} from products where id = ${product.id})`,
+        ),
         eq(productsTable.channel, product.channel),
         ne(productsTable.id, product.id),
         eq(productsTable.status, "active"),
       ),
     )
-    .limit(3);
+    .orderBy(desc(productsTable.createdAt), desc(productsTable.id))
+    .limit(6);
   res.json(
     rows.map((r) =>
       toPublicProduct(r.product, r.sellerName ?? "Unknown seller"),

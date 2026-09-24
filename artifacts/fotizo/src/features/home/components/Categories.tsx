@@ -1,39 +1,49 @@
 import { useRef, useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { CategoryCard, CARD_W, type Category } from "@/features/home/components/CategoryCard";
-import { shopCategoryCards } from "@/features/shop/data/products";
-import { useShopProducts } from "@/features/shop/hooks";
+import {
+  CategoryCard,
+  CARD_W,
+  type Category,
+} from "@/features/home/components/CategoryCard";
+import { categoryLabel } from "@/features/shop/data/categories";
+import type { CatalogueCategory } from "@/features/marketplace/services/catalogue-page";
+import { useCatalogueCategories } from "@/features/marketplace/hooks/useCatalogue";
 
-// Cover art is intentionally curated per department so the homepage cards
-// reflect the category theme instead of a random product photo. Departments with
-// no stock are left out entirely by shopCategoryCards().
-//
-// Accents are the gradient scrim colour only — a deep, desaturated palette that
-// keeps the white title legible over any photo. Assigned by position so the
-// order stays stable as the catalogue grows.
+// Full-channel API aggregates supply counts and representative product images.
+// Accent colors remain stable for the displayed category order.
 const ACCENTS = [
-  "#1E3A5F", "#3D2B1F", "#2D4A3E", "#5C2A3A", "#1A3A2A", "#2C1F0E",
-  "#0D2A4A", "#1A1A2E", "#3D1F0D", "#123040", "#3A2233", "#2C3038",
+  "#1E3A5F",
+  "#3D2B1F",
+  "#2D4A3E",
+  "#5C2A3A",
+  "#1A3A2A",
+  "#2C1F0E",
+  "#0D2A4A",
+  "#1A1A2E",
+  "#3D1F0D",
+  "#123040",
+  "#3A2233",
+  "#2C3038",
 ];
 
-function toCards(products: Parameters<typeof shopCategoryCards>[0]): Category[] {
-  return shopCategoryCards(products).map((c, i) => ({
-    id: c.id,
-    name: c.label,
-    count: `${c.count} ${c.count === 1 ? "item" : "items"}`,
-    image: c.image,
-    accent: ACCENTS[i % ACCENTS.length],
-    href: c.href,
-  }));
+function toCards(categories: CatalogueCategory[]): Category[] {
+  return [...categories]
+    .filter((c) => c.count > 0 && c.image)
+    .sort((a, b) => b.count - a.count)
+    .map((c, i) => ({
+      id: c.category,
+      name: categoryLabel(c.category),
+      count: `${c.count} ${c.count === 1 ? "item" : "items"}`,
+      image: c.image,
+      accent: ACCENTS[i % ACCENTS.length],
+      href: `/shop?category=${encodeURIComponent(c.category)}`,
+    }));
 }
 
 export function Categories() {
-  // Built from the same catalogue the shop renders, so the counts on these
-  // cards can never claim stock the department does not have. Falls back to the
-  // committed catalogue until the query resolves.
-  const { data: catalogue } = useShopProducts();
-  const CATEGORIES = useMemo(() => toCards(catalogue), [catalogue]);
+  const { data: categories } = useCatalogueCategories("shop");
+  const CATEGORIES = useMemo(() => toCards(categories ?? []), [categories]);
 
   const trackRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -55,7 +65,7 @@ export function Categories() {
     el.addEventListener("scroll", checkScroll, { passive: true });
     checkScroll();
     return () => el.removeEventListener("scroll", checkScroll);
-  }, []);
+  }, [CATEGORIES.length]);
 
   const startAuto = () => {
     autoRef.current = setInterval(() => {
@@ -83,14 +93,16 @@ export function Categories() {
     stopAuto();
     const el = trackRef.current;
     if (!el) return;
-    el.scrollBy({ left: dir === "right" ? (CARD_W + GAP) * 2 : -(CARD_W + GAP) * 2, behavior: "smooth" });
+    el.scrollBy({
+      left: dir === "right" ? (CARD_W + GAP) * 2 : -(CARD_W + GAP) * 2,
+      behavior: "smooth",
+    });
     startAuto();
   };
 
   return (
     <section className="py-20 bg-[#F7F8FB] overflow-hidden">
       <div className="container-app">
-
         {/* Header */}
         <div className="flex items-end justify-between mb-10">
           <div>

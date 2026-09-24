@@ -14,9 +14,12 @@ import { SHOP_PRODUCTS, type ShopProduct } from "@/features/shop/data/products";
  * into specs.department, so this is only the fallback for rows created some
  * other way — a listing posted from the dashboard, say.
  */
-const ID_BY_LABEL = new Map(SHOP_CATEGORIES.map((c) => [c.label.toLowerCase(), c.id]));
+const ID_BY_LABEL = new Map(
+  SHOP_CATEGORIES.map((c) => [c.label.toLowerCase(), c.id]),
+);
 
-const flag = (specs: Record<string, string>, key: string) => specs[key] === "true";
+const flag = (specs: Record<string, string>, key: string) =>
+  specs[key] === "true";
 
 /**
  * API Product -> ShopProduct.
@@ -33,7 +36,10 @@ export function toShopProduct(p: Product): ShopProduct {
     id: p.id,
     stockCount: p.stockCount,
     title: p.title,
-    category: specs.department ?? ID_BY_LABEL.get(p.category?.toLowerCase() ?? "") ?? p.category,
+    category:
+      specs.department ??
+      ID_BY_LABEL.get(p.category?.toLowerCase() ?? "") ??
+      p.category,
     price: p.price,
     // The column stores NULL for "no discount"; the shop encodes that as the
     // two prices being equal, which is what discountPct() reads.
@@ -50,17 +56,18 @@ export function toShopProduct(p: Product): ShopProduct {
 }
 
 export const shopService = {
-  async listProducts(): Promise<ShopProduct[]> {
+  async relatedProducts(id: string): Promise<ShopProduct[]> {
     if (SHOP_USE_MOCKS) {
-      await delay();
-      return SHOP_PRODUCTS;
+      const product = SHOP_PRODUCTS.find((p) => p.id === id);
+      return product
+        ? SHOP_PRODUCTS.filter(
+            (p) => p.category === product.category && p.id !== id,
+          ).slice(0, 6)
+        : [];
     }
-    // Deliberately unpaginated: the whole catalogue is ~164 KB gzipped, and
-    // fetching it once keeps search, sorting and the deal strip working across
-    // the full set rather than within a page. Worth revisiting in the
-    // thousands, not the hundreds.
-    const products = await api.get<Product[]>("/products", { channel: "shop" });
-    return products.map(toShopProduct);
+    return (await api.get<Product[]>(`/products/${id}/related`))
+      .filter((p) => p.channel === "shop")
+      .map(toShopProduct);
   },
 
   async getProduct(id: string): Promise<ShopProduct | null> {

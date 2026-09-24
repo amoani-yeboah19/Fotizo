@@ -16,7 +16,10 @@ export const useCreateProduct = () => {
 };
 
 export const useProducts = () =>
-  useQuery({ queryKey: ["products"], queryFn: catalogService.listProducts });
+  useQuery({
+    queryKey: ["products", "preview"],
+    queryFn: catalogService.listProducts,
+  });
 
 export const useProduct = (id: string) =>
   useQuery({
@@ -33,13 +36,21 @@ export const useRelatedProducts = (id: string) =>
   });
 
 export const useCategories = () =>
-  useQuery({ queryKey: ["categories"], queryFn: catalogService.listCategories });
+  useQuery({
+    queryKey: ["categories"],
+    queryFn: catalogService.listCategories,
+  });
 
 export const useUpdateProduct = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: Parameters<typeof catalogService.updateProduct>[1] }) =>
-      catalogService.updateProduct(id, input),
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: Parameters<typeof catalogService.updateProduct>[1];
+    }) => catalogService.updateProduct(id, input),
     onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["shop"] });
@@ -65,5 +76,9 @@ export const useDeleteProduct = () => {
 
 export function useOwnedProduct(id: string) {
   const { user, isAuthenticated } = useAuth();
-  return useQuery({ queryKey: ["owned-product", user?.id, id], queryFn: () => catalogService.getOwnedProduct(id), enabled: isAuthenticated && !!id });
+  return useQuery({
+    queryKey: ["owned-product", user?.id, id],
+    queryFn: () => catalogService.getOwnedProduct(id),
+    enabled: isAuthenticated && !!id,
+  });
 }

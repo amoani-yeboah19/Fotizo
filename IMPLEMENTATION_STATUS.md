@@ -19,6 +19,7 @@ Updated 24 September 2026. Work is local and has not been deployed. The complete
 | API failures | JSON parse/size/conflict/service errors, credential-safe error metadata, private no-store responses | Malformed JSON and concurrent duplicate-registration tests |
 | Transaction honesty | Checkout and booking unavailable; unpaid order creation disabled; no invented confirmations or card collection | HTTP order-creation rejection; frontend source review |
 | Catalogue | Explicit marketplace/shop channel; owner reads of unpublished listings; republishing; current-role mutation checks; numeric bounds and canonical cart product IDs | HTTP ownership, publication, channel-spoofing and validation tests; frontend typechecking |
+| Catalogue browsing | Bounded marketplace/shop pages, working server-side filters/sorts, matching totals, full-channel category counts and bounded related items | API paging/filter/privacy/contract tests, React navigation/failure tests and production service tests |
 | Production data | Shop uses real published API inventory; release build rejects mock overrides/demo identities | Build-policy tests and production build |
 | Account settings | Authenticated display-name editing, current-password changes, atomic all-session revocation, Google-only handling, same-origin cross-tab session checks | HTTP ownership/validation/concurrency/rollback tests and React form/session tests |
 | Manager account controls | Buyer/seller search and counts, suspension/reactivation, session revocation and transactional audit records; protected staff accounts | API role/concurrency/rollback/pagination tests and manager UI/client tests |
@@ -27,6 +28,8 @@ Updated 24 September 2026. Work is local and has not been deployed. The complete
 | Engineering | Versioned migration runner, additive session/channel/account-audit SQL, Windows-compatible scripts, pinned runtime/package manager, CI checks, local API proxy and setup documentation | Locked dependency installation, typechecking, tests and builds |
 
 ## Verification record
+
+Catalogue-browsing batch: `pnpm run check` passed all TypeScript projects, all 91 tests across eleven files, and API/frontend/mockup production builds. A pagination test that clicked Next before the reset page had loaded now waits for that page; the component correctly disables pagination while fetching. `git diff --check` passed. Browser acceptance against a running API and database remains pending.
 
 Manager account-controls batch: all TypeScript projects, all 73 tests across nine files, and API/frontend/mockup production builds passed. The initial `pnpm run check` stopped after 64 passing tests when Vitest timed out starting the manager-UI worker; a full test rerun passed all 73, followed by a successful `pnpm run build` (including typechecking). The new tests cover manager permissions, protected staff accounts, suspension/reactivation and stale sessions, concurrent status changes, audit-write rollback, account search/pagination, generated API contracts, confirmation/error states and the generated client write header. Readiness fails without migration 0003 and recovers when the schema is restored. API client/schema generation and `git diff --check` passed.
 
@@ -42,7 +45,7 @@ Builds currently emit source-map warnings for the UI label/tooltip modules and a
 
 1. Inspect the target schema and take a verified backup. Follow README.md to apply 0001, 0002 and 0003 using the migration runner before this API version starts. Do not use schema push on production.
 2. Configure a strong JWT_SECRET, exact CORS_ORIGIN values and the verified trusted-proxy hop count. Existing tokens require a fresh sign-in.
-3. Deploy frontend and API together because writes now require X-Fotizo-Request. Verify actual proxy forwarding, secure cookies and revocation in staging.
+3. Deploy frontend and API together because writes require X-Fotizo-Request and public product lists now return a bounded page envelope instead of an array. Verify actual proxy forwarding, secure cookies and revocation in staging.
 4. Publish only reviewed shop inventory. Empty/unpublished inventory must stay unavailable.
 5. Complete browser acceptance, hosted PostgreSQL migration/rollback rehearsal and operational checks before release.
 
@@ -51,7 +54,7 @@ Builds currently emit source-map warnings for the UI label/tooltip modules and a
 | Stage | Remaining scope | Dependencies |
 | --- | --- | --- |
 | Foundation | Recovery/verification tokens and delivery, email/avatar profile changes, staff-account permission policy and broader administrative controls, operational logging/alerts | Email delivery configuration; staging environment |
-| Catalogue and inventory | Shared API contracts, pagination, managed media, safe import/seed operations, server-backed carts, inventory/reservation model, full owner-edit browser acceptance | Inventory and media-storage decisions |
+| Catalogue and inventory | Extend shared contracts to remaining catalogue mutations/owner routes; owner-list pagination, managed media, safe import/seed operations, server-backed carts, inventory/reservation model, full owner-edit browser acceptance | Inventory and media-storage decisions |
 | Commerce | Market configuration, currency/minor-unit money model, authoritative quotes, saved delivery snapshots, idempotent order lifecycle and reservations | Market, shipping, tax/duty and stock policies |
 | Money and fulfilment | Hosted payments, verified webhooks, ledger, refunds, reconciliation, fulfilment evidence, dispute holds, payout eligibility and seller onboarding | Selected provider; platform fee, release timing and fulfilment rules |
 | Services | Provider availability, persisted booking lifecycle, concurrency/timezones, cancellation/refunds and notifications | Booking rules and applicable payment/email integration |

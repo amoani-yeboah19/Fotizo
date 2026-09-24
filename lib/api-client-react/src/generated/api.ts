@@ -21,8 +21,12 @@ import type {
   AccountStatusChange,
   AccountStatusChangeResult,
   ApiError,
+  CatalogueCategory,
+  CataloguePage,
   HealthStatus,
   ListAccountAuditParams,
+  ListCatalogueCategoriesParams,
+  ListCatalogueProductsParams,
   ListManagedAccountsParams,
   ManagedAccountPage,
   ManagedAccountSummary,
@@ -564,6 +568,210 @@ export function useListAccountAudit<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListAccountAuditQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getListCatalogueProductsUrl = (
+  params?: ListCatalogueProductsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/products?${stringifiedParams}`
+    : `/api/products`;
+};
+
+/**
+ * Filters and sorting apply to the whole channel. Pages are zero-based, ordered with deterministic creation-time/ID tie breakers. Offset pages can shift during concurrent catalogue changes. Prices are GBP display prices. Unknown query fields and reversed price ranges return 400.
+ * @summary Browse a bounded page of published products
+ */
+export const listCatalogueProducts = async (
+  params?: ListCatalogueProductsParams,
+  options?: RequestInit,
+): Promise<CataloguePage> => {
+  return customFetch<CataloguePage>(getListCatalogueProductsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCatalogueProductsQueryKey = (
+  params?: ListCatalogueProductsParams,
+) => {
+  return [`/api/products`, ...(params ? [params] : [])] as const;
+};
+
+export const getListCatalogueProductsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCatalogueProducts>>,
+  TError = ErrorType<ApiError>,
+>(
+  params?: ListCatalogueProductsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCatalogueProducts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListCatalogueProductsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCatalogueProducts>>
+  > = ({ signal }) =>
+    listCatalogueProducts(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCatalogueProducts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCatalogueProductsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCatalogueProducts>>
+>;
+export type ListCatalogueProductsQueryError = ErrorType<ApiError>;
+
+/**
+ * @summary Browse a bounded page of published products
+ */
+
+export function useListCatalogueProducts<
+  TData = Awaited<ReturnType<typeof listCatalogueProducts>>,
+  TError = ErrorType<ApiError>,
+>(
+  params?: ListCatalogueProductsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCatalogueProducts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCatalogueProductsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getListCatalogueCategoriesUrl = (
+  params?: ListCatalogueCategoriesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/products/categories?${stringifiedParams}`
+    : `/api/products/categories`;
+};
+
+/**
+ * @summary Published product counts by category for the entire channel
+ */
+export const listCatalogueCategories = async (
+  params?: ListCatalogueCategoriesParams,
+  options?: RequestInit,
+): Promise<CatalogueCategory[]> => {
+  return customFetch<CatalogueCategory[]>(
+    getListCatalogueCategoriesUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListCatalogueCategoriesQueryKey = (
+  params?: ListCatalogueCategoriesParams,
+) => {
+  return [`/api/products/categories`, ...(params ? [params] : [])] as const;
+};
+
+export const getListCatalogueCategoriesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCatalogueCategories>>,
+  TError = ErrorType<ApiError>,
+>(
+  params?: ListCatalogueCategoriesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCatalogueCategories>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListCatalogueCategoriesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCatalogueCategories>>
+  > = ({ signal }) =>
+    listCatalogueCategories(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCatalogueCategories>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCatalogueCategoriesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCatalogueCategories>>
+>;
+export type ListCatalogueCategoriesQueryError = ErrorType<ApiError>;
+
+/**
+ * @summary Published product counts by category for the entire channel
+ */
+
+export function useListCatalogueCategories<
+  TData = Awaited<ReturnType<typeof listCatalogueCategories>>,
+  TError = ErrorType<ApiError>,
+>(
+  params?: ListCatalogueCategoriesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCatalogueCategories>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCatalogueCategoriesQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

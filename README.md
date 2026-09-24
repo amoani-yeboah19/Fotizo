@@ -59,6 +59,8 @@ Same-origin tabs clear private data and recheck their session after another tab 
 
 ## Current catalogue and currency behavior
 
+Storefront browsing now uses bounded server pages, full-catalogue search/filter/sort, matching totals and category aggregates. `GET /api/products` returns a page envelope instead of an array; deploy the API and frontend together. See [the catalogue contract and validation notes](artifacts/fotizo/src/features/marketplace/CATALOGUE.md).
+
 Production shop pages read published API inventory. An empty shop is expected until reviewed inventory is published; fixture data is not a production fallback. Product channel is assigned by the server, and owners can edit or republish their unpublished listings. Product prices currently use GBP as the base; this is not a decision to launch the UK market first. Currency selection stays on GBP if valid rates are unavailable. Market-specific charge currencies and money storage remain completion-plan work.
 
 ## Current transaction availability

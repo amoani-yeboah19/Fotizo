@@ -150,6 +150,98 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ApiError" }
+  /products:
+    get:
+      operationId: listCatalogueProducts
+      tags: [catalogue]
+      summary: Browse a bounded page of published products
+      description: Filters and sorting apply to the whole channel. Pages are zero-based, ordered with deterministic creation-time/ID tie breakers. Offset pages can shift during concurrent catalogue changes. Prices are GBP display prices. Unknown query fields and reversed price ranges return 400.
+      parameters:
+        - {
+            in: query,
+            name: channel,
+            schema:
+              { type: string, enum: [marketplace, shop], default: marketplace },
+          }
+        - {
+            in: query,
+            name: page,
+            schema: { type: integer, minimum: 0, maximum: 10000, default: 0 },
+          }
+        - {
+            in: query,
+            name: pageSize,
+            schema: { type: integer, minimum: 1, maximum: 48, default: 24 },
+          }
+        - { in: query, name: q, schema: { type: string, maxLength: 120 } }
+        - {
+            in: query,
+            name: category,
+            schema: { type: string, minLength: 1, maxLength: 80 },
+          }
+        - {
+            in: query,
+            name: sort,
+            schema:
+              {
+                type: string,
+                enum: [newest, price-asc, price-desc, rating, discount],
+                default: newest,
+              },
+          }
+        - {
+            in: query,
+            name: minPrice,
+            schema: { type: number, minimum: 0, maximum: 99999999.99 },
+          }
+        - {
+            in: query,
+            name: maxPrice,
+            schema: { type: number, minimum: 0, maximum: 99999999.99 },
+          }
+        - {
+            in: query,
+            name: minRating,
+            schema: { type: number, minimum: 0, maximum: 5 },
+          }
+        - { in: query, name: inStock, schema: { type: boolean } }
+        - { in: query, name: discounted, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Page and matching total from the same database snapshot
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CataloguePage" }
+        default:
+          description: Invalid filters or service failure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /products/categories:
+    get:
+      operationId: listCatalogueCategories
+      tags: [catalogue]
+      summary: Published product counts by category for the entire channel
+      parameters:
+        - {
+            in: query,
+            name: channel,
+            schema:
+              { type: string, enum: [marketplace, shop], default: marketplace },
+          }
+      responses:
+        "200":
+          description: Category keys, counts and representative images; includes out-of-stock listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CatalogueCategory" }
+        default:
+          description: Invalid filters or service failure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
 components:
   securitySchemes:
     sessionCookie:
@@ -253,3 +345,65 @@ components:
           }
         page: { type: integer }
         hasMore: { type: boolean }
+    CatalogueProduct:
+      type: object
+      required:
+        [
+          id,
+          channel,
+          status,
+          title,
+          description,
+          price,
+          originalPrice,
+          rating,
+          reviewCount,
+          seller,
+          sellerId,
+          category,
+          image,
+          images,
+          inStock,
+          stockCount,
+          tags,
+          specs,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        channel: { type: string, enum: [marketplace, shop] }
+        status: { type: string, enum: [active, unpublished] }
+        title: { type: string }
+        description: { type: string }
+        price: { type: number }
+        originalPrice: { type: [number, "null"] }
+        rating: { type: number }
+        reviewCount: { type: integer }
+        seller: { type: string }
+        sellerId: { type: string, format: uuid }
+        category: { type: string }
+        image: { type: string }
+        images: { type: array, items: { type: string } }
+        inStock: { type: boolean }
+        stockCount: { type: integer }
+        tags: { type: array, items: { type: string } }
+        specs: { type: object, additionalProperties: { type: string } }
+    CataloguePage:
+      type: object
+      required: [items, total, page, pageSize, hasMore]
+      properties:
+        items:
+          {
+            type: array,
+            items: { $ref: "#/components/schemas/CatalogueProduct" },
+          }
+        total: { type: integer, minimum: 0 }
+        page: { type: integer, minimum: 0 }
+        pageSize: { type: integer, minimum: 1, maximum: 48 }
+        hasMore: { type: boolean }
+    CatalogueCategory:
+      type: object
+      required: [category, count, image]
+      properties:
+        category: { type: string }
+        count: { type: integer, minimum: 1 }
+        image: { type: string }

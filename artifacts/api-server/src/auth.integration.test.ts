@@ -27,6 +27,8 @@ vi.mock("@workspace/db", async () => {
 import {
   ListManagedAccountsResponse,
   ListAccountAuditResponse,
+  ListCatalogueProductsResponse,
+  ListCatalogueCategoriesResponse,
 } from "@workspace/api-zod";
 import app from "./app";
 import { runtimeState } from "./lib/readiness";
@@ -35,6 +37,7 @@ import {
   usersTable,
   sessionsTable,
   accountAuditTable,
+  productsTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { issueSession, resolveSession } from "./lib/sessions";
@@ -410,9 +413,12 @@ describe("catalogue ownership and publication", () => {
     const shop = await (
       await fetch(`${base}/api/products?channel=shop`)
     ).json();
-    expect(shop).toEqual([
-      expect.objectContaining({ sellerId: rep.user.id, channel: "shop" }),
-    ]);
+    expect(shop).toMatchObject({
+      items: [
+        expect.objectContaining({ sellerId: rep.user.id, channel: "shop" }),
+      ],
+      total: 1,
+    });
     expect((await fetch(`${base}/api/products?channel=invalid`)).status).toBe(
       400,
     );
@@ -938,23 +944,19 @@ describe("manager account controls", () => {
   });
   it("paginates and filters real customer records without credentials or wildcard search surprises", async () => {
     const staff = await manager();
-    await db
-      .insert(usersTable)
-      .values(
-        Array.from({ length: 27 }, (_, i) => ({
-          name: `Customer ${i}`,
-          email: `customer${i}@example.com`,
-          role: "buyer" as const,
-        })),
-      );
-    await db
-      .insert(usersTable)
-      .values({
-        name: "Literal %_ user",
-        email: "literal@example.com",
-        role: "seller",
-        suspendedAt: new Date(),
-      });
+    await db.insert(usersTable).values(
+      Array.from({ length: 27 }, (_, i) => ({
+        name: `Customer ${i}`,
+        email: `customer${i}@example.com`,
+        role: "buyer" as const,
+      })),
+    );
+    await db.insert(usersTable).values({
+      name: "Literal %_ user",
+      email: "literal@example.com",
+      role: "seller",
+      suspendedAt: new Date(),
+    });
     const first = await get("/accounts", staff.cookie);
     expect(first.headers.get("cache-control")).toBe("no-store");
     const schema = z.object({
@@ -994,5 +996,217 @@ describe("manager account controls", () => {
     expect(
       (await get("/account-audit?targetId=bad", staff.cookie)).status,
     ).toBe(400);
+  });
+});
+
+describe("bounded public catalogue", () => {
+  async function seed(
+    rows: Array<Partial<typeof productsTable.$inferInsert>> = [],
+  ) {
+    const [seller] = await db
+      .insert(usersTable)
+      .values({
+        name: "Catalogue seller",
+        email: "catalogue@example.com",
+        role: "seller",
+      })
+      .returning();
+    return db
+      .insert(productsTable)
+      .values(
+        rows.map((row, i) => ({
+          sellerId: seller.id,
+          title: `Product ${i}`,
+          description: "A published catalogue product.",
+          category: "Electronics",
+          price: 10,
+          stockCount: 3,
+          images: ["https://example.com/product.jpg"],
+          createdAt: new Date("2026-01-01T00:00:00Z"),
+          ...row,
+        })),
+      )
+      .returning();
+  }
+  async function get(query = "") {
+    const response = await fetch(
+      `${base}/api/products${query ? `?${query}` : ""}`,
+    );
+    expect(response.status).toBe(200);
+    return ListCatalogueProductsResponse.parse(await response.json());
+  }
+  it("bounds every page, keeps ties deterministic and excludes other channels and unpublished rows", async () => {
+    await seed([
+      ...Array.from({ length: 55 }, (_, i) => ({
+        title: `Public product ${i}`,
+      })),
+      { channel: "shop" },
+      { status: "unpublished" },
+    ]);
+    const first = await get();
+    expect(first).toMatchObject({
+      total: 55,
+      page: 0,
+      pageSize: 24,
+      hasMore: true,
+    });
+    expect(first.items).toHaveLength(24);
+    const second = await get("page=1"),
+      last = await get("page=2");
+    expect(last.items).toHaveLength(7);
+    expect(last.hasMore).toBe(false);
+    expect(
+      new Set([...first.items, ...second.items, ...last.items].map((p) => p.id))
+        .size,
+    ).toBe(55);
+    expect((await get()).items.map((p) => p.id)).toEqual(
+      first.items.map((p) => p.id),
+    );
+    expect(await get("page=10000")).toMatchObject({
+      items: [],
+      total: 55,
+      hasMore: false,
+    });
+    expect((await get("pageSize=48")).items).toHaveLength(48);
+  });
+  it("filters and sorts the whole catalogue before paging, including stock=false", async () => {
+    await seed(
+      Array.from({ length: 30 }, (_, i) => ({
+        title: `Item ${i}`,
+        price: i + 1,
+        rating: i % 2 ? 4.5 : 2,
+        stockCount: i % 3 ? 2 : 0,
+        category: i < 20 ? "Electronics" : "Furniture",
+      })),
+    );
+    expect(
+      (await get("sort=price-asc&pageSize=2&page=1")).items.map((p) => p.price),
+    ).toEqual([3, 4]);
+    expect(
+      (await get("sort=price-desc&pageSize=2")).items.map((p) => p.price),
+    ).toEqual([30, 29]);
+    const page = await get(
+      "category=Furniture&minPrice=24&maxPrice=30&minRating=4&inStock=true&sort=price-desc&pageSize=2",
+    );
+    expect(page.items.map((p) => p.price)).toEqual([30, 26]);
+    expect(page.total).toBe(3);
+    expect((await get("inStock=false")).total).toBe(30);
+    expect((await get("inStock=true")).total).toBe(20);
+    expect((await get("sort=rating&pageSize=1")).items[0].rating).toBe(4.5);
+  });
+  it("treats search wildcards and SQL-looking text literally and searches seller names", async () => {
+    await seed([
+      { title: "Literal 50%_ item" },
+      { title: "Literal 50XX item" },
+    ]);
+    expect(
+      (await get("q=" + encodeURIComponent("50%_"))).items.map((p) => p.title),
+    ).toEqual(["Literal 50%_ item"]);
+    expect(await get("q=" + encodeURIComponent("' OR 1=1 --"))).toMatchObject({
+      total: 0,
+      items: [],
+    });
+    expect((await get("q=Catalogue%20seller")).total).toBe(2);
+  });
+  it("sorts real discounts by percentage and handles null, equal and lower original prices", async () => {
+    await seed([
+      { title: "Half price", price: 5, originalPrice: 10 },
+      { title: "Ten percent", price: 90, originalPrice: 100 },
+      { originalPrice: null },
+      { originalPrice: 10 },
+      { originalPrice: 1 },
+    ]);
+    const page = await get("sort=discount&discounted=true");
+    expect(page.items.map((p) => p.title)).toEqual([
+      "Half price",
+      "Ten percent",
+    ]);
+    expect(page.total).toBe(2);
+    expect((await get("discounted=false")).total).toBe(5);
+  });
+  it("counts all published categories and normalizes legacy shop labels", async () => {
+    await seed([
+      ...Array.from({ length: 27 }, () => ({ category: "Furniture" })),
+      { category: "Electronics", status: "unpublished" },
+      { channel: "shop", category: "Wigs & Hair" },
+      { channel: "shop", category: "Other", specs: { department: "wigs" } },
+      { channel: "shop", category: "wigs", stockCount: 0 },
+    ]);
+    const local = await fetch(
+      `${base}/api/products/categories?channel=marketplace`,
+    );
+    expect(ListCatalogueCategoriesResponse.parse(await local.json())).toEqual([
+      {
+        category: "Furniture",
+        count: 27,
+        image: "https://example.com/product.jpg",
+      },
+    ]);
+    const shop = await fetch(`${base}/api/products/categories?channel=shop`);
+    expect(shop.status).toBe(200);
+    expect(ListCatalogueCategoriesResponse.parse(await shop.json())).toEqual([
+      { category: "wigs", count: 3, image: "https://example.com/product.jpg" },
+    ]);
+    expect((await get("channel=shop&category=wigs")).total).toBe(3);
+  });
+  it("keeps related items bounded, published, canonical and in the same channel", async () => {
+    const rows = await seed([
+      { channel: "shop", category: "Wigs & Hair" },
+      ...Array.from({ length: 9 }, () => ({
+        channel: "shop" as const,
+        category: "wigs",
+      })),
+      { category: "wigs" },
+      { channel: "shop", category: "wigs", status: "unpublished" },
+    ]);
+    const response = await fetch(`${base}/api/products/${rows[0].id}/related`);
+    expect(response.status).toBe(200);
+    const related = z
+      .array(
+        z.object({ id: z.string(), channel: z.string(), status: z.string() }),
+      )
+      .parse(await response.json());
+    expect(related).toHaveLength(6);
+    expect(
+      related.every(
+        (p) =>
+          p.channel === "shop" && p.status === "active" && p.id !== rows[0].id,
+      ),
+    ).toBe(true);
+    expect(
+      await (
+        await fetch(`${base}/api/products/${rows.at(-1)!.id}/related`)
+      ).json(),
+    ).toEqual([]);
+  });
+  it("rejects malformed, unbounded, conflicting and unknown filters", async () => {
+    for (const query of [
+      "page=-1",
+      "page=1.5",
+      "page=10001",
+      "pageSize=0",
+      "pageSize=49",
+      "pageSize=NaN",
+      "pageSize=2&pageSize=3",
+      "channel=secret",
+      "sort=best-selling",
+      "minPrice=-1",
+      "maxPrice=100000000",
+      "minPrice=50&maxPrice=5",
+      "minRating=6",
+      "inStock=1",
+      "discounted=maybe",
+      "q=" + "a".repeat(121),
+      "category=" + "a".repeat(81),
+      "status=unpublished",
+    ]) {
+      expect((await fetch(`${base}/api/products?${query}`)).status, query).toBe(
+        400,
+      );
+    }
+    expect(
+      (await fetch(`${base}/api/products/categories?channel=invalid`)).status,
+    ).toBe(400);
+    expect(await get()).toMatchObject({ items: [], total: 0, hasMore: false });
   });
 });
