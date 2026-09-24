@@ -24,6 +24,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /readyz:
+    get:
+      operationId: readinessCheck
+      tags: [health]
+      summary: Database and migration readiness
+      description: Returns 503 while draining or if the database/security/catalogue schema is unavailable. Does not verify external providers or complete business workflows.
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+        "503":
+          description: Not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +52,3 @@ components:
           type: string
       required:
         - status
-

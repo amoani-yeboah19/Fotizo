@@ -8,6 +8,7 @@ import { DEMO_MODE } from "@/api";
 // Route-level code splitting: each page (and its heavy deps like recharts on the
 // dashboards) loads only when its route is visited.
 const Home = lazy(() => import("@/features/home/pages/HomePage"));
+const Settings = lazy(() => import("@/features/settings/pages/SettingsPage"));
 const Login = lazy(() => import("@/features/auth/pages/LoginPage"));
 const Signup = lazy(() => import("@/features/auth/pages/SignupPage"));
 const ProductsPage = lazy(
@@ -109,6 +110,13 @@ export function AppRoutes() {
         <Route path="/" component={Home} />
         <Route path="/login" component={Login} />
         <Route path="/signup" component={Signup} />
+        <Route path="/settings">
+          {() => (
+            <RequireSession>
+              <Settings />
+            </RequireSession>
+          )}
+        </Route>
         <Route path="/products" component={ProductsPage} />
         <Route path="/products/:id" component={ProductDetail} />
         <Route path="/shop" component={ShopPage} />

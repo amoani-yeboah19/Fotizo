@@ -17,18 +17,26 @@ vi.mock("@workspace/db", async () => {
   const { drizzle } = await import("drizzle-orm/pglite");
   const schema = await import("../../../lib/db/src/schema");
   const client = new PGlite();
-  return { ...schema, db: drizzle(client, { schema }), testDatabase: client };
+  return {
+    ...schema,
+    db: drizzle(client, { schema }),
+    testDatabase: client,
+    pool: { query: (query: { text: string }) => client.query(query.text) },
+  };
 });
 import app from "./app";
+import { runtimeState } from "./lib/readiness";
 import { db, usersTable, sessionsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { resolveSession } from "./lib/sessions";
+import { issueSession, resolveSession } from "./lib/sessions";
 import {
   signAuthToken,
   signPendingGoogleSignupToken,
   verifyAuthToken,
   verifyPendingGoogleSignupToken,
 } from "./lib/jwt";
+import { changeAccountPassword } from "./lib/account";
+import type { Response } from "express";
 import { consumeAuthAttempt } from "./middlewares/security";
 
 let server: Server;
@@ -405,5 +413,232 @@ describe("catalogue ownership and publication", () => {
     const response = await post("/products", listing, seller.cookie);
     const { id } = z.object({ id: z.string() }).parse(await response.json());
     expect((await change(id, seller.cookie, {})).status).toBe(400);
+  });
+});
+
+describe("account settings", () => {
+  async function profile(data: unknown, cookie?: string) {
+    return fetch(`${base}/api/auth/profile`, {
+      method: "PATCH",
+      headers: { ...headers, ...(cookie ? { Cookie: cookie } : {}) },
+      body: JSON.stringify(data),
+    });
+  }
+  const passwords = {
+    currentPassword: account.password,
+    newPassword: "replacement-password",
+  };
+  it("persists only the authenticated user's display name and excludes credential material", async () => {
+    const alice = await register();
+    const bob = await register({ ...account, email: "bob@example.com" });
+    expect((await profile({ name: "Intruder" })).status).toBe(401);
+    const response = await profile({ name: "  Updated Alice  " }, alice.cookie);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    const body = await response.json();
+    expect(body).toMatchObject({
+      name: "Updated Alice",
+      hasPassword: true,
+      email: account.email,
+      role: "buyer",
+    });
+    expect(body).not.toHaveProperty("passwordHash");
+    expect(body).not.toHaveProperty("googleId");
+    expect(
+      await (
+        await fetch(`${base}/api/auth/me`, {
+          headers: { Cookie: alice.cookie },
+        })
+      ).json(),
+    ).toMatchObject({ name: "Updated Alice" });
+    expect(
+      (
+        await db.query.usersTable.findFirst({
+          where: eq(usersTable.id, bob.user.id),
+        })
+      )?.name,
+    ).toBe("Alice");
+    for (const input of [
+      { name: " " },
+      { name: "x".repeat(121) },
+      { name: "x", role: "manager" },
+      { name: "x", email: "other@example.com" },
+      { name: "x", id: bob.user.id },
+      { name: "x", verified: true },
+    ]) {
+      expect((await profile(input, alice.cookie)).status).toBe(400);
+    }
+  });
+  it("changes the password and revokes all sessions without affecting other accounts", async () => {
+    const alice = await register();
+    const login = await post("/auth/login", account);
+    const secondCookie = login.headers.get("set-cookie")!.split(";")[0];
+    const bob = await register({ ...account, email: "bob@example.com" });
+    const response = await post("/auth/password", passwords, alice.cookie);
+    expect(response.status).toBe(204);
+    expect(response.headers.get("set-cookie")).toContain(
+      "Expires=Thu, 01 Jan 1970",
+    );
+    for (const cookie of [alice.cookie, secondCookie])
+      expect(
+        (await fetch(`${base}/api/auth/me`, { headers: { Cookie: cookie } }))
+          .status,
+      ).toBe(401);
+    expect(
+      (await fetch(`${base}/api/auth/me`, { headers: { Cookie: bob.cookie } }))
+        .status,
+    ).toBe(200);
+    expect((await post("/auth/login", account)).status).toBe(401);
+    expect(
+      (
+        await post("/auth/login", {
+          ...account,
+          password: passwords.newPassword,
+        })
+      ).status,
+    ).toBe(200);
+  });
+  it("rejects wrong, reused, short and overlong UTF-8 passwords without revoking the session", async () => {
+    const { cookie } = await register();
+    for (const changes of [
+      { currentPassword: "wrong" },
+      { newPassword: account.password },
+      { newPassword: "short" },
+      { newPassword: "abcd".repeat(19) },
+      { newPassword: "\u00e9".repeat(37) },
+    ]) {
+      expect(
+        (await post("/auth/password", { ...passwords, ...changes }, cookie))
+          .status,
+      ).toBe(400);
+    }
+    expect(
+      (await fetch(`${base}/api/auth/me`, { headers: { Cookie: cookie } }))
+        .status,
+    ).toBe(200);
+    expect((await post("/auth/login", account)).status).toBe(200);
+  });
+  it("rejects Google-only password changes and limits repeated attempts by account", async () => {
+    const { user, cookie } = await register();
+    await db
+      .update(usersTable)
+      .set({ passwordHash: null, googleId: "google-account" })
+      .where(eq(usersTable.id, user.id));
+    expect(
+      await (
+        await fetch(`${base}/api/auth/me`, { headers: { Cookie: cookie } })
+      ).json(),
+    ).toMatchObject({ hasPassword: false });
+    expect((await post("/auth/password", passwords, cookie)).status).toBe(409);
+    for (let i = 0; i < 4; i++) await post("/auth/password", passwords, cookie);
+    const limited = await post("/auth/PASSWORD/", passwords, cookie);
+    expect(limited.status).toBe(429);
+    expect(Number(limited.headers.get("retry-after"))).toBeGreaterThan(0);
+  });
+  it("requires a live session and permits only one of two concurrent password replacements", async () => {
+    expect((await post("/auth/password", passwords)).status).toBe(401);
+    const { cookie } = await register();
+    const responses = await Promise.all([
+      post("/auth/password", passwords, cookie),
+      post(
+        "/auth/password",
+        { ...passwords, newPassword: "another-new-password" },
+        cookie,
+      ),
+    ]);
+    expect(responses.filter((r) => r.status === 204)).toHaveLength(1);
+    expect(responses.some((r) => [401, 409].includes(r.status))).toBe(true);
+    expect(await db.select().from(sessionsTable)).toHaveLength(0);
+  });
+  it("blocks stale credential session issuance after a password change", async () => {
+    const { user, cookie } = await register();
+    const snapshot = (await db.query.usersTable.findFirst({
+      where: eq(usersTable.id, user.id),
+    }))!;
+    expect((await post("/auth/password", passwords, cookie)).status).toBe(204);
+    const response = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+      cookie: vi.fn(),
+    };
+    expect(await issueSession(response as unknown as Response, snapshot)).toBe(
+      false,
+    );
+    expect(response.status).toHaveBeenCalledWith(401);
+    expect(response.cookie).not.toHaveBeenCalled();
+    expect(await db.select().from(sessionsTable)).toHaveLength(0);
+  });
+  it("rechecks session validity during the password transaction", async () => {
+    const { user, cookie } = await register();
+    const claims = verifyAuthToken(cookie.split("=")[1]);
+    await post("/auth/logout", {}, cookie);
+    expect(
+      (
+        await changeAccountPassword(
+          user.id,
+          claims.sid,
+          passwords.currentPassword,
+          passwords.newPassword,
+        )
+      ).status,
+    ).toBe(401);
+    expect((await post("/auth/login", account)).status).toBe(200);
+  });
+});
+
+it("rolls back the password when session revocation fails", async () => {
+  const { cookie } = await register();
+  await database.exec(`CREATE FUNCTION fail_test_session_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test revocation failure'; END $$;
+    CREATE TRIGGER fail_test_session_delete BEFORE DELETE ON sessions FOR EACH ROW EXECUTE FUNCTION fail_test_session_delete();`);
+  try {
+    const response = await post(
+      "/auth/password",
+      { currentPassword: account.password, newPassword: "must-not-be-saved" },
+      cookie,
+    );
+    expect(response.status).toBe(503);
+    expect((await post("/auth/login", account)).status).toBe(200);
+    expect(
+      (await fetch(`${base}/api/auth/me`, { headers: { Cookie: cookie } }))
+        .status,
+    ).toBe(200);
+  } finally {
+    await database.exec(
+      "DROP TRIGGER fail_test_session_delete ON sessions; DROP FUNCTION fail_test_session_delete();",
+    );
+  }
+});
+
+describe("readiness and liveness", () => {
+  it("reports readiness with the migrated security/catalogue schema", async () => {
+    const response = await fetch(`${base}/api/readyz`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({ status: "ready" });
+  });
+  it("keeps liveness healthy while refusing readiness during shutdown", async () => {
+    runtimeState.draining = true;
+    try {
+      expect((await fetch(`${base}/api/readyz`)).status).toBe(503);
+      expect((await fetch(`${base}/api/healthz`)).status).toBe(200);
+    } finally {
+      runtimeState.draining = false;
+    }
+  });
+  it("returns a generic readiness failure if the required migration is missing", async () => {
+    await database.exec(
+      "ALTER TABLE products RENAME COLUMN channel TO hidden_channel",
+    );
+    try {
+      const response = await fetch(`${base}/api/readyz`);
+      expect(response.status).toBe(503);
+      expect(await response.json()).toEqual({ status: "not_ready" });
+      expect((await fetch(`${base}/api/healthz`)).status).toBe(200);
+    } finally {
+      await database.exec(
+        "ALTER TABLE products RENAME COLUMN hidden_channel TO channel",
+      );
+    }
+    expect((await fetch(`${base}/api/readyz`)).status).toBe(200);
   });
 });

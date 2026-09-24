@@ -24,6 +24,7 @@ export interface User {
   avatar?: string;
   joinedAt: string;
   verified: boolean;
+  hasPassword?: boolean;
 }
 
 export interface SignupData {

@@ -8,22 +8,41 @@ export async function issueSession(
   res: Response,
   user: UserRow,
 ): Promise<boolean> {
-  if (user.suspendedAt) {
+  // Serialize issuance with password changes. A login that verified an old hash
+  // must not create a fresh session after that password has been replaced.
+  const result = await db.transaction(async (tx) => {
+    const [current] = await tx
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, user.id))
+      .for("update");
+    if (!current || current.passwordHash !== user.passwordHash)
+      return { error: 401 as const };
+    if (current.suspendedAt) return { error: 403 as const };
+    const [session] = await tx
+      .insert(sessionsTable)
+      .values({
+        userId: current.id,
+        expiresAt: new Date(Date.now() + SESSION_TTL_MS),
+      })
+      .returning();
+    return { session, role: current.role };
+  });
+  if (result.error) {
     res
-      .status(403)
-      .json({ error: "This account is suspended. Contact support." });
+      .status(result.error)
+      .json({
+        error:
+          result.error === 403
+            ? "This account is suspended. Contact support."
+            : "Account credentials changed. Please sign in again.",
+      });
     return false;
   }
-  const [session] = await db
-    .insert(sessionsTable)
-    .values({
-      userId: user.id,
-      expiresAt: new Date(Date.now() + SESSION_TTL_MS),
-    })
-    .returning();
+  const { session } = result;
   res.cookie(
     AUTH_COOKIE_NAME,
-    signAuthToken({ sub: user.id, sid: session.id, role: user.role }),
+    signAuthToken({ sub: user.id, sid: session.id, role: result.role }),
     authCookieOptions,
   );
   return true;

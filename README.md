@@ -51,6 +51,12 @@ Deployment order: verify the target and backup/restore procedure, apply both add
 
 Release builds reject enabled mock flags or a demo identity picker. Use an explicit demo build mode only for separately identified demonstrations. Hosting environment overrides are included in this check.
 
+## Account settings
+
+Signed-in users can open /settings from the account menu to update their display name or change an existing password. Password changes require the current password and revoke all account sessions in the same transaction. Google-only users manage their password with Google. Email changes and recovery/verification delivery remain unavailable pending that workflow. Account changes are disabled in demo mode.
+
+Same-origin tabs clear private data and recheck their session after another tab signs in, signs out or changes a password. This uses browser storage events containing only a nonce; browser storage restrictions can prevent the notification, while server session revocation continues to apply. See artifacts/fotizo/src/features/settings/README.md for API behavior and test coverage.
+
 ## Current catalogue and currency behavior
 
 Production shop pages read published API inventory. An empty shop is expected until reviewed inventory is published; fixture data is not a production fallback. Product channel is assigned by the server, and owners can edit or republish their unpublished listings. Product prices currently use GBP as the base; this is not a decision to launch the UK market first. Currency selection stays on GBP if valid rates are unavailable. Market-specific charge currencies and money storage remain completion-plan work.
@@ -59,6 +65,14 @@ Production shop pages read published API inventory. An empty shop is expected un
 
 Checkout and online booking are intentionally unavailable until verified payments and real scheduling exist. POST /api/orders returns 503 without changing stock. The frontend never asks for card details or invents booking/order confirmations. Existing order history remains readable.
 
+## API health and shutdown
+
+- `GET /api/healthz` is process liveness and stays 200 while the process can answer, independently of database availability.
+- `GET /api/readyz` returns 200 with `{ "status": "ready" }` after checking database access and the session/catalogue columns required by migrations 0001/0002. It returns 503 with `{ "status": "not_ready" }` during draining or failure, without database details. Responses are not cached. Concurrent probes share one check.
+- Database connection acquisition is limited to five seconds. Readiness queries have a two-second client timeout; configure the hosting probe timeout above seven seconds to allow both stages. This probe does not inspect every schema constraint, external provider, or business workflow.
+- Startup validates the TCP port and runs the database/schema check before opening the listener. Missing migrations or unavailable database access make startup fail, so apply migrations first and use the host's restart policy.
+- SIGTERM/SIGINT mark the API unready, stop accepting connections, let active HTTP requests finish, then close the database pool. Shutdown has a ten-second deadline; expiry closes remaining HTTP connections and exits unsuccessfully. The host's termination grace period must exceed ten seconds. Forced termination can interrupt a request after its database commit, so business-write idempotency remains necessary.
+
 ## Operational limits
 
-Recovery/email verification delivery, audit workflows, production readiness probes, complete business APIs and external integrations are still in progress. Do not treat a successful build as authorization to activate real-money transactions. Production deployment, database inspection and provider verification have not been performed as part of this local implementation batch.
+Recovery/email verification delivery, audit workflows, complete business APIs and external integrations are still in progress. Do not treat a successful build as authorization to activate real-money transactions. Production deployment, database inspection and provider verification have not been performed as part of this local implementation batch.

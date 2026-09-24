@@ -78,7 +78,13 @@ export const limitAuthAttempts: RequestHandler = async (req, res, next) => {
   const path = req.path.toLowerCase().replace(/\/+$/, "");
   if (
     req.method !== "POST" ||
-    !["/login", "/register", "/google", "/google/complete"].includes(path)
+    ![
+      "/login",
+      "/register",
+      "/google",
+      "/google/complete",
+      "/password",
+    ].includes(path)
   )
     return next();
   const now = Date.now();
@@ -119,9 +125,7 @@ export const apiErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
     return void res
       .status(409)
       .json({ error: "This record already exists. Refresh and try again." });
-  res
-    .status(503)
-    .json({
-      error: "The service is temporarily unavailable. Please try again.",
-    });
+  res.status(503).json({
+    error: "The service is temporarily unavailable. Please try again.",
+  });
 };

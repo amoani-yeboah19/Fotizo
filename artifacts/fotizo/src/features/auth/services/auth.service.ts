@@ -23,6 +23,14 @@ function decodeGoogleCredentialUnsafe(credential: string): { email: string; name
 }
 
 export const authService = {
+  async updateProfile(name: string): Promise<User> {
+    if (AUTH_USE_MOCKS) throw new Error("Account changes require a connected backend.");
+    return api.patch<User>("/auth/profile", { name });
+  },
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    if (AUTH_USE_MOCKS) throw new Error("Account changes require a connected backend.");
+    await api.post("/auth/password", { currentPassword, newPassword });
+  },
   async login(email: string, _password: string): Promise<User> {
     if (AUTH_USE_MOCKS) {
       await delay(600);

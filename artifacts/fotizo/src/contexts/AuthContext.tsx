@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { authService } from "@/features/auth/services";
+import { ApiError } from "@/api/client";
 import type { User, SignupData } from "@/types";
 export type { User, UserRole, SignupData } from "@/types";
 
@@ -38,10 +39,35 @@ interface AuthContextType {
     role: "buyer" | "seller",
   ) => Promise<Result>;
   logout: () => Promise<Result>;
+  updateProfile: (name: string) => Promise<Result>;
+  changePassword: (
+    currentPassword: string,
+    newPassword: string,
+  ) => Promise<Result>;
+}
+export const SESSION_EVENT_KEY = "fotizo_session_event";
+function announceSessionChange() {
+  // Only a nonce is stored: never cookies, credentials, or account details.
+  try {
+    localStorage.setItem(SESSION_EVENT_KEY, crypto.randomUUID());
+  } catch {
+    /* Storage may be unavailable. */
+  }
 }
 const AuthContext = createContext<AuthContextType | null>(null);
-const errorMessage = (err: unknown) =>
-  err instanceof Error ? err.message : "Unable to complete sign in.";
+const errorMessage = (err: unknown) => {
+  if (
+    err instanceof ApiError &&
+    err.data &&
+    typeof err.data === "object" &&
+    "error" in err.data &&
+    typeof err.data.error === "string"
+  )
+    return err.data.error;
+  return err instanceof Error
+    ? err.message
+    : "Unable to complete this request.";
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -50,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const generation = useRef(0);
   const busy = useRef(false);
+  const externalChangePending = useRef(false);
   const logoutFailed = useRef(false);
   const mounted = useRef(false);
 
@@ -87,6 +114,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [restore]);
 
+  const finishMutation = useCallback(() => {
+    busy.current = false;
+    if (externalChangePending.current && mounted.current) {
+      externalChangePending.current = false;
+      logoutFailed.current = false;
+      void restore();
+    }
+  }, [restore]);
+
+  useEffect(() => {
+    const onSessionChange = (event: StorageEvent) => {
+      if (event.key !== SESSION_EVENT_KEY || !event.newValue) return;
+      generation.current += 1;
+      replaceIdentity(null);
+      setStatus("loading");
+      logoutFailed.current = false;
+      if (busy.current) externalChangePending.current = true;
+      else void restore();
+    };
+    window.addEventListener("storage", onSessionChange);
+    return () => window.removeEventListener("storage", onSessionChange);
+  }, [replaceIdentity, restore]);
+
   const authenticate = useCallback(
     async (operation: () => Promise<User>): Promise<Result> => {
       if (busy.current || logoutFailed.current)
@@ -104,18 +154,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             error: "Session changed. Please try again.",
           };
         replaceIdentity(next);
+        announceSessionChange();
         return { success: true };
       } catch (error) {
-        if (mounted.current)
+        if (mounted.current && generation.current === requestGeneration)
           setStatus((current) =>
             current === "loading" ? "anonymous" : current,
           );
         return { success: false, error: errorMessage(error) };
       } finally {
-        busy.current = false;
+        finishMutation();
       }
     },
-    [replaceIdentity],
+    [replaceIdentity, finishMutation],
   );
 
   const login = useCallback(
@@ -151,6 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
         if (result.kind === "user") {
           replaceIdentity(result.user);
+          announceSessionChange();
           return { success: true, needsRole: false };
         }
         setStatus(user ? "authenticated" : "anonymous");
@@ -160,13 +212,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           pendingToken: result.pendingToken,
         };
       } catch (error) {
-        if (mounted.current) setStatus(user ? "authenticated" : "anonymous");
+        if (mounted.current && generation.current === requestGeneration)
+          setStatus(user ? "authenticated" : "anonymous");
         return { success: false, error: errorMessage(error) };
       } finally {
-        busy.current = false;
+        finishMutation();
       }
     },
-    [replaceIdentity, user],
+    [replaceIdentity, user, finishMutation],
   );
 
   const logout = useCallback(async (): Promise<Result> => {
@@ -176,16 +229,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: "Please wait for the current session change to finish.",
       };
     busy.current = true;
-    generation.current += 1;
+    const requestGeneration = ++generation.current;
     // Hide private data immediately; do not report success until revocation succeeds.
     replaceIdentity(null);
     setStatus("signing-out");
     try {
       await authService.clearSession();
+      announceSessionChange();
+      if (generation.current !== requestGeneration)
+        return {
+          success: false,
+          error: "Session changed in another tab. Checking your session.",
+        };
       logoutFailed.current = false;
       if (mounted.current) setStatus("anonymous");
       return { success: true };
     } catch {
+      if (generation.current !== requestGeneration)
+        return {
+          success: false,
+          error: "Session changed in another tab. Checking your session.",
+        };
       logoutFailed.current = true;
       if (mounted.current) {
         setStatus("error");
@@ -195,9 +259,91 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return { success: false, error: "Sign out failed. Please retry." };
     } finally {
-      busy.current = false;
+      finishMutation();
     }
-  }, [replaceIdentity]);
+  }, [replaceIdentity, finishMutation]);
+
+  const updateProfile = useCallback(
+    async (name: string): Promise<Result> => {
+      if (busy.current || logoutFailed.current || !user)
+        return {
+          success: false,
+          error: "Please wait for the current session change to finish.",
+        };
+      busy.current = true;
+      const requestGeneration = ++generation.current;
+      try {
+        const next = await authService.updateProfile(name);
+        if (
+          !mounted.current ||
+          generation.current !== requestGeneration ||
+          next.id !== user.id
+        )
+          return {
+            success: false,
+            error: "Session changed. Please try again.",
+          };
+        // A rename must not discard the customer's cart or remount their form.
+        setUser(next);
+        authService.saveSession(next);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: errorMessage(error) };
+      } finally {
+        finishMutation();
+      }
+    },
+    [user, finishMutation],
+  );
+
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string): Promise<Result> => {
+      if (busy.current || logoutFailed.current || !user)
+        return {
+          success: false,
+          error: "Please wait for the current session change to finish.",
+        };
+      busy.current = true;
+      const requestGeneration = ++generation.current;
+      try {
+        await authService.changePassword(currentPassword, newPassword);
+        if (!mounted.current || generation.current !== requestGeneration)
+          return {
+            success: false,
+            error: "Session changed. Please sign in again.",
+          };
+        replaceIdentity(null);
+        announceSessionChange();
+        return { success: true };
+      } catch (error) {
+        if (!mounted.current || generation.current !== requestGeneration)
+          return {
+            success: false,
+            error: "Session changed. Please sign in again.",
+          };
+        // A lost response may follow a committed change. Hide private data until the
+        // server session is checked; do not assume the old password still works.
+        if (!(error instanceof ApiError) || error.status >= 500) {
+          announceSessionChange();
+          replaceIdentity(null);
+          setStatus("error");
+          setSessionError(
+            "The password-change result could not be confirmed. Retry the session check, then sign in with your new password if needed.",
+          );
+        } else if (error.status === 401) replaceIdentity(null);
+        return {
+          success: false,
+          error:
+            error instanceof ApiError
+              ? errorMessage(error)
+              : "The result could not be confirmed. Try signing in with your new password before retrying.",
+        };
+      } finally {
+        finishMutation();
+      }
+    },
+    [replaceIdentity, user, finishMutation],
+  );
 
   const retrySession = useCallback(async () => {
     if (logoutFailed.current) {
@@ -219,6 +365,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginWithGoogle,
       completeGoogleSignup,
       logout,
+      updateProfile,
+      changePassword,
     }),
     [
       user,
@@ -231,6 +379,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginWithGoogle,
       completeGoogleSignup,
       logout,
+      updateProfile,
+      changePassword,
     ],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

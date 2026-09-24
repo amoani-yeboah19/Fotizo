@@ -9,7 +9,12 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { useQuery } from "@tanstack/react-query";
-import { AuthProvider, useAuth, type User } from "./AuthContext";
+import {
+  AuthProvider,
+  useAuth,
+  SESSION_EVENT_KEY,
+  type User,
+} from "./AuthContext";
 import { SessionScope, SessionNotice } from "./SessionScope";
 import { MessagesProvider, useMessages } from "./MessagesContext";
 import { CartProvider, useCart } from "./CartContext";
@@ -20,6 +25,8 @@ import { messagesService } from "@/features/messaging/services";
 vi.mock("@/features/auth/services", () => ({
   authService: {
     getSession: vi.fn(),
+    updateProfile: vi.fn(),
+    changePassword: vi.fn(),
     login: vi.fn(),
     signup: vi.fn(),
     clearSession: vi.fn(),
@@ -287,5 +294,106 @@ describe("session lifecycle and private state", () => {
       await session.retrySession();
     });
     expect(screen.getByText("private-page")).toBeTruthy();
+  });
+});
+
+describe("account mutation session state", () => {
+  it("updates the displayed identity without discarding cart state", async () => {
+    vi.mocked(authService.getSession).mockResolvedValue(alice);
+    vi.mocked(authService.updateProfile).mockResolvedValue({
+      ...alice,
+      name: "New Alice",
+    });
+    render(<Harness />);
+    await waitFor(() => expect(session.user?.id).toBe("alice"));
+    fireEvent.click(screen.getByText("Add item"));
+    const scope = session.sessionKey;
+    await act(async () => {
+      expect((await session.updateProfile("New Alice")).success).toBe(true);
+    });
+    expect(session.user?.name).toBe("New Alice");
+    expect(session.sessionKey).toBe(scope);
+    expect(screen.getByTestId("cart").textContent).toBe("1");
+  });
+  it("clears private state after password replacement", async () => {
+    vi.mocked(authService.getSession).mockResolvedValue(alice);
+    vi.mocked(authService.changePassword).mockResolvedValue(undefined);
+    render(<Harness guarded />);
+    await screen.findByText("private-page");
+    fireEvent.click(screen.getByText("Add item"));
+    await act(async () => {
+      expect((await session.changePassword("old", "new")).success).toBe(true);
+    });
+    expect(screen.getByTestId("identity").textContent).toBe("anonymous");
+    expect(screen.getByTestId("cart").textContent).toBe("0");
+    expect(screen.queryByText("private-page")).toBeNull();
+  });
+  it("hides private state when a lost password-change response leaves the result uncertain", async () => {
+    vi.mocked(authService.getSession).mockResolvedValue(alice);
+    vi.mocked(authService.changePassword).mockRejectedValue(
+      new Error("network failure"),
+    );
+    render(<Harness guarded />);
+    await screen.findByText("private-page");
+    await act(async () => {
+      expect((await session.changePassword("old", "new")).success).toBe(false);
+    });
+    expect(screen.queryByText("private-page")).toBeNull();
+    expect(screen.getByRole("alert").textContent).toContain(
+      "could not be confirmed",
+    );
+    vi.mocked(authService.getSession).mockResolvedValue(null);
+    await act(async () => {
+      await session.retrySession();
+    });
+    expect(session.status).toBe("anonymous");
+  });
+});
+
+describe("cross-tab session changes", () => {
+  it("immediately hides old private state while checking a change in another tab", async () => {
+    vi.mocked(authService.getSession).mockResolvedValueOnce(alice);
+    render(<Harness guarded />);
+    await screen.findByText("private-page");
+    fireEvent.click(screen.getByText("Add item"));
+    const pending = deferred<User | null>();
+    vi.mocked(authService.getSession).mockReturnValue(pending.promise);
+    act(() =>
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: SESSION_EVENT_KEY,
+          newValue: "logout-in-other-tab",
+        }),
+      ),
+    );
+    expect(screen.queryByText("private-page")).toBeNull();
+    expect(screen.getByTestId("cart").textContent).toBe("0");
+    await act(async () => pending.resolve(null));
+    expect(session.status).toBe("anonymous");
+  });
+  it("discards an in-flight login response when another tab changes the session", async () => {
+    const login = deferred<User>();
+    vi.mocked(authService.login).mockReturnValueOnce(login.promise);
+    render(<Harness />);
+    await waitFor(() => expect(session.status).toBe("anonymous"));
+    let result!: ReturnType<typeof session.login>;
+    act(() => {
+      result = session.login(alice.email, "password");
+    });
+    vi.mocked(authService.getSession).mockResolvedValue(bob);
+    act(() =>
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: SESSION_EVENT_KEY,
+          newValue: "different-tab",
+        }),
+      ),
+    );
+    await act(async () => {
+      login.resolve(alice);
+      await result;
+    });
+    await waitFor(() => expect(session.user?.id).toBe("bob"));
+    expect((await result).success).toBe(false);
   });
 });
