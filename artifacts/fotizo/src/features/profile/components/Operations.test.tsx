@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { ApiError } from "@/api/client";
-import { CaseQueue, OperationsOverviewPanel, VehicleCatalogueControls } from "./Operations";
+import { CaseQueue, VehicleCatalogueControls } from "./Operations";
 import { operationsService, type SupportCase } from "../services/operations.service";
 
 vi.mock("@/api", async (importOriginal) => ({
@@ -28,11 +28,6 @@ vi.mock("../services/operations.service", () => ({
     setVehicleStatus: vi.fn(),
   },
 }));
-// Recharts needs layout measurements jsdom cannot provide.
-vi.mock("recharts", () => {
-  const Pass = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
-  return { BarChart: Pass, Bar: Pass, XAxis: Pass, YAxis: Pass, CartesianGrid: Pass, Tooltip: Pass, ResponsiveContainer: Pass };
-});
 
 const openCase: SupportCase = {
   id: "c1",
@@ -98,25 +93,6 @@ it("filters by status from the first page", async () => {
   await screen.findByText("No vehicle enquiries with this status.");
   fireEvent.change(screen.getByLabelText("Status"), { target: { value: "quoted" } });
   await waitFor(() => expect(operationsService.enquiryCases).toHaveBeenLastCalledWith(0, "quoted"));
-});
-
-it("renders overview figures from the API and a retry on failure", async () => {
-  vi.mocked(operationsService.overview).mockRejectedValueOnce(new Error("offline"));
-  mount(<OperationsOverviewPanel />);
-  await screen.findByRole("alert");
-  vi.mocked(operationsService.overview).mockResolvedValue({
-    users: { total: 5, buyers: 3, sellers: 2, newThisMonth: 1, suspended: 0 },
-    listings: { marketplace: 7, shop: 4, unpublished: 1, lowStock: 2, services: 3 },
-    orders: { lines: 2, value: 40, linesThisMonth: 2, valueThisMonth: 40, monthly: [] },
-    topCategories: [{ category: "Home", listings: 7 }],
-    support: { open: 1, inProgress: 0 },
-    vehicleEnquiries: { new: 0, active: 0 },
-    vehicles: { active: 0, total: 0 },
-  });
-  fireEvent.click(await screen.findByRole("button", { name: "Retry" }));
-  expect(await screen.findByText("11")).toBeTruthy();
-  expect(screen.getByText("£40.00")).toBeTruthy();
-  expect(screen.getByText("Home")).toBeTruthy();
 });
 
 it("publishes an unpublished vehicle", async () => {

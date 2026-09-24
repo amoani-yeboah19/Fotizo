@@ -44,7 +44,7 @@ export function NavMegaMenu({
         </span>
       </Link>
 
-      <div className="invisible absolute left-0 top-full z-50 w-105 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+      <div className="invisible absolute left-1/2 top-full w-105 -translate-x-1/2 rounded-xl border border-border bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
         <ul>
           {items.map((item) => (
             <li key={item.href}>

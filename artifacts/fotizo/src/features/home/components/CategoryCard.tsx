@@ -13,8 +13,6 @@ export interface Category {
   accent: string;
   /** Where the card goes. Always a real, filtered destination. */
   href: string;
-  /** Corner label naming the storefront the category belongs to. */
-  badge: string;
 }
 
 export function CategoryCard({ cat, index }: { cat: Category; index: number }) {
@@ -53,7 +51,7 @@ export function CategoryCard({ cat, index }: { cat: Category; index: number }) {
         </div>
 
         <div className="absolute top-4 left-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full px-3 py-1">
-          <span className="text-white text-[10px] font-semibold uppercase tracking-wider">{cat.badge}</span>
+          <span className="text-white text-[10px] font-semibold uppercase tracking-wider">Shop</span>
         </div>
       </motion.div>
     </Link>

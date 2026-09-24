@@ -50,6 +50,8 @@ export const catalogService = {
         price: input.price,
         stock: input.stockCount,
         sales: 0,
+        rating: 0,
+        reviewCount: 0,
         status: input.stockCount > 0 ? "active" : "out_of_stock",
         image: product.image,
         category: input.category,

@@ -135,7 +135,10 @@ export interface SellerProduct {
   title: string;
   price: number;
   stock: number;
+  /** Units sold, excluding cancelled order lines. */
   sales: number;
+  rating: number;
+  reviewCount: number;
   status: string;
   image: string;
   category: string;

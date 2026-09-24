@@ -1,19 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-} from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
 import { AUTH_USE_MOCKS, apiErrorMessage } from "@/api";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { StatCard } from "@/components/common/StatCard";
 import { SurfaceCard } from "@/components/common/SurfaceCard";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Price } from "@/components/common/Price";
-import { chartColors, chartAxisTick, chartTooltipStyle } from "@/constants/chart";
 import { vehicleName } from "@/features/autos/data/vehicles";
 import {
   operationsService,
@@ -60,87 +54,9 @@ export function Paging({
   );
 }
 
-const monthLabel = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-GB", { month: "short", year: "2-digit", timeZone: "UTC" });
 const dateLabel = (iso: string) =>
   new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
 const words = (s: string) => s.replace(/_/g, " ");
-
-export function OperationsOverviewPanel({ focus = "platform" }: { focus?: "platform" | "sourcing" }) {
-  const query = useStaffQuery(["overview"], operationsService.overview);
-  if (query.isError) return <Failure retry={() => void query.refetch()} />;
-  const o = query.data;
-  if (!o) return <p role="status" className="text-muted-foreground">Loading figures…</p>;
-  const topShare = o.topCategories[0]?.listings || 1;
-  return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {focus === "platform" ? (
-          <>
-            <StatCard label="Order value this month" value={<Price amount={o.orders.valueThisMonth} />} valueClassName="text-primary"
-              sub={<p className="text-xs text-muted-foreground mt-2">{o.orders.linesThisMonth} order lines · excludes cancelled</p>} />
-            <StatCard label="Buyers" value={o.users.buyers.toLocaleString()}
-              sub={<p className="text-xs text-muted-foreground mt-2">{o.users.newThisMonth} new accounts this month</p>} />
-            <StatCard label="Sellers" value={o.users.sellers.toLocaleString()}
-              sub={<p className="text-xs text-muted-foreground mt-2">{o.users.suspended} suspended accounts</p>} />
-            <StatCard label="Live listings" value={(o.listings.marketplace + o.listings.shop).toLocaleString()}
-              sub={<p className="text-xs text-muted-foreground mt-2">{o.listings.services} services · {o.listings.unpublished} unpublished</p>} />
-          </>
-        ) : (
-          <>
-            <StatCard label="Live shop listings" value={o.listings.shop.toLocaleString()}
-              sub={<p className="text-xs text-muted-foreground mt-2">{o.listings.lowStock} live listings with 5 or fewer in stock</p>} />
-            <StatCard label="Published vehicles" value={`${o.vehicles.active} of ${o.vehicles.total}`} />
-            <StatCard label="New vehicle enquiries" value={o.vehicleEnquiries.new.toLocaleString()}
-              sub={<p className="text-xs text-muted-foreground mt-2">{o.vehicleEnquiries.active} being handled</p>} />
-            <StatCard label="Open support cases" value={(o.support.open + o.support.inProgress).toLocaleString()} />
-          </>
-        )}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <SurfaceCard className="lg:col-span-2 p-6">
-          <h3 className="text-lg font-bold">Order value by month</h3>
-          <p className="text-xs text-muted-foreground mb-6">
-            Recorded order lines, excluding cancelled. Online payment is not enabled, so this is not collected revenue.
-          </p>
-          <div className="h-[260px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={o.orders.monthly.map((m) => ({ ...m, label: monthLabel(m.month) }))}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartColors.grid} />
-                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={chartAxisTick} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={chartAxisTick} dx={-10} tickFormatter={(v) => `£${v}`} />
-                <RechartsTooltip cursor={{ fill: chartColors.cursor }} contentStyle={chartTooltipStyle}
-                  formatter={(v: number) => [`£${v.toLocaleString()}`, "Order value"]} />
-                <Bar dataKey="value" fill={chartColors.primary} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </SurfaceCard>
-        <SurfaceCard className="p-6">
-          <h3 className="text-lg font-bold mb-1">Top marketplace categories</h3>
-          <p className="text-xs text-muted-foreground mb-6">By live listings</p>
-          {o.topCategories.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No live marketplace listings yet.</p>
-          ) : (
-            <div className="space-y-4">
-              {o.topCategories.map((c) => (
-                <div key={c.category}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium">{c.category}</span>
-                    <span className="text-muted-foreground">{c.listings}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden">
-                    <div className="h-full rounded-full bg-primary" style={{ width: `${(c.listings / topShare) * 100}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </SurfaceCard>
-      </div>
-    </div>
-  );
-}
 
 function TableShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -148,110 +64,6 @@ function TableShell({ title, children }: { title: string; children: React.ReactN
       <div className="p-6 border-b border-border"><h3 className="text-lg font-bold">{title}</h3></div>
       {children}
     </SurfaceCard>
-  );
-}
-
-export function SellerDirectory() {
-  const [page, setPage] = useState(0);
-  const [q, setQ] = useState("");
-  const [search, setSearch] = useState("");
-  const query = useStaffQuery(["sellers", page, q], () => operationsService.sellers(page, q));
-  return (
-    <TableShell title="Sellers">
-      <form
-        className="flex gap-2 p-4 border-b border-border"
-        onSubmit={(e) => { e.preventDefault(); setPage(0); setQ(search.trim()); }}
-      >
-        <Label htmlFor="seller-search" className="sr-only">Search sellers</Label>
-        <Input id="seller-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name or email" maxLength={120} />
-        <Button type="submit" variant="outline">Search</Button>
-      </form>
-      {query.isError ? (
-        <div className="p-4"><Failure retry={() => void query.refetch()} /></div>
-      ) : !query.data ? (
-        <p role="status" className="p-6 text-muted-foreground">Loading sellers…</p>
-      ) : query.data.items.length === 0 ? (
-        <p className="p-6 text-sm text-muted-foreground">{q ? "No sellers match that search." : "No seller accounts yet."}</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-muted/50 text-muted-foreground uppercase tracking-wider text-xs">
-              <tr>
-                <th className="px-6 py-3 font-medium">Seller</th>
-                <th className="px-6 py-3 font-medium">Joined</th>
-                <th className="px-6 py-3 font-medium">Live listings</th>
-                <th className="px-6 py-3 font-medium">Order value</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y border-border">
-              {query.data.items.map((s) => (
-                <tr key={s.id}>
-                  <td className="px-6 py-3">
-                    <p className="font-medium">{s.name}</p>
-                    <p className="text-xs text-muted-foreground">{s.email}</p>
-                  </td>
-                  <td className="px-6 py-3 text-muted-foreground">{new Date(s.createdAt).toLocaleDateString("en-GB")}</td>
-                  <td className="px-6 py-3">{s.activeListings}</td>
-                  <td className="px-6 py-3"><Price amount={s.orderValue} /> <span className="text-xs text-muted-foreground">({s.orderLines} lines)</span></td>
-                  <td className="px-6 py-3">
-                    <StatusBadge tone={s.suspendedAt ? "danger" : "success"}>{s.suspendedAt ? "suspended" : "active"}</StatusBadge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      {query.data && <Paging page={page} hasMore={query.data.hasMore} pending={query.isFetching} change={setPage} />}
-    </TableShell>
-  );
-}
-
-export function OrderLedger() {
-  const [page, setPage] = useState(0);
-  const query = useStaffQuery(["orders", page], () => operationsService.orders(page));
-  return (
-    <TableShell title="Order lines">
-      {query.isError ? (
-        <div className="p-4"><Failure retry={() => void query.refetch()} /></div>
-      ) : !query.data ? (
-        <p role="status" className="p-6 text-muted-foreground">Loading orders…</p>
-      ) : query.data.items.length === 0 ? (
-        <p className="p-6 text-sm text-muted-foreground">No orders have been recorded.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-muted/50 text-muted-foreground uppercase tracking-wider text-xs">
-              <tr>
-                <th className="px-6 py-3 font-medium">Order</th>
-                <th className="px-6 py-3 font-medium">Product</th>
-                <th className="px-6 py-3 font-medium">Buyer</th>
-                <th className="px-6 py-3 font-medium">Seller</th>
-                <th className="px-6 py-3 font-medium">Total</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y border-border">
-              {query.data.items.map((o) => (
-                <tr key={o.id}>
-                  <td className="px-6 py-3 font-mono text-xs text-muted-foreground">
-                    {o.orderId.slice(0, 8)}
-                    <p className="font-sans">{new Date(o.createdAt).toLocaleDateString("en-GB")}</p>
-                  </td>
-                  <td className="px-6 py-3 font-medium">{o.productTitle} <span className="text-muted-foreground">×{o.quantity}</span></td>
-                  <td className="px-6 py-3 text-muted-foreground">{o.buyer}</td>
-                  <td className="px-6 py-3 text-muted-foreground">{o.seller}</td>
-                  <td className="px-6 py-3"><Price amount={o.total} /></td>
-                  <td className="px-6 py-3"><StatusBadge tone={o.status === "delivered" ? "success" : o.status === "cancelled" ? "danger" : "warning"}>{o.status}</StatusBadge></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      {query.data && <Paging page={page} hasMore={query.data.hasMore} pending={query.isFetching} change={setPage} />}
-    </TableShell>
   );
 }
 
@@ -462,14 +274,5 @@ export function VehicleCatalogueControls() {
         </div>
       )}
     </TableShell>
-  );
-}
-
-export function NotAvailable({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <SurfaceCard className="p-6">
-      <h3 className="text-lg font-bold">{title}</h3>
-      <p className="mt-2 text-sm text-muted-foreground">{children}</p>
-    </SurfaceCard>
   );
 }

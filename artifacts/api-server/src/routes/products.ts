@@ -2,7 +2,13 @@ import { Router, type IRouter } from "express";
 import { z } from "zod";
 import type { CatalogueProduct } from "@workspace/api-zod";
 import { eq, and, ne, desc, sql } from "drizzle-orm";
-import { db, productsTable, usersTable, type ProductRow } from "@workspace/db";
+import {
+  db,
+  productsTable,
+  usersTable,
+  orderItemsTable,
+  type ProductRow,
+} from "@workspace/db";
 import {
   requireAuth,
   type AuthenticatedRequest,
@@ -257,6 +263,21 @@ router.get(
       .from(productsTable)
       .where(eq(productsTable.sellerId, req.auth!.userId))
       .orderBy(desc(productsTable.createdAt));
+    // Units sold per listing from this seller's order lines, excluding cancelled.
+    const sold = await db
+      .select({
+        productId: orderItemsTable.productId,
+        units: sql<number>`coalesce(sum(${orderItemsTable.quantity}), 0)::int`,
+      })
+      .from(orderItemsTable)
+      .where(
+        and(
+          eq(orderItemsTable.sellerId, req.auth!.userId),
+          ne(orderItemsTable.status, "cancelled"),
+        ),
+      )
+      .groupBy(orderItemsTable.productId);
+    const unitsSold = new Map(sold.map((s) => [s.productId, s.units]));
 
     res.json(
       rows.map((row) => ({
@@ -264,8 +285,9 @@ router.get(
         title: row.title,
         price: row.price,
         stock: row.stockCount,
-        // No orders/sales tracking yet — filled in once the payments feature exists.
-        sales: 0,
+        sales: unitsSold.get(row.id) ?? 0,
+        rating: row.rating,
+        reviewCount: row.reviewCount,
         status:
           row.status === "unpublished"
             ? "unpublished"

@@ -11,8 +11,6 @@ import type { CatalogueCategory } from "@/features/marketplace/services/catalogu
 import { useCatalogueCategories } from "@/features/marketplace/hooks/useCatalogue";
 
 // Full-channel API aggregates supply counts and representative product images.
-// Fotizo Shop departments lead once shop inventory is published; until then the
-// section shows the live marketplace categories instead of an empty track.
 // Accent colors remain stable for the displayed category order.
 const ACCENTS = [
   "#1E3A5F",
@@ -29,7 +27,7 @@ const ACCENTS = [
   "#2C3038",
 ];
 
-function toCards(categories: CatalogueCategory[], base: "/shop" | "/products"): Category[] {
+function toCards(categories: CatalogueCategory[]): Category[] {
   return [...categories]
     .filter((c) => c.count > 0 && c.image)
     .sort((a, b) => b.count - a.count)
@@ -39,21 +37,13 @@ function toCards(categories: CatalogueCategory[], base: "/shop" | "/products"): 
       count: `${c.count} ${c.count === 1 ? "item" : "items"}`,
       image: c.image,
       accent: ACCENTS[i % ACCENTS.length],
-      href: `${base}?category=${encodeURIComponent(c.category)}`,
-      badge: base === "/shop" ? "Shop" : "Marketplace",
+      href: `/shop?category=${encodeURIComponent(c.category)}`,
     }));
 }
 
 export function Categories() {
-  const shop = useCatalogueCategories("shop");
-  const marketplace = useCatalogueCategories("marketplace");
-  const shopCards = useMemo(() => toCards(shop.data ?? [], "/shop"), [shop.data]);
-  const marketplaceCards = useMemo(
-    () => toCards(marketplace.data ?? [], "/products"),
-    [marketplace.data],
-  );
-  const showingShop = shopCards.length > 0;
-  const CATEGORIES = showingShop ? shopCards : marketplaceCards;
+  const { data: categories } = useCatalogueCategories("shop");
+  const CATEGORIES = useMemo(() => toCards(categories ?? []), [categories]);
 
   const trackRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -110,10 +100,6 @@ export function Categories() {
     startAuto();
   };
 
-  // Nothing published in either channel (or both requests failed): omit the
-  // section rather than render a heading over an empty carousel.
-  if (!CATEGORIES.length) return null;
-
   return (
     <section className="py-20 bg-[#F7F8FB] overflow-hidden">
       <div className="container-app">
@@ -136,7 +122,7 @@ export function Categories() {
               transition={{ duration: 0.45, delay: 0.05 }}
               className="text-3xl font-extrabold text-foreground tracking-tight"
             >
-              {showingShop ? "Explore Shop Categories" : "Explore Marketplace Categories"}
+              Explore Shop Categories
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 10 }}
@@ -145,9 +131,7 @@ export function Categories() {
               transition={{ duration: 0.45, delay: 0.1 }}
               className="text-muted-foreground mt-1.5"
             >
-              {showingShop
-                ? "Every department in Fotizo Shop, sourced and shipped worldwide."
-                : "Products listed by sellers on Fotizo, grouped by category."}
+              Every department in Fotizo Shop, sourced and shipped worldwide.
             </motion.p>
           </div>
 

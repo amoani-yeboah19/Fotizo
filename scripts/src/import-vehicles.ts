@@ -57,6 +57,11 @@ function validate(v: VehicleInput, index: number): VehicleInput {
   return v;
 }
 
+// Drizzle expands a JS array into separate parameters, so arrays travel as one
+// JSON parameter and are converted to text[] by Postgres.
+const textArray = (values: string[]) =>
+  sql`ARRAY(SELECT jsonb_array_elements_text(${JSON.stringify(values)}::jsonb))`;
+
 async function main() {
   const path = resolve(process.cwd(), fileArg);
   const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
@@ -77,7 +82,7 @@ async function main() {
             efficiency, landed_price, lead_time_min_weeks, lead_time_max_weeks, images, highlights, description, status)
           VALUES (${v.slug}, ${v.make}, ${v.model}, ${v.bodyType}, ${v.fuel}, ${v.seats}, ${v.transmission},
             ${v.drivetrain}, ${v.powertrain}, ${v.efficiency}, ${v.landedPrice}, ${v.leadTimeWeeks[0]},
-            ${v.leadTimeWeeks[1]}, ${v.images}, ${v.highlights}, ${v.description}, ${status})
+            ${v.leadTimeWeeks[1]}, ${textArray(v.images)}, ${textArray(v.highlights)}, ${v.description}, ${status})
           ON CONFLICT (slug) DO UPDATE SET make = EXCLUDED.make, model = EXCLUDED.model,
             body_type = EXCLUDED.body_type, fuel = EXCLUDED.fuel, seats = EXCLUDED.seats,
             transmission = EXCLUDED.transmission, drivetrain = EXCLUDED.drivetrain,
