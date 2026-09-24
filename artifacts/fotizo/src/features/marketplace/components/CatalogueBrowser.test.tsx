@@ -263,3 +263,16 @@ it("shows zero only after a successful empty response and retries categories sep
   );
   await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
 });
+it("says the shop has nothing published rather than blaming filters", async () => {
+  vi.mocked(cataloguePages.list).mockResolvedValue({
+    items: [],
+    page: 0,
+    pageSize: 24,
+    total: 0,
+    hasMore: false,
+  });
+  render(browser("shop"));
+  await screen.findByText(/No products are published in Fotizo Shop yet/);
+  fireEvent.click(screen.getByLabelText("In stock only"));
+  await screen.findByText(/No products match this page and its filters/);
+});

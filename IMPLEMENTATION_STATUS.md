@@ -33,6 +33,8 @@ Updated 24 September 2026. Work is local and has not been deployed. The complete
 
 ## Verification record
 
+Navigation and catalogue follow-up: the live database's user_role type lacked representative and china_representative, so no China-representative account could exist to stock the shop; migration 0005 adds both roles and the test schema now starts from the deployed four-role type. Applied to the Supabase database. The navbar and mobile "Fotizo Marketplace" links pointed at an absolute deployed URL the in-app router cannot follow; they now use /products, and the dropdown no longer overflows the viewport. The home category carousel shows marketplace categories while no shop inventory is published, marketplace category links filter the listing, and an unstocked shop says so instead of blaming filters. `pnpm run check` passed: all TypeScript projects, 106 tests across thirteen files and all builds.
+
 Operations batch: `pnpm run check` passed all TypeScript projects, all 105 tests across thirteen files, and API/frontend/mockup production builds. Migrations 0001-0004 were applied with the migration runner to the Supabase database configured in artifacts/api-server/.env at the user's direction; the API reported ready afterwards and live rates, vehicles and the autos/support pages were checked in the browser. No test support requests, enquiries or vehicles were written to that database. Buyer and seller dashboards now derive their figures from the account's own orders and sales; bookings and wishlist state that they are unavailable. Product pages no longer show invented shipping, guarantee or description text.
 
 Catalogue-browsing batch: `pnpm run check` passed all TypeScript projects, all 91 tests across eleven files, and API/frontend/mockup production builds. A pagination test that clicked Next before the reset page had loaded now waits for that page; the component correctly disables pagination while fetching. `git diff --check` passed. Browser acceptance against a running API and database remains pending.
@@ -41,7 +43,7 @@ Manager account-controls batch: all TypeScript projects, all 73 tests across nin
 
 Previous account-settings and API-operations batch: `pnpm run check` passed all TypeScript projects, all 55 tests across seven files, and API/frontend/mockup production builds. This includes cross-tab state clearing, password-change concurrency and rollback, stale-credential session issuance, readiness failure/recovery, concurrent probes, active HTTP request draining and shutdown deadlines. API client/schema generation succeeded. A smoke test of the built API against an intentionally unavailable local database exited with code 1 before listening, as expected. The earlier foundation batch passed 29 tests. `git diff --check` passed.
 
-API tests use an isolated PostgreSQL engine in WASM, bcrypt and actual HTTP requests. Session and currency tests use React with jsdom. SQL migration application/reapplication is tested against a synthetic previous schema. The migration runner applied 0001-0004 to the hosted Supabase database on 24 September 2026; rollback and restore have not been rehearsed.
+API tests use an isolated PostgreSQL engine in WASM, bcrypt and actual HTTP requests. Session and currency tests use React with jsdom. SQL migration application/reapplication is tested against a synthetic previous schema. The migration runner applied 0001-0005 to the hosted Supabase database on 24 September 2026; rollback and restore have not been rehearsed.
 
 Browser visual/mobile/keyboard acceptance remains pending: the browser tool reported no connected browsers after an initial connection timeout. This is not covered by passing jsdom tests. The temporary frontend server was stopped after the attempt. No live database migration, hosting change, payment, email or production seed was performed.
 
@@ -49,7 +51,7 @@ Builds currently emit source-map warnings for the UI label/tooltip modules and a
 
 ## Deployment prerequisites for these changes
 
-1. Inspect the target schema and take a verified backup. Follow README.md to apply 0001-0004 using the migration runner before this API version starts. Do not use schema push on production.
+1. Inspect the target schema and take a verified backup. Follow README.md to apply 0001-0005 using the migration runner before this API version starts. Do not use schema push on production.
 2. Configure a strong JWT_SECRET, exact CORS_ORIGIN values and the verified trusted-proxy hop count. Existing tokens require a fresh sign-in.
 3. Deploy frontend and API together because writes require X-Fotizo-Request and public product lists now return a bounded page envelope instead of an array. Verify actual proxy forwarding, secure cookies and revocation in staging.
 4. Publish only reviewed shop inventory. Empty/unpublished inventory must stay unavailable.

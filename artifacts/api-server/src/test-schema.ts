@@ -11,7 +11,8 @@ async function migration(name: string): Promise<string> {
 }
 
 export async function createTestSchema(database: PGlite): Promise<void> {
-  await database.exec(`CREATE TYPE user_role AS ENUM ('buyer','seller','manager','developer','representative','china_representative');
+  // The deployed schema predates the representative roles; migration 0005 adds them.
+  await database.exec(`CREATE TYPE user_role AS ENUM ('buyer','seller','manager','developer');
     CREATE TABLE users (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL, email text NOT NULL UNIQUE,
     password_hash text, google_id text UNIQUE, role user_role NOT NULL DEFAULT 'buyer', avatar text,
     verified boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now());`);
@@ -43,6 +44,7 @@ export async function createTestSchema(database: PGlite): Promise<void> {
     "0002_product_channels.sql",
     "0003_account_controls.sql",
     "0004_operations.sql",
+    "0005_staff_roles.sql",
   ]) {
     const sql = await migration(name);
     await database.exec(sql);

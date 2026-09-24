@@ -225,10 +225,24 @@ export function CatalogueBrowser({
                 : `Showing ${page * query.data.pageSize + 1}-${page * query.data.pageSize + query.data.items.length} of ${query.data.total} products`}
           </p>
           {query.data.items.length === 0 ? (
-            <p>
-              No products match this page and its filters. Adjust the filters or
-              return to the first page.
-            </p>
+            query.data.total === 0 &&
+            !filters.q &&
+            !filters.category &&
+            filters.minPrice == null &&
+            filters.maxPrice == null &&
+            !filters.minRating &&
+            !filters.inStock ? (
+              <p>
+                {channel === "shop"
+                  ? "No products are published in Fotizo Shop yet. Check back soon, or browse the local marketplace."
+                  : "No products are listed in the marketplace yet."}
+              </p>
+            ) : (
+              <p>
+                No products match this page and its filters. Adjust the filters or
+                return to the first page.
+              </p>
+            )
           ) : (
             <div
               className={
