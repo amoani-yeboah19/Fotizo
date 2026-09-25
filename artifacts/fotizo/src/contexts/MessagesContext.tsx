@@ -8,6 +8,7 @@ import {
   useRef,
   ReactNode,
 } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { messagesService } from "@/features/messaging/services";
 import { MESSAGES_USE_MOCKS } from "@/api";
 import type { Conversation, Message } from "@/types";
@@ -40,6 +41,9 @@ interface MessagesContextType {
 const MessagesContext = createContext<MessagesContextType | null>(null);
 
 export function MessagesProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated, user } = useAuth();
+  const mounted = useRef(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   // Non-zero while a local mutation is in flight, so a background poll can't
   // overwrite an optimistic update before the server reflects it.
@@ -52,17 +56,18 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
   // Pull server truth. No-op on mocks (a refetch would wipe local state) and
   // while a mutation is mid-flight.
   const refresh = useCallback(async () => {
-    if (MESSAGES_USE_MOCKS || busyRef.current > 0) return;
+    if (!isAuthenticated || MESSAGES_USE_MOCKS || busyRef.current > 0) return;
     try {
       const server = await messagesService.listConversations();
-      if (busyRef.current === 0) setConversations(server);
+      if (mounted.current && busyRef.current === 0) setConversations(server);
     } catch {
       // Transient network/poll error — keep showing what we have.
     }
-  }, []);
+  }, [isAuthenticated]);
 
   // Initial load.
   useEffect(() => {
+    if (!isAuthenticated) return;
     let active = true;
     messagesService
       .listConversations()
@@ -73,14 +78,14 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [isAuthenticated]);
 
   // Poll for the other participant's activity (real backend only).
   useEffect(() => {
-    if (MESSAGES_USE_MOCKS) return;
+    if (!isAuthenticated || MESSAGES_USE_MOCKS) return;
     const t = setInterval(() => void refresh(), POLL_MS);
     return () => clearInterval(t);
-  }, [refresh]);
+  }, [refresh, isAuthenticated]);
 
   const totalUnread = useMemo(
     () => conversations.reduce((s, c) => s + c.unreadCount, 0),
@@ -203,14 +208,14 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
 
   const markAsRead = useCallback(
     (conversationId: string) => {
-      void messagesService.markAsRead(conversationId);
+      void messagesService.markAsRead(conversationId).catch(() => void refresh());
       patch(conversationId, (c) => ({
         ...c,
         unreadCount: 0,
-        messages: c.messages.map((m) => ({ ...m, read: true })),
+        messages: c.messages.map((m) => m.senderId === user?.id ? m : { ...m, read: true }),
       }));
     },
-    [patch],
+    [patch, refresh, user?.id],
   );
 
   const startConversation = useCallback(

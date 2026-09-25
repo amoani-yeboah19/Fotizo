@@ -11,41 +11,21 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { Price } from "@/components/common/Price";
 import { chartColors, chartAxisTick, chartTooltipStyle } from "@/constants/chart";
 import { Button } from "@/components/ui/button";
+import { useStaffQuery } from "@/features/profile/components/Operations";
+import { operationsService, type SellerSummary } from "@/features/profile/services/operations.service";
 
 type Section = "overview" | "sellers" | "orders" | "approvals";
 
-const salesData = [
-  { name: "Jan", revenue: 42000 }, { name: "Feb", revenue: 51000 }, { name: "Mar", revenue: 48000 },
-  { name: "Apr", revenue: 63000 }, { name: "May", revenue: 71000 }, { name: "Jun", revenue: 82000 },
-];
-
-const US_SELLERS = [
-  { id: 1, name: "Brooklyn Made Co.", city: "New York, NY", listings: 42, revenue: 18400, status: "active" },
-  { id: 2, name: "Golden Gate Goods", city: "San Francisco, CA", listings: 28, revenue: 12900, status: "active" },
-  { id: 3, name: "Lone Star Crafts", city: "Austin, TX", listings: 15, revenue: 6300, status: "pending" },
-  { id: 4, name: "Windy City Prints", city: "Chicago, IL", listings: 33, revenue: 14100, status: "active" },
-  { id: 5, name: "Sunshine Studio", city: "Miami, FL", listings: 9, revenue: 2800, status: "suspended" },
-];
-
-const US_ORDERS = [
-  { id: "US-10231", product: "Wireless Earbuds Pro", buyer: "Ava Thompson", total: 129, status: "delivered" },
-  { id: "US-10232", product: "Brand Identity Package", buyer: "Liam Nguyen", total: 850, status: "in_transit" },
-  { id: "US-10233", product: "Handmade Leather Bag", buyer: "Sofia Rossi", total: 240, status: "processing" },
-  { id: "US-10234", product: "SEO Audit & Strategy", buyer: "Noah Patel", total: 460, status: "delivered" },
-];
-
-const TOP_CATEGORIES = [
-  { name: "Electronics", share: 34 },
-  { name: "Freelance Services", share: 27 },
-  { name: "Fashion", share: 19 },
-  { name: "Home & Living", share: 12 },
-];
+// Figures come from /api/operations (stored records). Accounts and orders do
+// not record a region yet, so these cover every Fotizo account and order.
+const monthLabel = (month: string) =>
+  new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" });
 
 const subText = (t: string) => <p className="text-xs text-muted-foreground mt-2">{t}</p>;
 const sellerTone = (s: string) => (s === "active" ? "success" : s === "pending" ? "warning" : "danger");
 const orderTone = (s: string) => (s === "delivered" ? "success" : s === "in_transit" ? "info" : "warning");
 
-function SellersTable() {
+function SellersTable({ sellers }: { sellers: SellerSummary[] }) {
   return (
     <SurfaceCard className="overflow-hidden">
       <div className="p-6 border-b border-border flex justify-between items-center">
@@ -65,13 +45,16 @@ function SellersTable() {
             </tr>
           </thead>
           <tbody className="divide-y border-border">
-            {US_SELLERS.map((s) => (
+            {sellers.length === 0 && (
+              <tr><td colSpan={6} className="px-6 py-4 text-muted-foreground">No sellers yet.</td></tr>
+            )}
+            {sellers.map((s) => (
               <tr key={s.id} className="hover:bg-muted/30">
                 <td className="px-6 py-4 font-medium">{s.name}</td>
-                <td className="px-6 py-4 text-muted-foreground">{s.city}</td>
-                <td className="px-6 py-4">{s.listings}</td>
-                <td className="px-6 py-4"><Price amount={s.revenue} /></td>
-                <td className="px-6 py-4"><StatusBadge tone={sellerTone(s.status)}>{s.status}</StatusBadge></td>
+                <td className="px-6 py-4 text-muted-foreground">—</td>
+                <td className="px-6 py-4">{s.activeListings}</td>
+                <td className="px-6 py-4"><Price amount={s.orderValue} /></td>
+                <td className="px-6 py-4"><StatusBadge tone={sellerTone(s.suspendedAt ? "suspended" : "active")}>{s.suspendedAt ? "suspended" : "active"}</StatusBadge></td>
                 <td className="px-6 py-4 text-right"><Button variant="ghost" size="sm">Manage</Button></td>
               </tr>
             ))}
@@ -87,10 +70,12 @@ function ApprovalsQueue() {
     <SurfaceCard className="p-6">
       <div className="flex items-center gap-2 mb-6">
         <h3 className="text-lg font-bold">Regional Approvals</h3>
-        <span className="bg-accent/10 text-accent text-xs px-2 py-0.5 rounded-full font-bold">3</span>
+        <span className="bg-accent/10 text-accent text-xs px-2 py-0.5 rounded-full font-bold">0</span>
       </div>
+      {/* No seller or listing approval workflow exists yet, so nothing awaits review. */}
+      <p className="text-sm text-muted-foreground">Nothing is awaiting your review.</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {["Lone Star Crafts — new seller", "Sunshine Studio — reinstatement", "Bay Area Bikes — listing review"].map((t, i) => (
+        {([] as string[]).map((t, i) => (
           <div key={i} className="border border-border rounded-xl p-4">
             <p className="text-sm font-semibold mb-1">{t}</p>
             <p className="text-xs text-muted-foreground mb-3">Awaiting your review · US region</p>
@@ -110,6 +95,18 @@ export default function DashboardRepresentative() {
     ["overview", "sellers", "orders", "approvals"],
     "overview",
   );
+  const overview = useStaffQuery(["overview"], operationsService.overview).data;
+  const sellers = useStaffQuery(["sellers", 0, ""], () => operationsService.sellers(0, "")).data?.items ?? [];
+  const orders = useStaffQuery(["orders", 0], () => operationsService.orders(0)).data?.items ?? [];
+  const monthly = overview?.orders.monthly ?? [];
+  const salesData = monthly.map((m) => ({ name: monthLabel(m.month), revenue: m.value }));
+  const [previous, current] = monthly.slice(-2).map((m) => m.value);
+  const change = previous ? ((current - previous) / previous) * 100 : null;
+  const listed = overview?.listings.marketplace || 1;
+  const TOP_CATEGORIES = (overview?.topCategories ?? []).map((c) => ({
+    name: c.category,
+    share: Math.round((c.listings / listed) * 100),
+  }));
 
   const sidebar = (
     <DashboardSidebar
@@ -136,11 +133,11 @@ export default function DashboardRepresentative() {
       {section === "overview" && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <StatCard label="US Revenue (MTD)" value="$82.0k" valueClassName="text-primary"
-              sub={<p className="text-xs text-green-600 mt-2 flex items-center font-medium"><TrendingUp className="w-3 h-3 mr-1" /> +15.5% vs last month</p>} />
-            <StatCard label="US Orders" value="3,410" sub={subText("This month")} />
-            <StatCard label="Active US Sellers" value="1,284" sub={subText("42 pending approval")} />
-            <StatCard label="US Buyers" value="18,902" icon={<Users className="w-6 h-6" />} iconClassName="bg-blue-50 text-blue-600" />
+            <StatCard label="US Revenue (MTD)" value={overview ? <Price amount={overview.orders.valueThisMonth} /> : "—"} valueClassName="text-primary"
+              sub={<p className="text-xs text-green-600 mt-2 flex items-center font-medium"><TrendingUp className="w-3 h-3 mr-1" /> {change === null ? "No orders last month" : `${change >= 0 ? "+" : ""}${change.toFixed(1)}% vs last month`}</p>} />
+            <StatCard label="US Orders" value={overview ? overview.orders.linesThisMonth.toLocaleString() : "—"} sub={subText("This month")} />
+            <StatCard label="Active US Sellers" value={overview ? (overview.users.sellers - overview.users.suspended).toLocaleString() : "—"} sub={subText("0 pending approval")} />
+            <StatCard label="US Buyers" value={overview ? overview.users.buyers.toLocaleString() : "—"} icon={<Users className="w-6 h-6" />} iconClassName="bg-blue-50 text-blue-600" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
@@ -157,7 +154,7 @@ export default function DashboardRepresentative() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartColors.grid} />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={chartAxisTick} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={chartAxisTick} dx={-10} tickFormatter={(v) => `$${v / 1000}k`} />
+                    <YAxis axisLine={false} tickLine={false} tick={chartAxisTick} dx={-10} tickFormatter={(v) => `£${v / 1000}k`} />
                     <RechartsTooltip cursor={{ stroke: chartColors.grid }} contentStyle={chartTooltipStyle} />
                     <Area type="monotone" dataKey="revenue" stroke={chartColors.primary} strokeWidth={2} fillOpacity={1} fill="url(#repRev)" />
                   </AreaChart>
@@ -183,11 +180,11 @@ export default function DashboardRepresentative() {
             </SurfaceCard>
           </div>
 
-          <SellersTable />
+          <SellersTable sellers={sellers} />
         </>
       )}
 
-      {section === "sellers" && <SellersTable />}
+      {section === "sellers" && <SellersTable sellers={sellers} />}
 
       {section === "orders" && (
         <SurfaceCard className="overflow-hidden">
@@ -203,10 +200,13 @@ export default function DashboardRepresentative() {
                 </tr>
               </thead>
               <tbody className="divide-y border-border">
-                {US_ORDERS.map((o) => (
+                {orders.length === 0 && (
+                  <tr><td colSpan={5} className="px-6 py-4 text-muted-foreground">No orders yet.</td></tr>
+                )}
+                {orders.map((o) => (
                   <tr key={o.id} className="hover:bg-muted/30">
-                    <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{o.id}</td>
-                    <td className="px-6 py-4 font-medium">{o.product}</td>
+                    <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{o.orderId.slice(0, 8)}</td>
+                    <td className="px-6 py-4 font-medium">{o.productTitle}</td>
                     <td className="px-6 py-4 text-muted-foreground">{o.buyer}</td>
                     <td className="px-6 py-4"><Price amount={o.total} /></td>
                     <td className="px-6 py-4"><StatusBadge tone={orderTone(o.status)}>{o.status.replace("_", " ")}</StatusBadge></td>

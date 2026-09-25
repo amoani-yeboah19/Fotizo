@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useEffect, useState } from "react";
+import { useLocation, useRoute } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -21,7 +21,9 @@ import { Price } from "@/components/common/Price";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { aiService } from "@/services";
-import { useCreateService } from "@/features/artisans/hooks";
+import { useCreateService, useMyService, useUpdateService } from "@/features/artisans/hooks";
+import { Loading } from "@/components/common/QueryStates";
+import { apiErrorMessage } from "@/api";
 import type { NewServiceInput } from "@/types";
 
 // Categories come from the shared taxonomy, bucketed by provider group. Picking
@@ -59,6 +61,12 @@ export default function OfferServicePage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const createService = useCreateService();
+  const updateService = useUpdateService();
+  // The same wizard edits an existing listing at /dashboard/seller/services/:id/edit.
+  const [isEditRoute, editParams] = useRoute("/dashboard/seller/services/:id/edit");
+  const editingId = isEditRoute ? editParams?.id : undefined;
+  const existing = useMyService(editingId);
+  const [loadedId, setLoadedId] = useState<string>();
 
   const [step, setStep] = useState(0);
   const [skills, setSkills] = useState<string[]>([]);
@@ -71,6 +79,31 @@ export default function OfferServicePage() {
     defaultValues: { title: "", category: "", description: "", experience: "", hourlyRate: "", availability: "" },
   });
   const { register, formState: { errors }, watch, setValue } = form;
+
+  // Fill the wizard once with the listing being edited.
+  useEffect(() => {
+    const service = existing.data;
+    if (!service || loadedId === service.id) return;
+    form.reset({
+      title: service.title,
+      category: service.category,
+      description: service.description,
+      experience: service.experience,
+      hourlyRate: String(service.hourlyRate),
+      availability: service.availability,
+    });
+    setSkills(service.skills);
+    setPackages(
+      service.packages.map((p) => ({
+        name: p.name,
+        price: String(p.price),
+        delivery: p.delivery,
+        description: p.description,
+      })),
+    );
+    setAvatar(service.avatar);
+    setLoadedId(service.id);
+  }, [existing.data, loadedId, form]);
 
   // Draft the "about this service" copy + skills from the title, category and
   // any notes typed so far. Skills land in the (later) Expertise step pre-filled.
@@ -130,11 +163,21 @@ export default function OfferServicePage() {
       providerId: user?.id ?? "me",
     };
     try {
+      if (editingId) {
+        const updated = await updateService.mutateAsync({ id: editingId, input });
+        toast({ title: "Service updated", description: `${updated.title} has been saved.` });
+        setLocation("/dashboard/seller?tab=services");
+        return;
+      }
       const created = await createService.mutateAsync(input);
       toast({ title: "Service published!", description: `${created.title} is now live on Fotizo.` });
-      setLocation("/dashboard/seller");
-    } catch {
-      toast({ variant: "destructive", title: "Couldn't publish", description: "Please try again." });
+      setLocation("/dashboard/seller?tab=services");
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: editingId ? "Couldn't save changes" : "Couldn't publish",
+        description: apiErrorMessage(error, "Please try again."),
+      });
     }
   });
 
@@ -144,6 +187,23 @@ export default function OfferServicePage() {
   const v = watch();
   const landingGroup = v.category ? getServiceGroup(groupForCategory(v.category) ?? "") : undefined;
 
+  if (editingId && (existing.isLoading || (existing.data && loadedId !== existing.data.id))) {
+    return (
+      <PageLayout mainClassName="container-app py-24 md:py-28">
+        <Loading label="Loading your service…" />
+      </PageLayout>
+    );
+  }
+  if (editingId && existing.isError) {
+    return (
+      <PageLayout mainClassName="container-app py-24 md:py-28">
+        <p role="alert" className="mx-auto max-w-2xl text-center text-muted-foreground">
+          This service could not be loaded. It may have been removed, or it belongs to another account.
+        </p>
+      </PageLayout>
+    );
+  }
+
   return (
     <PageLayout mainClassName="container-app py-24 md:py-28">
       <div className="mx-auto max-w-2xl">
@@ -151,9 +211,11 @@ export default function OfferServicePage() {
           <span className="inline-flex items-center gap-2 rounded-full bg-[#FF6A00]/10 px-3 py-1 text-xs font-semibold text-[#FF6A00]">
             <Briefcase className="w-3.5 h-3.5" aria-hidden="true" /> For professionals
           </span>
-          <h1 className="heading-page text-foreground mt-3">Offer a service</h1>
+          <h1 className="heading-page text-foreground mt-3">{editingId ? "Edit service" : "Offer a service"}</h1>
           <p className="text-muted-foreground mt-1">
-            Create a profile buyers can hire — artisans, freelancers and businesses welcome.
+            {editingId
+              ? "Update your listing. Changes show to customers as soon as you save."
+              : "Create a profile buyers can hire — artisans, freelancers and businesses welcome."}
           </p>
         </header>
 
@@ -164,8 +226,8 @@ export default function OfferServicePage() {
             onBack={back}
             onNext={next}
             onSubmit={submit}
-            submitting={createService.isPending}
-            submitLabel="Publish service"
+            submitting={createService.isPending || updateService.isPending}
+            submitLabel={editingId ? "Save changes" : "Publish service"}
           >
             {step === 0 && (
               <>

@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiErrorMessage } from "@/api";
 import {
   SUPPORT_CHANNELS,
   DELIVERY_WINDOWS,
@@ -79,8 +80,10 @@ export default function SupportPage() {
         message: String(form.get("message") ?? "").trim(),
       });
       setDone(request);
-    } catch {
-      setError("We couldn't send that just now. Please try again, or reach us on one of the channels above.");
+    } catch (err) {
+      setError(
+        apiErrorMessage(err, "We couldn't send that just now. Please try again, or reach us on one of the channels above."),
+      );
     } finally {
       setSubmitting(false);
     }

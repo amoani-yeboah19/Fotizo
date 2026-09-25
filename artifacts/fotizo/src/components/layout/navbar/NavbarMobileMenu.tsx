@@ -1,3 +1,4 @@
+import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import { Search } from "lucide-react";
 import { SERVICE_GROUPS } from "@workspace/service-taxonomy";
@@ -27,8 +28,10 @@ export function NavbarMobileMenu({
   const [, setLocation] = useLocation();
 
   const dashboardPages = dashboardNavItems(user?.role);
-  const handleLogout = () => {
-    logout();
+  const { toast } = useToast();
+  const handleLogout = async () => {
+    const result = await logout();
+    if (!result.success) { toast({ variant: "destructive", title: "Could not sign out", description: result.error }); return; }
     onClose?.();
     setLocation("/");
   };
@@ -49,7 +52,7 @@ export function NavbarMobileMenu({
         <p className={sectionClass}>Shop</p>
         <Link href="/shop" onClick={onClose}><span className={linkClass}>Fotizo Shop</span></Link>
         <Link href="/autos" onClick={onClose}><span className={linkClass}>Fotizo Autos</span></Link>
-        <Link href="https://fotizo.vercel.app/products" onClick={onClose}><span className={linkClass}>Fotizo Marketplace</span></Link>
+        <Link href="/products" onClick={onClose}><span className={linkClass}>Fotizo Marketplace</span></Link>
 
         <p className={`${sectionClass} mt-3`}>Hire</p>
         {SERVICE_GROUPS.map((group) => (
@@ -104,6 +107,7 @@ export function NavbarMobileMenu({
               Messages {totalUnread > 0 && <span className="bg-accent text-white px-2 py-0.5 rounded-full text-xs">{totalUnread}</span>}
             </span>
           </Link>
+          <Link href="/settings" onClick={onClose}><span className={linkClass}>Account settings</span></Link>
           <button onClick={handleLogout} className="text-left px-4 py-3 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg">Sign Out</button>
         </div>
       ) : (

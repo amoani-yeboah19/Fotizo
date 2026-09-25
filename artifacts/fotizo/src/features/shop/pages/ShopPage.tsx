@@ -3,18 +3,28 @@ import { useSearch } from "wouter";
 import { LayoutGrid, Search, Flame, Truck, ShieldCheck, PackageCheck } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Loading, ErrorState } from "@/components/common/QueryStates";
-import { useShopProducts } from "@/features/shop/hooks";
+import { LoadMoreSentinel } from "@/components/common/LoadMoreSentinel";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useCatalogueInfinite, useCataloguePage } from "@/features/marketplace/hooks/useCatalogue";
+import type { CatalogueFilters } from "@/features/marketplace/services/catalogue-page";
+import { toShopProduct } from "@/features/shop/services/shop.service";
 import { ShopProductCard } from "@/features/shop/components/ShopProductCard";
 import { ChinaMarketDialog } from "@/features/shop/components/ChinaMarketDialog";
-import {
-  SHOP_CATEGORIES,
-  shopProductsByCategory,
-  flashDeals,
-  categoryLabel,
-  type ShopProduct,
-} from "@/features/shop/data/products";
+import { SHOP_CATEGORIES, categoryLabel } from "@/features/shop/data/products";
+import type { Product } from "@/types";
 
 type Sort = "recommended" | "price-asc" | "price-desc" | "best-selling" | "discount";
+
+// Sorting, search and department filtering run on the server over the whole
+// published shop; the grid appends 48-item pages as it scrolls.
+const SERVER_SORT: Record<Sort, NonNullable<CatalogueFilters["sort"]>> = {
+  recommended: "newest",
+  "best-selling": "best-selling",
+  discount: "discount",
+  "price-asc": "price-asc",
+  "price-desc": "price-desc",
+};
+const toCards = (items: unknown[]) => items.map((p) => toShopProduct(p as Product));
 
 const SORTS: { value: Sort; label: string }[] = [
   { value: "recommended", label: "Recommended" },
@@ -23,22 +33,6 @@ const SORTS: { value: Sort; label: string }[] = [
   { value: "price-asc", label: "Price: Low to High" },
   { value: "price-desc", label: "Price: High to Low" },
 ];
-
-function sortProducts(list: ShopProduct[], sort: Sort): ShopProduct[] {
-  const copy = [...list];
-  switch (sort) {
-    case "price-asc":
-      return copy.sort((a, b) => a.price - b.price);
-    case "price-desc":
-      return copy.sort((a, b) => b.price - a.price);
-    case "best-selling":
-      return copy.sort((a, b) => b.sold - a.sold);
-    case "discount":
-      return copy.sort((a, b) => b.originalPrice - b.price - (a.originalPrice - a.price));
-    default:
-      return copy;
-  }
-}
 
 // ?category=wigs — how the hero chips and marketing links land straight in a
 // department. An unknown id falls back to the full catalogue rather than an
@@ -60,17 +54,22 @@ export default function ShopPage() {
     setActiveCat(categoryFromQuery(query));
   }, [query]);
 
-  const { data: catalogue, isLoading, isError } = useShopProducts();
-  const all = useMemo(() => catalogue ?? [], [catalogue]);
+  const q = useDebouncedValue(search.trim());
+  const grid = useCatalogueInfinite("shop", {
+    category: activeCat ?? undefined,
+    q: q || undefined,
+    sort: SERVER_SORT[sort],
+  });
+  const { isLoading, isError } = grid;
+  const products = useMemo(
+    () => toCards(grid.data?.pages.flatMap((p) => p.items) ?? []),
+    [grid.data],
+  );
+  const total = grid.data?.pages[0]?.total ?? 0;
 
-  const deals = useMemo(() => flashDeals(all, 12), [all]);
-
-  const products = useMemo(() => {
-    const base = shopProductsByCategory(all, activeCat);
-    const q = search.trim().toLowerCase();
-    const filtered = q ? base.filter((p) => p.title.toLowerCase().includes(q)) : base;
-    return sortProducts(filtered, sort);
-  }, [all, activeCat, sort, search]);
+  // Most-discounted published items, for the "Lightning Deals" strip.
+  const dealsQuery = useCataloguePage("shop", { discounted: true, sort: "discount", pageSize: 12 });
+  const deals = useMemo(() => toCards(dealsQuery.data?.items ?? []), [dealsQuery.data]);
 
   return (
     <PageLayout mainClassName="pt-20">
@@ -155,7 +154,7 @@ export default function ShopPage() {
           <h2 className="text-xl font-bold text-foreground">
             {activeCat ? categoryLabel(activeCat) : "All products"}
             <span className="ml-2 text-sm font-normal text-muted-foreground">
-              ({products.length})
+              ({total})
             </span>
           </h2>
           <div className="flex items-center gap-2">
@@ -191,17 +190,24 @@ export default function ShopPage() {
           <div className="py-20 text-center text-muted-foreground">
             <Search className="mx-auto mb-3 h-8 w-8 opacity-40" aria-hidden="true" />
             <p>
-              {all.length === 0
+              {activeCat === null && !q
                 ? "No products are listed yet."
                 : "No products match your search."}
             </p>
           </div>
         ) : (
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
-            {products.map((p) => (
-              <ShopProductCard key={p.id} product={p} />
-            ))}
-          </div>
+          <>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+              {products.map((p) => (
+                <ShopProductCard key={p.id} product={p} />
+              ))}
+            </div>
+            <LoadMoreSentinel
+              hasMore={Boolean(grid.hasNextPage)}
+              loading={grid.isFetchingNextPage}
+              onLoadMore={() => void grid.fetchNextPage()}
+            />
+          </>
         )}
       </div>
     </PageLayout>

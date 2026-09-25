@@ -1,28 +1,33 @@
 import type { Request, Response, NextFunction } from "express";
-import { verifyAuthToken } from "../lib/jwt";
+import { resolveSession } from "../lib/sessions";
 import { AUTH_COOKIE_NAME } from "../lib/cookies";
 
 export interface AuthenticatedRequest extends Request {
-  auth?: { userId: string; role: string };
+  auth?: { userId: string; role: string; sessionId: string };
 }
-
-export function requireAuth(
+export async function requireAuth(
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction,
-): void {
+): Promise<void> {
   const token: unknown = req.cookies?.[AUTH_COOKIE_NAME];
-
-  if (typeof token !== "string") {
-    res.status(401).json({ error: "Not authenticated." });
+  const auth = typeof token === "string" ? await resolveSession(token) : null;
+  if (!auth) {
+    res.status(401).json({ error: "Invalid or expired session." });
     return;
   }
+  req.auth = auth;
+  res.setHeader("Cache-Control", "no-store");
+  next();
+}
 
-  try {
-    const payload = verifyAuthToken(token);
-    req.auth = { userId: payload.sub, role: payload.role };
+/** Use after requireAuth. The role comes from the database on every request. */
+export function requireRole(...roles: string[]) {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.auth || !roles.includes(req.auth.role)) {
+      res.status(403).json({ error: "You do not have access to this area." });
+      return;
+    }
     next();
-  } catch {
-    res.status(401).json({ error: "Invalid or expired session." });
-  }
+  };
 }

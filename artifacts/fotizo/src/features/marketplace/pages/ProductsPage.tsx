@@ -1,30 +1,71 @@
-import { useMemo, useState } from "react";
-import { Link } from "wouter";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearch } from "wouter";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { ProductCard } from "@/features/marketplace/components/ProductCard";
 import { FilterSidebar } from "@/components/common/FilterSidebar";
 import { SearchInput } from "@/components/common/SearchInput";
-import { useProducts, useCategories } from "@/features/marketplace/hooks";
+import { LoadMoreSentinel } from "@/components/common/LoadMoreSentinel";
 import { Loading, ErrorState } from "@/components/common/QueryStates";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import {
+  useCatalogueCategories,
+  useCatalogueInfinite,
+} from "@/features/marketplace/hooks/useCatalogue";
+import type { CatalogueFilters } from "@/features/marketplace/services/catalogue-page";
+import { categoryLabel } from "@/features/shop/data/categories";
+import type { Category, Product } from "@/types";
+
+type Sort = "Relevance" | "Price: Low to High" | "Price: High to Low" | "Top Rated";
+const SERVER_SORT: Record<Sort, NonNullable<CatalogueFilters["sort"]>> = {
+  Relevance: "newest",
+  "Price: Low to High": "price-asc",
+  "Price: High to Low": "price-desc",
+  "Top Rated": "rating",
+};
+const PRICE_MAX = 2000;
 
 export default function ProductsPage() {
   const [search, setSearch] = useState("");
+  // Category links (e.g. from the home page) arrive as ?category=<id>.
+  const query = useSearch();
+  const [category, setCategory] = useState<string | null>(
+    () => new URLSearchParams(query).get("category"),
+  );
+  useEffect(() => {
+    setCategory(new URLSearchParams(query).get("category"));
+  }, [query]);
+  const [price, setPrice] = useState<[number, number] | null>(null);
+  const [minRating, setMinRating] = useState<number | null>(null);
+  const [inStock, setInStock] = useState(false);
+  const [sort, setSort] = useState<Sort>("Relevance");
+  const q = useDebouncedValue(search.trim());
 
-  // useProducts is already filtered to seller listings — Fotizo Shop stock is
-  // stripped out in the catalog service so it can't appear on the local side.
-  const { data: products = [], isLoading, isError } = useProducts();
-  const { data: categories = [] } = useCategories();
+  // Search, filters and sort run on the server across all marketplace
+  // listings; Fotizo Shop stock is a separate channel and never appears here.
+  const grid = useCatalogueInfinite("marketplace", {
+    q: q || undefined,
+    category: category ?? undefined,
+    minPrice: price && price[0] > 0 ? price[0] : undefined,
+    maxPrice: price && price[1] < PRICE_MAX ? price[1] : undefined,
+    minRating: minRating ?? undefined,
+    inStock: inStock || undefined,
+    sort: SERVER_SORT[sort],
+  });
+  const { isLoading, isError } = grid;
+  const displayedProducts = useMemo(
+    () => (grid.data?.pages.flatMap((p) => p.items) ?? []) as Product[],
+    [grid.data],
+  );
+  const total = grid.data?.pages[0]?.total ?? 0;
 
-  const displayedProducts = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter(
-      (p) =>
-        p.title.toLowerCase().includes(q) ||
-        p.seller.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q),
-    );
-  }, [products, search]);
+  const categoryCounts = useCatalogueCategories("marketplace").data;
+  const categories = useMemo<Category[]>(
+    () =>
+      [...(categoryCounts ?? [])]
+        .sort((a, b) => b.count - a.count)
+        .map((c) => ({ id: c.category, name: categoryLabel(c.category), icon: "", count: c.count })),
+    [categoryCounts],
+  );
 
   return (
     <PageLayout mainClassName="container-app py-24 md:py-32">
@@ -52,6 +93,13 @@ export default function ProductsPage() {
           rangeMinLabel="£50"
           rangeMaxLabel="£1000+"
           showInStock
+          selectedCategory={category}
+          onCategoryChange={setCategory}
+          onRangeCommit={setPrice}
+          minRating={minRating}
+          onMinRatingChange={setMinRating}
+          inStock={inStock}
+          onInStockChange={setInStock}
         />
 
         <div className="flex-1">
@@ -65,9 +113,14 @@ export default function ProductsPage() {
             />
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground whitespace-nowrap">
-                Showing {displayedProducts.length} products
+                Showing {total} products
               </span>
-              <select className="border-border rounded-lg text-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as Sort)}
+                aria-label="Sort products"
+                className="border-border rounded-lg text-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
                 <option>Relevance</option>
                 <option>Price: Low to High</option>
                 <option>Price: High to Low</option>
@@ -83,7 +136,7 @@ export default function ProductsPage() {
           ) : displayedProducts.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border py-20 text-center">
               <p className="font-medium text-foreground">
-                {search ? "Nothing matches that search" : "No seller listings yet"}
+                {search || category || price || minRating || inStock ? "Nothing matches that search" : "No seller listings yet"}
               </p>
               <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
                 {search
@@ -97,11 +150,18 @@ export default function ProductsPage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayedProducts.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayedProducts.map((p) => (
+                  <ProductCard key={p.id} product={p} />
+                ))}
+              </div>
+              <LoadMoreSentinel
+                hasMore={Boolean(grid.hasNextPage)}
+                loading={grid.isFetchingNextPage}
+                onLoadMore={() => void grid.fetchNextPage()}
+              />
+            </>
           )}
         </div>
       </div>

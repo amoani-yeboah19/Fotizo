@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Package, ShoppingBag, ShoppingCart, Star, Plus, Edit2, Eye, MessageSquare, Trash2, Loader2 } from "lucide-react";
+import { TrendingUp, Package, ShoppingBag, ShoppingCart, Star, Plus, Edit2, Eye, MessageSquare, Trash2, Loader2, Calendar, Briefcase } from "lucide-react";
+import { IncomingBookings } from "@/features/bookings/components/IncomingBookings";
+import { MyServicesTable } from "@/features/artisans/components/MyServicesTable";
 import { useSellerProducts, useOrders, useSales, useDashboardSection } from "@/features/profile/hooks";
 import { useDeleteProduct } from "@/features/marketplace/hooks";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -17,25 +19,55 @@ import { chartColors, chartAxisTick, chartTooltipStyle } from "@/constants/chart
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import type { Order } from "@/types";
+import { SaleStatusControl } from "@/features/payments/components/SaleStatusControl";
 
 const statusTone = (s: string) =>
   s === "delivered" ? "success" : s === "cancelled" ? "danger" : "warning";
 
-type Section = "overview" | "products" | "orders" | "purchases";
+type Section = "overview" | "products" | "services" | "orders" | "bookings" | "purchases";
 
-const chartData = [
-  { name: "Mon", revenue: 400 }, { name: "Tue", revenue: 300 }, { name: "Wed", revenue: 550 },
-  { name: "Thu", revenue: 450 }, { name: "Fri", revenue: 700 }, { name: "Sat", revenue: 650 }, { name: "Sun", revenue: 800 },
-];
+const lineTotal = (o: Order) => o.price * o.quantity;
+const OPEN_STATUSES = new Set(["pending", "processing"]);
+
+/** Figures from the seller's own order lines (UTC order dates), excluding cancelled. */
+function salesFigures(sales: Order[], now = new Date()) {
+  const valid = sales.filter((o) => o.status !== "cancelled");
+  const month = now.toISOString().slice(0, 7);
+  const previous = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
+  const total = (prefix: string) =>
+    valid.filter((o) => o.date.startsWith(prefix)).reduce((sum, o) => sum + lineTotal(o), 0);
+  const thisMonth = total(month);
+  const lastMonth = total(previous);
+  const chartData = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 6 + i));
+    const key = d.toISOString().slice(0, 10);
+    return {
+      name: d.toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" }),
+      revenue: valid.filter((o) => o.date === key).reduce((sum, o) => sum + lineTotal(o), 0),
+    };
+  });
+  return {
+    thisMonth,
+    change: lastMonth > 0 ? ((thisMonth - lastMonth) / lastMonth) * 100 : null,
+    toFulfill: sales.filter((o) => OPEN_STATUSES.has(o.status)).length,
+    chartData,
+  };
+}
 
 export default function DashboardSeller() {
   const { data: sellerProducts = [] } = useSellerProducts();
   const { data: sales = [] } = useSales();
   const { data: purchases = [] } = useOrders();
   const [section, setSection] = useDashboardSection<Section>(
-    ["overview", "products", "orders", "purchases"],
+    ["overview", "products", "services", "orders", "bookings", "purchases"],
     "overview",
   );
+  const figures = useMemo(() => salesFigures(sales), [sales]);
+  const rated = sellerProducts.filter((p) => p.reviewCount > 0);
+  const reviews = rated.reduce((sum, p) => sum + p.reviewCount, 0);
+  const averageRating = reviews
+    ? (rated.reduce((sum, p) => sum + p.rating * p.reviewCount, 0) / reviews).toFixed(1)
+    : "—";
   const deleteProduct = useDeleteProduct();
   const { toast } = useToast();
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
@@ -59,7 +91,9 @@ export default function DashboardSeller() {
       items={[
         { icon: <TrendingUp className="w-4 h-4" />, label: "Dashboard", active: section === "overview", onClick: () => setSection("overview") },
         { icon: <Package className="w-4 h-4" />, label: "My Products", active: section === "products", onClick: () => setSection("products") },
+        { icon: <Briefcase className="w-4 h-4" />, label: "My Services", active: section === "services", onClick: () => setSection("services") },
         { icon: <ShoppingBag className="w-4 h-4" />, label: "Orders", active: section === "orders", onClick: () => setSection("orders") },
+        { icon: <Calendar className="w-4 h-4" />, label: "Bookings", active: section === "bookings", onClick: () => setSection("bookings") },
         { icon: <ShoppingCart className="w-4 h-4" />, label: "My Purchases", active: section === "purchases", onClick: () => setSection("purchases") },
         { icon: <MessageSquare className="w-4 h-4" />, label: "Messages", href: "/messages" },
       ]}
@@ -187,11 +221,14 @@ export default function DashboardSeller() {
             <tbody className="divide-y border-border">
               {rows.map((order) => (
                 <tr key={order.id} className="hover:bg-muted/30">
-                  <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{order.id.slice(0, 8)}</td>
+                  <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{order.reference ?? order.orderId.slice(0, 8)}</td>
                   <td className="px-6 py-4 font-medium">{order.productTitle}</td>
                   <td className="px-6 py-4">{mode === "purchases" ? order.seller : `×${order.quantity}`}</td>
                   <td className="px-6 py-4"><Price amount={order.price * order.quantity} /></td>
-                  <td className="px-6 py-4 capitalize"><StatusBadge tone={statusTone(order.status)}>{order.status}</StatusBadge></td>
+                  <td className="px-6 py-4 capitalize">
+                    <StatusBadge tone={statusTone(order.status)}>{order.status}</StatusBadge>
+                    {mode === "sales" && <SaleStatusControl line={order} />}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -210,9 +247,13 @@ export default function DashboardSeller() {
               ? "Seller Dashboard"
               : section === "products"
                 ? "My Products"
-                : section === "orders"
+                : section === "services"
+                  ? "My Services"
+                  : section === "orders"
                   ? "Orders"
-                  : "My Purchases"}
+                  : section === "bookings"
+                    ? "Bookings"
+                    : "My Purchases"}
           </h1>
           <p className="text-muted-foreground mt-1">
             {section === "purchases"
@@ -235,11 +276,11 @@ export default function DashboardSeller() {
       {section === "overview" && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <StatCard label="Revenue (Month)" value="£4,280" valueClassName="text-primary"
-              sub={<p className="text-xs text-green-600 mt-2 flex items-center font-medium"><TrendingUp className="w-3 h-3 mr-1" /> +12.5% vs last month</p>} />
+            <StatCard label="Revenue (Month)" value={<Price amount={figures.thisMonth} />} valueClassName="text-primary"
+              sub={<p className="text-xs text-green-600 mt-2 flex items-center font-medium"><TrendingUp className="w-3 h-3 mr-1" /> {figures.change === null ? "No sales last month" : `${figures.change >= 0 ? "+" : ""}${figures.change.toFixed(1)}% vs last month`}</p>} />
             <StatCard label="Active Listings" value={String(sellerProducts.length)} />
-            <StatCard label="Orders to Fulfill" value={String(sales.length)} valueClassName="text-accent" />
-            <StatCard label="Average Rating" value={<span className="inline-flex items-center gap-2">4.9 <Star className="w-6 h-6 fill-accent text-accent" /></span>} />
+            <StatCard label="Orders to Fulfill" value={String(figures.toFulfill)} valueClassName="text-accent" />
+            <StatCard label="Average Rating" value={<span className="inline-flex items-center gap-2">{averageRating} <Star className="w-6 h-6 fill-accent text-accent" /></span>} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
@@ -247,7 +288,7 @@ export default function DashboardSeller() {
               <h3 className="text-lg font-bold mb-6">Revenue Overview</h3>
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
+                  <BarChart data={figures.chartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartColors.grid} />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={chartAxisTick} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={chartAxisTick} dx={-10} tickFormatter={(val) => `£${val}`} />
@@ -275,7 +316,7 @@ export default function DashboardSeller() {
                       </div>
                       <div className="text-right">
                         <Price amount={order.price} className="text-sm font-bold" />
-                        <p className="text-xs text-accent">Pending</p>
+                        <p className="text-xs text-accent capitalize">{order.status}</p>
                       </div>
                     </div>
                   ))
@@ -291,6 +332,10 @@ export default function DashboardSeller() {
       {section === "products" && ProductsTable}
 
       {section === "orders" && ordersTableCard(sales, "sales")}
+
+      {section === "services" && <MyServicesTable />}
+
+      {section === "bookings" && <IncomingBookings />}
 
       {section === "purchases" && ordersTableCard(purchases, "purchases")}
 

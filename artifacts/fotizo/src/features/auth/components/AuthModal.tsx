@@ -23,10 +23,13 @@ const PERKS = [
 export function AuthModal({
   open,
   initialView,
+  returnTo = "/",
   onOpenChange,
 }: {
   open: boolean;
   initialView: AuthView;
+  /** Where a successful sign-in or join lands. */
+  returnTo?: string;
   onOpenChange: (open: boolean) => void;
 }) {
   const { login, signup } = useAuth();
@@ -66,7 +69,7 @@ export function AuthModal({
           description: isJoin ? "Your account is ready." : "You have successfully signed in.",
         });
         onOpenChange(false);
-        setLocation("/");
+        setLocation(returnTo);
       } else {
         toast({ variant: "destructive", title: isJoin ? "Sign up failed" : "Sign in failed", description: res.error || "Please try again." });
       }
@@ -184,7 +187,7 @@ export function AuthModal({
               onLoggedIn={() => {
                 toast({ title: "Welcome back!", description: "You have successfully signed in." });
                 onOpenChange(false);
-                setLocation("/");
+                setLocation(returnTo);
               }}
               onNeedsRole={(token) => {
                 // Two separate dialogs shouldn't be open at once — close this
@@ -210,7 +213,7 @@ export function AuthModal({
       onComplete={() => {
         setPendingGoogleToken(null);
         toast({ title: "Account created!", description: "Welcome to Fotizo." });
-        setLocation("/");
+        setLocation(returnTo);
       }}
     />
     </>

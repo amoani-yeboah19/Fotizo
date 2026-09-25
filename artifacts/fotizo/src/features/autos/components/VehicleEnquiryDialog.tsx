@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { submitVehicleEnquiry } from "@/features/autos/services/autos.service";
+import { apiErrorMessage } from "@/api";
 import { leadTimeLabel, vehicleName, type Vehicle } from "@/features/autos/data/vehicles";
 
 // A vehicle enquiry is a sales lead, not an order — no cart, no payment. The
@@ -28,7 +29,7 @@ export function VehicleEnquiryDialog({
 }) {
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -37,7 +38,7 @@ export function VehicleEnquiryDialog({
     setSubmitting(true);
     setError(null);
     try {
-      await submitVehicleEnquiry({
+      const enquiry = await submitVehicleEnquiry({
         vehicleId: vehicle.id,
         name: String(form.get("name") ?? "").trim(),
         email: String(form.get("email") ?? "").trim(),
@@ -45,9 +46,11 @@ export function VehicleEnquiryDialog({
         destination: String(form.get("destination") ?? "").trim(),
         message: String(form.get("message") ?? "").trim(),
       });
-      setSubmitted(true);
-    } catch {
-      setError("We couldn't send that just now. Please try again, or call us directly.");
+      setSubmitted(enquiry.reference);
+    } catch (err) {
+      setError(
+        apiErrorMessage(err, "We couldn't send that just now. Please try again, or contact customer service."),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -57,7 +60,7 @@ export function VehicleEnquiryDialog({
   // successful send doesn't strand the user on the confirmation panel.
   const handleOpenChange = (next: boolean) => {
     if (!next) {
-      setSubmitted(false);
+      setSubmitted(null);
       setError(null);
     }
     onOpenChange(next);
@@ -71,8 +74,10 @@ export function VehicleEnquiryDialog({
             <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" aria-hidden="true" />
             <DialogTitle className="mt-4 text-lg">Enquiry sent</DialogTitle>
             <DialogDescription className="mt-2">
-              Thanks — our team will come back to you within one working day with a firm quote for
-              the {vehicleName(vehicle)}, including freight and the duty for your country.
+              Your reference is{" "}
+              <span className="font-mono font-bold text-foreground">{submitted}</span>. Our team will
+              contact you with a quote for the {vehicleName(vehicle)}, including freight and the duty
+              for your country.
             </DialogDescription>
             <Button className="mt-6 w-full" onClick={() => handleOpenChange(false)}>
               Done

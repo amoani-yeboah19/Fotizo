@@ -1,4 +1,13 @@
 import bcrypt from "bcrypt";
+import { z } from "zod";
+
+export const passwordSchema = z
+  .string()
+  .min(8)
+  .refine(
+    (value) => Buffer.byteLength(value, "utf8") <= 72,
+    "Password must not exceed 72 UTF-8 bytes.",
+  );
 
 // Cost factor: each +1 roughly doubles the time to hash *and* to brute-force.
 // 12 is a reasonable balance in 2026 — slow enough to make guessing expensive,

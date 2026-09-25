@@ -17,11 +17,8 @@ import { Price } from "@/components/common/Price";
 import { chartColors, chartAxisTick, chartTooltipStyle } from "@/constants/chart";
 import { Button } from "@/components/ui/button";
 import { DELIVERY_WINDOWS } from "@/features/support/data/channels";
-import {
-  MARQUE_ROWS, AUTOS_TOTAL, CHINA_MARQUE_UNITS, CHINA_MARQUE_COUNT, FUEL_MIX,
-  DEPARTMENT_ROWS, SHOP_SKU_TOTAL, SHOP_DEPARTMENT_TOTAL, SHOP_RESTOCK_TOTAL, RESTOCK_QUEUE,
-  SUPPLIERS, SUPPLIER_ACTIVE, SUPPLIER_FLAGGED, SHIPMENTS, UNITS_IN_TRANSIT, OUTBOUND_TREND,
-} from "@/features/profile/data/chinaSourcing";
+import { useChinaSourcing } from "@/features/profile/data/chinaSourcing";
+import { CaseQueue, VehicleCatalogueControls } from "@/features/profile/components/Operations";
 
 type Section = "overview" | "shop" | "autos" | "freight" | "suppliers";
 
@@ -153,6 +150,7 @@ function SourcedListings() {
 }
 
 function DepartmentsTable() {
+  const { DEPARTMENT_ROWS, SHOP_SKU_TOTAL, SHOP_DEPARTMENT_TOTAL } = useChinaSourcing();
   const topSkus = DEPARTMENT_ROWS[0]?.skus ?? 1;
   return (
     <SurfaceCard className="overflow-hidden">
@@ -207,6 +205,7 @@ function DepartmentsTable() {
 }
 
 function MarquesTable() {
+  const { MARQUE_ROWS, AUTOS_TOTAL, CHINA_MARQUE_UNITS, CHINA_MARQUE_COUNT } = useChinaSourcing();
   return (
     <SurfaceCard className="overflow-hidden">
       <div className="p-6 border-b border-border">
@@ -251,6 +250,7 @@ function MarquesTable() {
 }
 
 function ShipmentsTable() {
+  const { SHIPMENTS } = useChinaSourcing();
   return (
     <SurfaceCard className="overflow-hidden">
       <div className="p-6 border-b border-border flex justify-between items-center">
@@ -277,6 +277,9 @@ function ShipmentsTable() {
             </tr>
           </thead>
           <tbody className="divide-y border-border">
+            {SHIPMENTS.length === 0 && (
+              <tr><td colSpan={7} className="px-6 py-4 text-muted-foreground">No shipments are recorded yet.</td></tr>
+            )}
             {SHIPMENTS.map((s) => (
               <tr key={s.id} className="hover:bg-muted/30">
                 <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{s.id}</td>
@@ -311,6 +314,7 @@ function ShipmentsTable() {
 }
 
 function SuppliersTable() {
+  const { SUPPLIERS } = useChinaSourcing();
   return (
     <SurfaceCard className="overflow-hidden">
       <div className="p-6 border-b border-border flex justify-between items-center">
@@ -331,6 +335,9 @@ function SuppliersTable() {
             </tr>
           </thead>
           <tbody className="divide-y border-border">
+            {SUPPLIERS.length === 0 && (
+              <tr><td colSpan={7} className="px-6 py-4 text-muted-foreground">No suppliers are recorded yet.</td></tr>
+            )}
             {SUPPLIERS.map((s) => (
               <tr key={s.id} className="hover:bg-muted/30">
                 <td className="px-6 py-4 font-medium">{s.name}</td>
@@ -360,6 +367,7 @@ function SuppliersTable() {
 }
 
 function RestockQueue() {
+  const { SHOP_RESTOCK_TOTAL, RESTOCK_QUEUE } = useChinaSourcing();
   return (
     <SurfaceCard className="p-6">
       <div className="flex items-center gap-2 mb-6">
@@ -403,6 +411,10 @@ export default function ChinaRepresentativeDashboard() {
     ["overview", "shop", "autos", "freight", "suppliers"],
     "overview",
   );
+  const {
+    AUTOS_TOTAL, CHINA_MARQUE_UNITS, FUEL_MIX, DEPARTMENT_ROWS, SHOP_SKU_TOTAL, SHOP_DEPARTMENT_TOTAL,
+    SHOP_RESTOCK_TOTAL, SUPPLIER_ACTIVE, SUPPLIER_FLAGGED, UNITS_IN_TRANSIT, OUTBOUND_TREND,
+  } = useChinaSourcing();
 
   const sidebar = (
     <DashboardSidebar
@@ -548,6 +560,8 @@ export default function ChinaRepresentativeDashboard() {
       {section === "autos" && (
         <div className="space-y-8">
           <MarquesTable />
+          <CaseQueue type="vehicle_enquiry" />
+          <VehicleCatalogueControls />
           <SurfaceCard className="p-6">
             <h3 className="text-lg font-bold mb-6">Powertrain mix</h3>
             <div className="space-y-4">

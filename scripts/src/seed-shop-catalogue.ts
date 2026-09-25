@@ -249,6 +249,7 @@ async function main() {
       rating: p.rating ?? 0,
       reviewCount: 0,
       sellerId,
+      channel: "shop" as const,
       category: label,
       images,
       // Nothing is physically held — these are imported to order — so stock

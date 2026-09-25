@@ -1,29 +1,25 @@
+import { cataloguePages } from "./catalogue-page";
 import { api, CATALOG_USE_MOCKS, SELLER_CATALOG_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import * as fx from "@/services/mocks/fixtures";
-import type { Product, Category, SellerProduct, NewProductInput } from "@/types";
+import type {
+  Product,
+  Category,
+  SellerProduct,
+  NewProductInput,
+} from "@/types";
 
-// The marketplace (/products) is the LOCAL side: things listed by real sellers.
-// Fotizo Shop stock lives at /shop and must not appear here — right now the
-// backend returns both from GET /products (73 of 76 rows are shop imports), so
-// we filter client-side until it can split them server-side.
-//
-// Matching on the seller name is the only discriminator the API currently
-// exposes; the products table has a `source` column that isn't in the API
-// response or the Drizzle schema, and that's the right long-term key. When the
-// backend exposes it, swap the predicate below and delete this note.
-const SHOP_SELLER_NAMES = new Set(["fotizo shop", "fotizo import"]);
-
-function isShopListing(product: Pick<Product, "seller">): boolean {
-  return SHOP_SELLER_NAMES.has((product.seller ?? "").trim().toLowerCase());
-}
-
-/** Seller listings only — everything the Fotizo Shop supplies is stripped out. */
+// Production classification is enforced by the API, not display names.
 function localOnly(products: Product[]): Product[] {
-  return products.filter((p) => !isShopListing(p));
+  return products.filter((p) => p.channel !== "shop");
 }
 
 export const catalogService = {
+  async getOwnedProduct(id: string): Promise<Product | null> {
+    if (SELLER_CATALOG_USE_MOCKS)
+      return fx.products.find((p) => p.id === id) ?? null;
+    return api.get<Product>(`/seller/products/${id}`);
+  },
   async createProduct(input: NewProductInput): Promise<Product> {
     if (SELLER_CATALOG_USE_MOCKS) {
       await delay();
@@ -54,6 +50,8 @@ export const catalogService = {
         price: input.price,
         stock: input.stockCount,
         sales: 0,
+        rating: 0,
+        reviewCount: 0,
         status: input.stockCount > 0 ? "active" : "out_of_stock",
         image: product.image,
         category: input.category,
@@ -63,12 +61,9 @@ export const catalogService = {
     return api.post<Product>("/products", input);
   },
 
+  // Home/dashboard recommendations intentionally request a small preview.
   async listProducts(): Promise<Product[]> {
-    if (CATALOG_USE_MOCKS) {
-      await delay();
-      return localOnly(fx.products);
-    }
-    return localOnly(await api.get<Product[]>("/products"));
+    return (await cataloguePages.list("marketplace", { pageSize: 10 })).items;
   },
 
   async getProduct(id: string): Promise<Product | null> {
@@ -116,7 +111,10 @@ export const catalogService = {
     return api.get<SellerProduct[]>("/seller/products");
   },
 
-  async updateProduct(id: string, input: Partial<NewProductInput>): Promise<Product> {
+  async updateProduct(
+    id: string,
+    input: Partial<NewProductInput> & { status?: "active" | "unpublished" },
+  ): Promise<Product> {
     if (SELLER_CATALOG_USE_MOCKS) {
       await delay();
       const idx = fx.products.findIndex((p) => p.id === id);
@@ -124,7 +122,7 @@ export const catalogService = {
       const updated: Product = {
         ...fx.products[idx],
         ...input,
-        image: input.images ? input.images[0] ?? "" : fx.products[idx].image,
+        image: input.images ? (input.images[0] ?? "") : fx.products[idx].image,
         inStock: (input.stockCount ?? fx.products[idx].stockCount) > 0,
       };
       fx.products[idx] = updated;
@@ -151,7 +149,11 @@ export const catalogService = {
       const idx = fx.products.findIndex((p) => p.id === id);
       if (idx !== -1) fx.products.splice(idx, 1);
       const sIdx = fx.sellerProducts.findIndex((p) => p.id === id);
-      if (sIdx !== -1) fx.sellerProducts[sIdx] = { ...fx.sellerProducts[sIdx], status: "unpublished" };
+      if (sIdx !== -1)
+        fx.sellerProducts[sIdx] = {
+          ...fx.sellerProducts[sIdx],
+          status: "unpublished",
+        };
       return;
     }
     await api.del(`/products/${id}`);

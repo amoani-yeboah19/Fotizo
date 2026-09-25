@@ -1,12 +1,6 @@
-# Wishlist
+# features/wishlist/
 
-Saved products and services, organised into collections.
-
-_Scaffold — no code yet._ Add pieces here as the feature is built, following the same layout the
-populated features use:
-
-- `pages/` — routed screens
-- `components/` — feature-specific UI
-- `hooks/` — React Query / stateful hooks
-- `services/` — data access (mock + real API), mirroring e.g. `features/marketplace/services`
-- `types/` — feature-local types
+Saved products per signed-in account, stored server-side (`/api/wishlist`,
+migration 0006). `useWishlistToggle` powers the heart buttons on product cards
+and the product page; `useWishlist` feeds the buyer dashboard. Signed-out
+visitors are asked to sign in and returned to the same page.

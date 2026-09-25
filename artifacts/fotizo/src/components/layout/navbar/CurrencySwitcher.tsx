@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
-import { useCurrency, CURRENCIES, CurrencyCode } from "@/contexts/CurrencyContext";
+import { useCurrency, CurrencyCode } from "@/contexts/CurrencyContext";
 
 // Currency picker. Click-toggled (hover menus don't work on touch devices).
 // `dropUp` opens the menu above the trigger (for footer placement).
 export function CurrencySwitcher({ dropUp = false }: { dropUp?: boolean }) {
-  const { currency, setCurrency } = useCurrency();
+  const { currency, setCurrency, availableCurrencies } = useCurrency();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -41,7 +41,7 @@ export function CurrencySwitcher({ dropUp = false }: { dropUp?: boolean }) {
             dropUp ? "bottom-full mb-1" : "top-full mt-1"
           }`}
         >
-          {CURRENCIES.map((c) => (
+          {availableCurrencies.map((c) => (
             <button
               key={c.code}
               type="button"
