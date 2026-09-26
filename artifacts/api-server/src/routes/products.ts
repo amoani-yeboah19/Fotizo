@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { listingImagesProblem } from "../lib/storage";
 import {
   HOLD_MESSAGE,
   REVIEWED_ROLES,
@@ -243,6 +244,12 @@ router.post(
       return;
     }
 
+    const imageProblem = await listingImagesProblem(req.auth!.userId, "product", parsed.data.images);
+    if (imageProblem) {
+      res.status(400).json({ error: imageProblem });
+      return;
+    }
+
     const seller = await db.query.usersTable.findFirst({
       where: eq(usersTable.id, req.auth!.userId),
     });
@@ -395,6 +402,18 @@ router.patch(
     if (parsed.data.status === "active" && found.product.moderationHold) {
       res.status(409).json({ error: HOLD_MESSAGE });
       return;
+    }
+    if (parsed.data.images) {
+      const imageProblem = await listingImagesProblem(
+        req.auth!.userId,
+        "product",
+        parsed.data.images,
+        found.product.images,
+      );
+      if (imageProblem) {
+        res.status(400).json({ error: imageProblem });
+        return;
+      }
     }
 
     const seller = await db.query.usersTable.findFirst({

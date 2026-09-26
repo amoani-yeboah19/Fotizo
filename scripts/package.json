@@ -9,7 +9,8 @@
     "backfill-service-groups": "tsx ./src/backfill-service-groups.ts",
     "inspect-services": "tsx ./src/inspect-services.ts",
     "seed-shop-catalogue": "tsx ./src/seed-shop-catalogue.ts",
-    "import-vehicles": "tsx ./src/import-vehicles.ts"
+    "import-vehicles": "tsx ./src/import-vehicles.ts",
+    "move-images-to-storage": "tsx ./src/move-images-to-storage.ts"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

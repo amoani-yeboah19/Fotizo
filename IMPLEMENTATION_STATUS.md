@@ -33,6 +33,8 @@ Updated 24 September 2026. Work is local and has not been deployed. The complete
 
 ## Verification record
 
+Image storage: listing photos are uploaded to Supabase Storage through the API (migration 0013), which checks the real file type (JPEG/PNG/WebP, 5 MB, per-account rate limit) and records the owner; listings accept only their owner's uploads. A script moves existing inline images, and optionally externally hosted shop and vehicle images, into the bucket (dry run on the live database: 7 inline and 3,887 remote images). Tested against a local stand-in for Supabase Storage; no real upload has been made because the storage keys are not configured here.
+
 Manager workspace: the extended manager screens now run on the API (migration 0012) and replace the earlier account-controls dashboard; production keeps the payments, support and vehicle-enquiry queues. Managers search and filter accounts, verify them, suspend/reinstate and change roles (never their own; the last active manager is protected; suspension revokes sessions), control publication with holds owners cannot clear, review seller listings after publication with versioned resubmissions and rejection reasons shown to sellers, oversee orders and handle buyer-reported disputes. Every decision is version-checked and saved atomically with an append-only audit record. Professionals have a public page (/professionals/:id) linked from their services, and Settings shows the recorded Terms/Privacy acceptance. Refund execution, dispute notifications, seller statements, carrier tracking and region-scoped representative access remain open.
 
 Account profiles: signup and Settings profile details are stored on the account (migration 0011) instead of browser drafts. Email and Google signup require Terms/Privacy acceptance, recorded server-side with the policy version, and create the account, acceptance and profile atomically. Profiles are validated against the stored role, use stable codes for choice fields, reject stale edits with 409, and expose only professional fields publicly. Earlier browser drafts can be imported on request. Email verification, recovery, uploads, notification preferences, MFA and deletion/export remain open.
@@ -59,7 +61,7 @@ Manager account-controls batch: all TypeScript projects, all 73 tests across nin
 
 Previous account-settings and API-operations batch: `pnpm run check` passed all TypeScript projects, all 55 tests across seven files, and API/frontend/mockup production builds. This includes cross-tab state clearing, password-change concurrency and rollback, stale-credential session issuance, readiness failure/recovery, concurrent probes, active HTTP request draining and shutdown deadlines. API client/schema generation succeeded. A smoke test of the built API against an intentionally unavailable local database exited with code 1 before listening, as expected. The earlier foundation batch passed 29 tests. `git diff --check` passed.
 
-API tests use an isolated PostgreSQL engine in WASM, bcrypt and actual HTTP requests. Session and currency tests use React with jsdom. SQL migration application/reapplication is tested against a synthetic previous schema. The migration runner applied 0001-0009 to the hosted Supabase database on 24 September 2026 and 0010-0012 on 26 September 2026; rollback and restore have not been rehearsed.
+API tests use an isolated PostgreSQL engine in WASM, bcrypt and actual HTTP requests. Session and currency tests use React with jsdom. SQL migration application/reapplication is tested against a synthetic previous schema. The migration runner applied 0001-0009 to the hosted Supabase database on 24 September 2026 and 0010-0013 on 26 September 2026; rollback and restore have not been rehearsed.
 
 Browser visual/mobile/keyboard acceptance remains pending: the browser tool reported no connected browsers after an initial connection timeout. This is not covered by passing jsdom tests. The temporary frontend server was stopped after the attempt. No live database migration, hosting change, payment, email or production seed was performed.
 
@@ -67,7 +69,7 @@ Builds currently emit source-map warnings for the UI label/tooltip modules and a
 
 ## Deployment prerequisites for these changes
 
-1. Inspect the target schema and take a verified backup. Follow README.md to apply 0001-0012 using the migration runner before this API version starts. Do not use schema push on production.
+1. Inspect the target schema and take a verified backup. Follow README.md to apply 0001-0013 using the migration runner before this API version starts. Do not use schema push on production.
 2. Configure a strong JWT_SECRET, exact CORS_ORIGIN values and the verified trusted-proxy hop count. Existing tokens require a fresh sign-in.
 3. Deploy frontend and API together because writes require X-Fotizo-Request and public product lists now return a bounded page envelope instead of an array. Verify actual proxy forwarding, secure cookies and revocation in staging.
 4. Publish only reviewed shop inventory. Empty/unpublished inventory must stay unavailable.

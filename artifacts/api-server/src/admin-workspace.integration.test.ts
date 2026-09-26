@@ -58,7 +58,7 @@ const service = {
   hourlyRate: 35,
   availability: "Weekdays",
   skills: ["React"],
-  avatar: "https://example.com/avatar.jpg",
+  avatar: "data:image/png;base64,iVBORw0KGgo=",
   packages: [{ name: "Basic", price: 300, delivery: "7 days", description: "Five pages" }],
 };
 

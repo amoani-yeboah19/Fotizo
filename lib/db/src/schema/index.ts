@@ -12,3 +12,4 @@ export * from "./carts";
 export * from "./payments";
 export * from "./profiles";
 export * from "./admin";
+export * from "./media";

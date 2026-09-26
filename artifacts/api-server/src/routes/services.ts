@@ -11,6 +11,7 @@ import {
 } from "@workspace/service-taxonomy";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
 import { HOLD_MESSAGE, moderationFor, sameSnapshot, serviceSnapshot, submitForReview } from "../lib/admin";
+import { listingImagesProblem } from "../lib/storage";
 
 const router: IRouter = Router();
 
@@ -136,6 +137,17 @@ router.post("/services", requireAuth, async (req: AuthenticatedRequest, res) => 
   }
 
   const provider = await db.query.usersTable.findFirst({ where: eq(usersTable.id, req.auth!.userId) });
+  // The listing photo is an upload, or the provider's existing account photo.
+  const imageProblem = await listingImagesProblem(
+    req.auth!.userId,
+    "service",
+    [parsed.data.avatar],
+    provider?.avatar ? [provider.avatar] : [],
+  );
+  if (imageProblem) {
+    res.status(400).json({ error: imageProblem });
+    return;
+  }
   // Listed straight away and queued for staff review in the same transaction.
   const created = await db.transaction(async (tx) => {
     const [row] = await tx
@@ -215,6 +227,11 @@ router.patch("/services/:id", requireAuth, async (req: AuthenticatedRequest, res
   const group = groupForCategory(parsed.data.category);
   if (!group) {
     res.status(400).json({ error: "Unknown service category." });
+    return;
+  }
+  const imageProblem = await listingImagesProblem(req.auth!.userId, "service", [parsed.data.avatar], [row.service.avatar]);
+  if (imageProblem) {
+    res.status(400).json({ error: imageProblem });
     return;
   }
   // A content change starts a new review version.

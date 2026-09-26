@@ -295,7 +295,7 @@ describe("catalogue ownership and publication", () => {
     price: 20.5,
     originalPrice: null,
     stockCount: 3,
-    images: ["https://example.com/photo.jpg"],
+    images: ["data:image/png;base64,iVBORw0KGgo="],
   };
   async function change(id: string, cookie: string, changes: unknown) {
     return fetch(`${base}/api/products/${id}`, {
@@ -986,7 +986,7 @@ describe("bounded public catalogue", () => {
           category: "Electronics",
           price: 10,
           stockCount: 3,
-          images: ["https://example.com/product.jpg"],
+          images: ["data:image/png;base64,iVBORw0KGgo="],
           createdAt: new Date("2026-01-01T00:00:00Z"),
           ...row,
         })),
@@ -1104,13 +1104,13 @@ describe("bounded public catalogue", () => {
       {
         category: "Furniture",
         count: 27,
-        image: "https://example.com/product.jpg",
+        image: "data:image/png;base64,iVBORw0KGgo=",
       },
     ]);
     const shop = await fetch(`${base}/api/products/categories?channel=shop`);
     expect(shop.status).toBe(200);
     expect(ListCatalogueCategoriesResponse.parse(await shop.json())).toEqual([
-      { category: "wigs", count: 3, image: "https://example.com/product.jpg" },
+      { category: "wigs", count: 3, image: "data:image/png;base64,iVBORw0KGgo=" },
     ]);
     expect((await get("channel=shop&category=wigs")).total).toBe(3);
   });

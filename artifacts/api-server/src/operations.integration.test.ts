@@ -711,7 +711,7 @@ describe("provider service management", () => {
     hourlyRate: 25,
     availability: "Weekdays",
     skills: ["Braiding"],
-    avatar: "https://example.com/a.jpg",
+    avatar: "data:image/png;base64,iVBORw0KGgo=",
     packages: [{ name: "Basic", price: 30, delivery: "1 day", description: "Shoulder length" }],
   };
 
