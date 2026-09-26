@@ -18,6 +18,10 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 export const USE_MOCKS = (import.meta.env.VITE_USE_MOCKS ?? "true") !== "false";
 
+// The extended preview workspace is enabled only in explicit demo builds.
+// Production uses the server-backed manager screens from main.
+export const ADMIN_USE_MOCKS = import.meta.env.VITE_DEMO_MODE === "true" && (import.meta.env.VITE_USE_MOCK_ADMIN ?? "true") !== "false";
+
 export const AUTH_USE_MOCKS =
   (import.meta.env.VITE_USE_MOCK_AUTH ?? import.meta.env.VITE_USE_MOCKS ?? "true") !== "false";
 

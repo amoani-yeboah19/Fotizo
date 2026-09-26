@@ -1,3 +1,4 @@
+import { WishlistButton } from "@/features/wishlist/components/WishlistButton";
 import { useState } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import {
@@ -132,6 +133,7 @@ export default function ShopProductPage() {
           <h1 className="text-xl font-bold leading-snug text-foreground sm:text-2xl">
             {product.title}
           </h1>
+          <WishlistButton item={{ id: product.id, source: "shop", title: product.title, image: product.image, price: product.price, seller: SHOP_SELLER }} className="mt-3 border border-border" />
 
           <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1">

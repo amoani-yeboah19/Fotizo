@@ -10,6 +10,7 @@ import { DEMO_MODE } from "@/api";
 
 // Route-level code splitting: each page (and its heavy deps like recharts on the
 // dashboards) loads only when its route is visited.
+const WishlistPage = lazy(() => import("@/features/wishlist/pages/WishlistPage"));
 const Home = lazy(() => import("@/features/home/pages/HomePage"));
 const Settings = lazy(() => import("@/features/settings/pages/SettingsPage"));
 const ProductsPage = lazy(
@@ -54,9 +55,9 @@ const DashboardBuyer = lazy(
 const DashboardSeller = lazy(
   () => import("@/features/profile/pages/SellerDashboard"),
 );
-const DashboardManager = lazy(
-  () => import("@/features/profile/pages/ManagerDashboard"),
-);
+const DashboardManager = import.meta.env.VITE_DEMO_MODE === "true"
+  ? lazy(() => import("@/features/profile/pages/ManagerDemoDashboard"))
+  : lazy(() => import("@/features/profile/pages/ManagerDashboard"));
 const DashboardDeveloper = lazy(
   () => import("@/features/profile/pages/DeveloperDashboard"),
 );
@@ -154,6 +155,7 @@ export function AppRoutes() {
         <Route path="/privacy" component={PrivacyPage} />
         <Route path="/guides" component={GuidesPage} />
         <Route path="/guides/:slug" component={GuideArticle} />
+        <Route path="/wishlist" component={WishlistPage} />
         <Route path="/cart" component={CartPage} />
         <Route path="/checkout">
           {() => (
@@ -277,6 +279,7 @@ export function AppRoutes() {
         {DEMO_MODE && DemoLanding && (
           <Route path="/demo" component={DemoLanding} />
         )}
+        {DEMO_MODE && DemoLanding && <Route path="/dashboards" component={DemoLanding} />}
         <Route component={NotFound} />
       </Switch>
     </Suspense>

@@ -1,3 +1,4 @@
+import { PurchaseDetailsDialog, purchaseStatusTone } from "@/features/orders/components/PurchaseDetailsDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/contexts/MessagesContext";
 import { useOrders, useDashboardSection } from "@/features/profile/hooks";
@@ -5,7 +6,7 @@ import { useBookings, useChangeBookingStatus } from "@/features/bookings/hooks";
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage } from "@/api";
 import { useWishlist } from "@/features/wishlist/hooks";
-import { ProductCard } from "@/features/marketplace/components/ProductCard";
+import { WishlistItems } from "@/features/wishlist/components/WishlistItems";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { StatCard } from "@/components/common/StatCard";
@@ -20,28 +21,24 @@ import {
 
 type Section = "overview" | "orders" | "bookings" | "wishlist";
 
-const orderTone = (s: string) =>
-  s === "delivered" ? "success" : s === "in_transit" ? "info" : "warning";
-
 function OrderRow({ order }: { order: Order }) {
   return (
-    <div className="p-6 flex items-center justify-between">
-      <div className="flex items-center gap-4 min-w-0">
-        <img loading="lazy" decoding="async" src={order.productImage} alt={order.productTitle} className="w-12 h-12 rounded-lg bg-muted object-contain p-1 shrink-0" />
-        <div className="min-w-0">
-          <p className="font-medium text-sm line-clamp-1">{order.productTitle}</p>
-          <p className="text-xs text-muted-foreground">
-            {order.seller}
-            {order.reference ? ` · ${order.reference}` : ""}
-            {order.trackingNumber ? ` · Tracking ${order.trackingNumber}` : ""}
-          </p>
-        </div>
-      </div>
-      <div className="flex flex-col items-end shrink-0 pl-4">
-        <StatusBadge tone={orderTone(order.status)} className="mb-1">{order.status.replace("_", " ")}</StatusBadge>
-        <Price amount={order.price} className="text-sm font-bold" />
-      </div>
-    </div>
+    <PurchaseDetailsDialog order={order}>
+      <button type="button" aria-label={`View purchase details for ${order.productTitle}`} className="w-full p-6 flex items-center justify-between text-left hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary">
+        <span className="flex items-center gap-4 min-w-0">
+          <img loading="lazy" decoding="async" src={order.productImage} alt="" className="w-12 h-12 rounded-lg bg-muted object-contain p-1 shrink-0" />
+          <span className="min-w-0">
+            <span className="block font-medium text-sm line-clamp-1">{order.productTitle}</span>
+            <span className="block text-xs text-muted-foreground">{order.seller} · Qty {order.quantity}</span>
+            <span className="block mt-1 text-xs text-primary">View purchase</span>
+          </span>
+        </span>
+        <span className="flex flex-col items-end shrink-0 pl-4">
+          <StatusBadge tone={purchaseStatusTone(order.status)} className="mb-1">{order.status.replaceAll("_", " ")}</StatusBadge>
+          <Price amount={order.price * order.quantity} className="text-sm font-bold" />
+        </span>
+      </button>
+    </PurchaseDetailsDialog>
   );
 }
 
@@ -201,11 +198,7 @@ export default function DashboardBuyer() {
         </SurfaceCard>
       )}
 
-      {section === "wishlist" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {wishlist.length ? wishlist.map((p) => <ProductCard key={p.id} product={p} />) : <Empty label="Your wishlist is empty." />}
-        </div>
-      )}
+      {section === "wishlist" && <WishlistItems />}
     </DashboardLayout>
   );
 }

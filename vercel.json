@@ -4,6 +4,9 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "outputDirectory": "artifacts/fotizo/dist/public",
   "framework": null,
+  "redirects": [
+    { "source": "/dashboards", "destination": "https://fotizo-dashboards-demo.vercel.app/dashboards", "permanent": false }
+  ],
   "rewrites": [
     {
       "source": "/api/:path*",
