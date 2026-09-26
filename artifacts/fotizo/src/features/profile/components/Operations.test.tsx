@@ -108,3 +108,17 @@ it("publishes an unpublished vehicle", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Publish" }));
   await waitFor(() => expect(operationsService.setVehicleStatus).toHaveBeenCalledWith("v1", "active"));
 });
+
+it("filters vehicle records and opens unpublished vehicle details", async () => {
+  vi.mocked(operationsService.vehicles).mockResolvedValue([
+    {id:"v1",slug:"byd-seal",make:"BYD",model:"Seal",bodyType:"sedan",fuel:"electric",seats:5,transmission:"Automatic",drivetrain:"RWD",powertrain:"Electric motor",efficiency:"500 km",landedPrice:30000,leadTimeWeeks:[8,12],image:"/seal.jpg",images:[],highlights:[],description:"Private catalogue description",status:"unpublished"},
+  ]);
+  mount(<VehicleCatalogueControls />);
+  fireEvent.click(await screen.findByRole("button",{name:"View BYD Seal"}));
+  expect(await screen.findByText("Private catalogue description")).toBeTruthy();
+  expect(screen.getByText("8–12 weeks")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button",{name:"Close"}));
+  fireEvent.change(screen.getByLabelText("Filter vehicle visibility"),{target:{value:"active"}});
+  expect(screen.getByText("No vehicles match this view.")).toBeTruthy();
+  expect(operationsService.setVehicleStatus).not.toHaveBeenCalled();
+});
