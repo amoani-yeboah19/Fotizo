@@ -53,7 +53,7 @@ async function request<T>(
   options: { params?: QueryParams; body?: unknown } = {},
 ): Promise<T> {
   const url = buildUrl(path, options.params);
-  const headers: Record<string, string> = { Accept: "application/json" };
+  const headers: Record<string, string> = { Accept: "application/json", "X-Fotizo-Request": "1" };
 
   let body: string | undefined;
   if (options.body !== undefined) {
@@ -85,3 +85,21 @@ export const api = {
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, { body }),
   del: <T>(path: string, body?: unknown) => request<T>("DELETE", path, { body }),
 };
+
+/**
+ * The server's own explanation for a rejected request (validation, limits,
+ * conflicts), or `fallback` for network and server failures.
+ */
+export function apiErrorMessage(err: unknown, fallback: string): string {
+  if (
+    err instanceof ApiError &&
+    err.status >= 400 &&
+    err.status < 500 &&
+    err.data &&
+    typeof err.data === "object" &&
+    "error" in err.data &&
+    typeof err.data.error === "string"
+  )
+    return err.data.error;
+  return fallback;
+}

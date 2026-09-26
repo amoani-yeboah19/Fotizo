@@ -1,64 +1,76 @@
 import jwt from "jsonwebtoken";
+import { z } from "zod";
 
-const rawSecret = process.env.JWT_SECRET;
-
-if (!rawSecret) {
-  throw new Error("JWT_SECRET must be set.");
+const secret = process.env.JWT_SECRET;
+if (
+  !secret ||
+  (process.env.NODE_ENV === "production" && Buffer.byteLength(secret) < 32)
+) {
+  throw new Error("JWT_SECRET must be set (at least 32 bytes in production).");
 }
+const JWT_SECRET: string = secret;
+const issuer = "fotizo-api";
+const audience = "fotizo-web";
+export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const roles = z.enum([
+  "buyer",
+  "seller",
+  "manager",
+  "developer",
+  "representative",
+  "china_representative",
+]);
+const authClaims = z.object({
+  purpose: z.literal("session"),
+  sub: z.string().uuid(),
+  sid: z.string().uuid(),
+  role: roles,
+  exp: z.number().int(),
+  iat: z.number().int(),
+});
+const pendingClaims = z.object({
+  purpose: z.literal("google-signup"),
+  googleId: z.string().min(1),
+  email: z.string().email(),
+  name: z.string().min(1),
+  exp: z.number().int(),
+  iat: z.number().int(),
+});
+export type AuthTokenPayload = z.infer<typeof authClaims>;
+export type PendingGoogleSignupPayload = z.infer<typeof pendingClaims>;
 
-// Re-bound to its own const so the type is `string` by inference, not by
-// narrowing — narrowing from the guard above wouldn't survive into the
-// function bodies below (TS doesn't re-check closures at call time).
-const JWT_SECRET: string = rawSecret;
-
-// How long a login stays valid before the user has to sign in again.
-// Kept relatively short because this token can't be revoked early — there's
-// no server-side session store to invalidate. Logout only clears the cookie
-// on the browser; a stolen token would still work until it expires.
-const TOKEN_TTL = "7d";
-
-export interface AuthTokenPayload {
-  sub: string; // user id
-  role: string;
-}
-
-export function signAuthToken(payload: AuthTokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_TTL });
-}
-
-export function verifyAuthToken(token: string): AuthTokenPayload {
-  return jwt.verify(token, JWT_SECRET) as unknown as AuthTokenPayload;
-}
-
-// Short-lived token for the gap between "Google verified this person" and
-// "they picked buyer/seller" — nothing is written to the DB until the role
-// is chosen, so this carries the verified identity across that one extra step.
-const PENDING_GOOGLE_SIGNUP_TTL = "10m";
-
-export interface PendingGoogleSignupPayload {
-  purpose: "google-signup";
-  googleId: string;
-  email: string;
-  name: string;
-}
-
-export function signPendingGoogleSignupToken(
-  payload: Omit<PendingGoogleSignupPayload, "purpose">,
-): string {
-  return jwt.sign({ ...payload, purpose: "google-signup" }, JWT_SECRET, {
-    expiresIn: PENDING_GOOGLE_SIGNUP_TTL,
+function verify(token: string) {
+  return jwt.verify(token, JWT_SECRET, {
+    algorithms: ["HS256"],
+    issuer,
+    audience,
   });
 }
-
-export function verifyPendingGoogleSignupToken(token: string): PendingGoogleSignupPayload {
-  const payload = jwt.verify(token, JWT_SECRET);
-  if (
-    typeof payload !== "object" ||
-    payload === null ||
-    (payload as { purpose?: unknown }).purpose !== "google-signup"
-  ) {
-    // Guards against a regular auth token being replayed into this endpoint.
-    throw new Error("Not a pending Google signup token.");
-  }
-  return payload as unknown as PendingGoogleSignupPayload;
+export function signAuthToken(
+  payload: Pick<AuthTokenPayload, "sub" | "sid" | "role">,
+): string {
+  return jwt.sign({ ...payload, purpose: "session" }, JWT_SECRET, {
+    algorithm: "HS256",
+    expiresIn: SESSION_TTL_MS / 1000,
+    issuer,
+    audience,
+  });
+}
+export function verifyAuthToken(token: string): AuthTokenPayload {
+  return authClaims.parse(verify(token));
+}
+export function signPendingGoogleSignupToken(
+  payload: Pick<PendingGoogleSignupPayload, "googleId" | "email" | "name">,
+): string {
+  return jwt.sign({ ...payload, purpose: "google-signup" }, JWT_SECRET, {
+    algorithm: "HS256",
+    expiresIn: "10m",
+    issuer,
+    audience,
+  });
+}
+export function verifyPendingGoogleSignupToken(
+  token: string,
+): PendingGoogleSignupPayload {
+  return pendingClaims.parse(verify(token));
 }

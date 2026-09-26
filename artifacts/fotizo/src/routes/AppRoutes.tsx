@@ -1,45 +1,92 @@
-import { lazy, Suspense } from "react";
-import { Switch, Route } from "wouter";
+import { lazy, Suspense, useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
+import { useAuthModal } from "@/contexts/AuthModalContext";
+import { useAuth } from "@/contexts/AuthContext";
+import type { AuthView } from "@/features/auth/components/AuthModal";
 import { Loading } from "@/components/common/QueryStates";
 import NotFound from "@/routes/NotFound";
+import { RequireSession } from "@/components/common/RequireSession";
 import { DEMO_MODE } from "@/api";
 
 // Route-level code splitting: each page (and its heavy deps like recharts on the
 // dashboards) loads only when its route is visited.
 const WishlistPage = lazy(() => import("@/features/wishlist/pages/WishlistPage"));
 const Home = lazy(() => import("@/features/home/pages/HomePage"));
-const Login = lazy(() => import("@/features/auth/pages/LoginPage"));
-const Signup = lazy(() => import("@/features/auth/pages/SignupPage"));
-const ProductsPage = lazy(() => import("@/features/marketplace/pages/ProductsPage"));
-const ProductDetail = lazy(() => import("@/features/marketplace/pages/ProductDetailPage"));
+const Settings = lazy(() => import("@/features/settings/pages/SettingsPage"));
+const ProductsPage = lazy(
+  () => import("@/features/marketplace/pages/ProductsPage"),
+);
+const ProductDetail = lazy(
+  () => import("@/features/marketplace/pages/ProductDetailPage"),
+);
 const ShopPage = lazy(() => import("@/features/shop/pages/ShopPage"));
-const ShopProductPage = lazy(() => import("@/features/shop/pages/ShopProductPage"));
+const ShopProductPage = lazy(
+  () => import("@/features/shop/pages/ShopProductPage"),
+);
 const AutosPage = lazy(() => import("@/features/autos/pages/AutosPage"));
-const VehicleDetail = lazy(() => import("@/features/autos/pages/VehicleDetailPage"));
-const ServicesPage = lazy(() => import("@/features/artisans/pages/ServicesPage"));
-const ServiceDetail = lazy(() => import("@/features/artisans/pages/ServiceDetailPage"));
+const VehicleDetail = lazy(
+  () => import("@/features/autos/pages/VehicleDetailPage"),
+);
+const ServicesPage = lazy(
+  () => import("@/features/artisans/pages/ServicesPage"),
+);
+const ServiceDetail = lazy(
+  () => import("@/features/artisans/pages/ServiceDetailPage"),
+);
 const CartPage = lazy(() => import("@/features/payments/pages/CartPage"));
-const CheckoutPage = lazy(() => import("@/features/payments/pages/CheckoutPage"));
-const OrderConfirmation = lazy(() => import("@/features/payments/pages/OrderConfirmationPage"));
-const MessagesPage = lazy(() => import("@/features/messaging/pages/MessagesPage"));
-const MessageThread = lazy(() => import("@/features/messaging/pages/MessageThreadPage"));
-const DashboardLanding = lazy(() => import("@/features/profile/pages/DashboardLandingPage"));
-const DashboardBuyer = lazy(() => import("@/features/profile/pages/BuyerDashboard"));
-const DashboardSeller = lazy(() => import("@/features/profile/pages/SellerDashboard"));
-const DashboardManager = lazy(() => import("@/features/profile/pages/ManagerDashboard"));
-const DashboardDeveloper = lazy(() => import("@/features/profile/pages/DeveloperDashboard"));
-const DashboardRepresentative = lazy(() => import("@/features/profile/pages/RepresentativeDashboard"));
-const DashboardChinaRepresentative = lazy(() => import("@/features/profile/pages/ChinaRepresentativeDashboard"));
-const PostProduct = lazy(() => import("@/features/marketplace/pages/PostProductPage"));
-const OfferService = lazy(() => import("@/features/artisans/pages/OfferServicePage"));
+const CheckoutPage = lazy(
+  () => import("@/features/payments/pages/CheckoutPage"),
+);
+const OrderConfirmation = lazy(
+  () => import("@/features/payments/pages/OrderConfirmationPage"),
+);
+const MessagesPage = lazy(
+  () => import("@/features/messaging/pages/MessagesPage"),
+);
+const MessageThread = lazy(
+  () => import("@/features/messaging/pages/MessageThreadPage"),
+);
+const DashboardLanding = lazy(
+  () => import("@/features/profile/pages/DashboardLandingPage"),
+);
+const DashboardBuyer = lazy(
+  () => import("@/features/profile/pages/BuyerDashboard"),
+);
+const DashboardSeller = lazy(
+  () => import("@/features/profile/pages/SellerDashboard"),
+);
+const DashboardManager = import.meta.env.VITE_DEMO_MODE === "true"
+  ? lazy(() => import("@/features/profile/pages/ManagerDemoDashboard"))
+  : lazy(() => import("@/features/profile/pages/ManagerDashboard"));
+const DashboardDeveloper = lazy(
+  () => import("@/features/profile/pages/DeveloperDashboard"),
+);
+const DashboardRepresentative = lazy(
+  () => import("@/features/profile/pages/RepresentativeDashboard"),
+);
+const DashboardChinaRepresentative = lazy(
+  () => import("@/features/profile/pages/ChinaRepresentativeDashboard"),
+);
+const PostProduct = lazy(
+  () => import("@/features/marketplace/pages/PostProductPage"),
+);
+const OfferService = lazy(
+  () => import("@/features/artisans/pages/OfferServicePage"),
+);
 const SupportPage = lazy(() => import("@/features/support/pages/SupportPage"));
 const AboutPage = lazy(() => import("@/features/company/pages/AboutPage"));
-const HowItWorksPage = lazy(() => import("@/features/company/pages/HowItWorksPage"));
-const TrustSafetyPage = lazy(() => import("@/features/company/pages/TrustSafetyPage"));
+const HowItWorksPage = lazy(
+  () => import("@/features/company/pages/HowItWorksPage"),
+);
+const TrustSafetyPage = lazy(
+  () => import("@/features/company/pages/TrustSafetyPage"),
+);
 const TermsPage = lazy(() => import("@/features/company/pages/TermsPage"));
 const PrivacyPage = lazy(() => import("@/features/company/pages/PrivacyPage"));
 const GuidesPage = lazy(() => import("@/features/guides/pages/GuidesPage"));
-const GuideArticle = lazy(() => import("@/features/guides/pages/GuideArticlePage"));
+const GuideArticle = lazy(
+  () => import("@/features/guides/pages/GuideArticlePage"),
+);
 // Demo-build only: role picker that signs a reviewer into any dashboard.
 //
 // The env check is written inline rather than via the DEMO_MODE re-export because
@@ -52,6 +99,22 @@ const DemoLanding =
     ? lazy(() => import("@/features/demo/pages/DemoLandingPage"))
     : null;
 
+// /login and /signup links (bookmarks, emails, redirects) open the sign-in
+// modal over the home page; there is no separate authentication page.
+function OpenAuthModal({ view }: { view: AuthView }) {
+  const openAuth = useAuthModal();
+  const { status, user } = useAuth();
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    // Wait for session restoration: it remounts the app (clearing private
+    // state), which would also discard a modal opened before it finished.
+    if (status === "loading" || status === "signing-out") return;
+    if (!user) openAuth(view);
+    navigate("/", { replace: true });
+  }, [status, user, openAuth, navigate, view]);
+  return null;
+}
+
 export function AppRoutes() {
   return (
     <Suspense
@@ -63,8 +126,19 @@ export function AppRoutes() {
     >
       <Switch>
         <Route path="/" component={Home} />
-        <Route path="/login" component={Login} />
-        <Route path="/signup" component={Signup} />
+        <Route path="/login">
+          <OpenAuthModal view="signin" />
+        </Route>
+        <Route path="/signup">
+          <OpenAuthModal view="join" />
+        </Route>
+        <Route path="/settings">
+          {() => (
+            <RequireSession>
+              <Settings />
+            </RequireSession>
+          )}
+        </Route>
         <Route path="/products" component={ProductsPage} />
         <Route path="/products/:id" component={ProductDetail} />
         <Route path="/shop" component={ShopPage} />
@@ -83,23 +157,128 @@ export function AppRoutes() {
         <Route path="/guides/:slug" component={GuideArticle} />
         <Route path="/wishlist" component={WishlistPage} />
         <Route path="/cart" component={CartPage} />
-        <Route path="/checkout" component={CheckoutPage} />
-        <Route path="/order-confirmation" component={OrderConfirmation} />
-        <Route path="/messages" component={MessagesPage} />
-        <Route path="/messages/:id" component={MessageThread} />
-        <Route path="/dashboard" component={DashboardLanding} />
-        <Route path="/dashboard/buyer" component={DashboardBuyer} />
-        <Route path="/dashboard/seller/products/new" component={PostProduct} />
-        <Route path="/dashboard/seller/products/:id/edit" component={PostProduct} />
-        <Route path="/dashboard/china_representative/products/new" component={PostProduct} />
-        <Route path="/dashboard/china_representative/products/:id/edit" component={PostProduct} />
-        <Route path="/dashboard/seller/services/new" component={OfferService} />
-        <Route path="/dashboard/seller" component={DashboardSeller} />
-        <Route path="/dashboard/manager" component={DashboardManager} />
-        <Route path="/dashboard/developer" component={DashboardDeveloper} />
-        <Route path="/dashboard/representative" component={DashboardRepresentative} />
-        <Route path="/dashboard/china_representative" component={DashboardChinaRepresentative} />
-        {DEMO_MODE && DemoLanding && <Route path="/demo" component={DemoLanding} />}
+        <Route path="/checkout">
+          {() => (
+            <RequireSession roles={["buyer", "seller"]}>
+              <CheckoutPage />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/order-confirmation">
+          {() => (
+            <RequireSession>
+              <OrderConfirmation />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/messages">
+          {() => (
+            <RequireSession>
+              <MessagesPage />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/messages/:id">
+          {() => (
+            <RequireSession>
+              <MessageThread />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/dashboard">
+          {() => (
+            <RequireSession>
+              <DashboardLanding />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/dashboard/buyer">
+          {() => (
+            <RequireSession roles={["buyer", "seller"]}>
+              <DashboardBuyer />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/dashboard/seller/products/new">
+          {() => (
+            <RequireSession roles={["seller"]}>
+              <PostProduct />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/dashboard/seller/products/:id/edit">
+          {() => (
+            <RequireSession roles={["seller"]}>
+              <PostProduct />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/dashboard/china_representative/products/new">
+          {() => (
+            <RequireSession roles={["china_representative"]}>
+              <PostProduct />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/dashboard/china_representative/products/:id/edit">
+          {() => (
+            <RequireSession roles={["china_representative"]}>
+              <PostProduct />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/dashboard/seller/services/:id/edit">
+          {() => (
+            <RequireSession roles={["seller"]}>
+              <OfferService />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/dashboard/seller/services/new">
+          {() => (
+            <RequireSession roles={["seller"]}>
+              <OfferService />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/dashboard/seller">
+          {() => (
+            <RequireSession roles={["seller"]}>
+              <DashboardSeller />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/dashboard/manager">
+          {() => (
+            <RequireSession roles={["manager"]}>
+              <DashboardManager />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/dashboard/developer">
+          {() => (
+            <RequireSession roles={["developer"]}>
+              <DashboardDeveloper />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/dashboard/representative">
+          {() => (
+            <RequireSession roles={["representative"]}>
+              <DashboardRepresentative />
+            </RequireSession>
+          )}
+        </Route>
+        <Route path="/dashboard/china_representative">
+          {() => (
+            <RequireSession roles={["china_representative"]}>
+              <DashboardChinaRepresentative />
+            </RequireSession>
+          )}
+        </Route>
+        {DEMO_MODE && DemoLanding && (
+          <Route path="/demo" component={DemoLanding} />
+        )}
         {DEMO_MODE && DemoLanding && <Route path="/dashboards" component={DemoLanding} />}
         <Route component={NotFound} />
       </Switch>

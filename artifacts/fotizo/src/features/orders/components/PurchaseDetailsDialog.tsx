@@ -80,7 +80,7 @@ export function PurchaseDetailsDialog({
         <dl className="space-y-3 rounded-xl border border-border p-4 text-sm">
           <div>
             <dt className="text-muted-foreground">Purchase reference</dt>
-            <dd className="mt-1 font-mono text-xs break-all">{order.id}</dd>
+            <dd className="mt-1 font-mono text-xs break-all">{order.reference ?? order.id}</dd>
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Order date</dt>

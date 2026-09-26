@@ -116,3 +116,5 @@ export function useWishlist() {
   if (!value) throw new Error("useWishlist requires WishlistProvider");
   return value;
 }
+
+export function useOptionalWishlist() { return useContext(WishlistContext); }

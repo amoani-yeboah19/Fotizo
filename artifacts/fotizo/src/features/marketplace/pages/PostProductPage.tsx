@@ -14,7 +14,7 @@ import { Price } from "@/components/common/Price";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { aiService } from "@/services";
-import { useCreateProduct, useUpdateProduct, useProduct } from "@/features/marketplace/hooks";
+import { useCreateProduct, useUpdateProduct, useOwnedProduct } from "@/features/marketplace/hooks";
 import type { NewProductInput } from "@/types";
 
 const PRODUCT_CATEGORIES = [
@@ -50,9 +50,10 @@ export default function PostProductPage() {
   const { toast } = useToast();
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
-  const { data: existingProduct, isLoading: isLoadingExisting } = useProduct(editingId ?? "");
+  const { data: existingProduct, isLoading: isLoadingExisting, isError: listingFailed } = useOwnedProduct(editingId ?? "");
 
   const [step, setStep] = useState(0);
+  const [publicationStatus, setPublicationStatus] = useState<"active" | "unpublished">("active");
   const [images, setImages] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [specs, setSpecs] = useState<{ key: string; value: string }[]>([{ key: "", value: "" }]);
@@ -67,6 +68,7 @@ export default function PostProductPage() {
   // Fill the form once the existing listing loads — only in edit mode.
   useEffect(() => {
     if (!existingProduct) return;
+    setPublicationStatus(existingProduct.status ?? "active");
     reset({
       title: existingProduct.title,
       category: existingProduct.category,
@@ -128,7 +130,7 @@ export default function PostProductPage() {
     };
     try {
       if (editingId) {
-        const updated = await updateProduct.mutateAsync({ id: editingId, input });
+        const updated = await updateProduct.mutateAsync({ id: editingId, input: { ...input, status: publicationStatus } });
         toast({ title: "Changes saved", description: `${updated.title} has been updated.` });
       } else {
         const created = await createProduct.mutateAsync(input);
@@ -151,6 +153,10 @@ export default function PostProductPage() {
 
   const v = watch();
 
+  if (editingId && !isLoadingExisting && (listingFailed || !existingProduct)) {
+    return <PageLayout mainClassName="container-app py-24"><p role="alert">This listing could not be loaded. Check that it belongs to your account and try again.</p></PageLayout>;
+  }
+
   if (editingId && isLoadingExisting) {
     return (
       <PageLayout mainClassName="container-app py-24 md:py-28">
@@ -169,15 +175,20 @@ export default function PostProductPage() {
             <Package className="w-3.5 h-3.5" aria-hidden="true" />
             {user?.role === "china_representative" ? "China desk inventory" : "Seller tools"}
           </span>
-          <h1 className="heading-page text-foreground mt-3">{editingId ? "Edit live shop product" : "Publish a shop product"}</h1>
+          <h1 className="heading-page text-foreground mt-3">{editingId ? "Edit product" : "Publish a product"}</h1>
           <p className="text-muted-foreground mt-1">
             {editingId
-              ? "Update the live Fotizo shop listing that shoppers see on the storefront."
-              : "Create a new product for the live Fotizo shop catalogue and publish it to the storefront."}
+              ? "Update your listing details. Unpublished listings remain hidden until you publish them."
+              : "Create a product for your account's storefront."}
           </p>
         </header>
 
         <div className="rounded-2xl border border-border bg-white p-6 sm:p-8 shadow-sm">
+          {editingId && <Field label="Visibility" htmlFor="visibility">
+            <select id="visibility" className="border rounded p-2 mb-4" value={publicationStatus} onChange={(e) => setPublicationStatus(e.target.value as "active" | "unpublished")}>
+              <option value="active">Published</option><option value="unpublished">Unpublished</option>
+            </select>
+          </Field>}
           <WizardShell
             steps={STEPS}
             current={step}
@@ -307,7 +318,7 @@ export default function PostProductPage() {
                 <p className="text-xs text-muted-foreground">
                   {editingId
                     ? "Saving updates this listing everywhere it already appears."
-                    : "Publishing adds this to the marketplace and your seller dashboard."}
+                    : "Publishing adds this to your account storefront and inventory dashboard."}
                 </p>
               </div>
             )}

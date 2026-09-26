@@ -18,7 +18,29 @@ export const ordersTable = pgTable("orders", {
     .references(() => usersTable.id),
   total: numeric("total", { precision: 10, scale: 2, mode: "number" }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // Checkout fields from migrations/0007_order_checkout.sql. Orders placed
+  // before that migration have no reference or delivery snapshot.
+  reference: text("reference"),
+  subtotal: numeric("subtotal", { precision: 10, scale: 2, mode: "number" }),
+  shipping: numeric("shipping", { precision: 10, scale: 2, mode: "number" }).notNull().default(0),
+  currency: text("currency").notNull().default("GBP"),
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  addressLine1: text("address_line1"),
+  addressLine2: text("address_line2"),
+  city: text("city"),
+  postalCode: text("postal_code"),
+  country: text("country"),
+  paymentMethod: text("payment_method").$type<PaymentMethod>(),
+  paymentStatus: text("payment_status").$type<"unpaid" | "paid">().notNull().default("unpaid"),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+  paidBy: uuid("paid_by").references(() => usersTable.id, { onDelete: "set null" }),
+  idempotencyKey: text("idempotency_key"),
 });
+
+export const PAYMENT_METHODS = ["pay_on_delivery", "mobile_money", "bank_transfer"] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 // One row per product line. Title/image/seller/price are snapshotted at
 // purchase time — deliberately NOT looked up live from the product/seller

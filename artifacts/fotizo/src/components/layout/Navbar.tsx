@@ -1,4 +1,4 @@
-import { useWishlist } from "@/contexts/WishlistContext";
+import { useWishlistView as useWishlist } from "@/features/wishlist/hooks/useWishlistView";
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Search, Menu, X, Heart, ShoppingCart, MessageSquare } from "lucide-react";
@@ -10,21 +10,22 @@ import { BuyMegaMenu } from "@/components/layout/navbar/BuyMegaMenu";
 import { HireMegaMenu } from "@/components/layout/navbar/HireMegaMenu";
 import { UserMenu } from "@/components/layout/navbar/UserMenu";
 import { NavbarMobileMenu } from "@/components/layout/navbar/NavbarMobileMenu";
-import { AuthModal, type AuthView } from "@/features/auth/components/AuthModal";
+import type { AuthView } from "@/features/auth/components/AuthModal";
+import { useAuthModal } from "@/contexts/AuthModalContext";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [authView, setAuthView] = useState<AuthView | null>(null);
   const { isAuthenticated } = useAuth();
   const { count } = useCart();
   const { items: wishlist } = useWishlist();
   const wishlistLink = <Link href="/wishlist" aria-label={`Wishlist, ${wishlist.length} saved items`} className="relative p-2 text-foreground hover:text-primary transition-colors"><Heart className="w-5 h-5" aria-hidden="true" />{wishlist.length > 0 && <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">{wishlist.length > 99 ? "99+" : wishlist.length}</span>}</Link>;
   const { totalUnread } = useMessages();
 
+  const openAuthModal = useAuthModal();
   const openAuth = (view: AuthView) => {
     setMobileMenuOpen(false);
-    setAuthView(view);
+    openAuthModal(view);
   };
 
   useEffect(() => {
@@ -163,11 +164,6 @@ export function Navbar() {
         />
       )}
 
-      <AuthModal
-        open={authView !== null}
-        initialView={authView ?? "signin"}
-        onOpenChange={(open) => !open && setAuthView(null)}
-      />
     </header>
   );
 }

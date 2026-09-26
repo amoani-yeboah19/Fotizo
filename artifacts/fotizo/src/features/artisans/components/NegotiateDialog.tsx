@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useAuthModal } from "@/contexts/AuthModalContext";
 import { Handshake } from "lucide-react";
 import {
   Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -27,7 +28,8 @@ export function NegotiateDialog({ service }: { service: NegotiableService }) {
   const { user } = useAuth();
   const { startConversation, sendOffer } = useMessages();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const openAuth = useAuthModal();
 
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState("");
@@ -40,7 +42,7 @@ export function NegotiateDialog({ service }: { service: NegotiableService }) {
     if (!user) {
       toast({ title: "Sign in to negotiate", description: "Please log in to send an offer." });
       setOpen(false);
-      setLocation("/login");
+      openAuth("signin", location);
       return;
     }
     if (!valid || sending) return;

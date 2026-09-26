@@ -4,7 +4,9 @@ import {
 import {
   Code, Terminal, Key, Book, Copy, ExternalLink, Webhook, ListTree, Activity, CheckCircle2,
 } from "lucide-react";
-import { useDeveloperStats, useDashboardSection } from "@/features/profile/hooks";
+import { useDashboardSection } from "@/features/profile/hooks";
+import { useStaffQuery } from "@/features/profile/components/Operations";
+import { operationsService, type DeveloperStats } from "@/features/profile/services/operations.service";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { StatCard } from "@/components/common/StatCard";
@@ -16,41 +18,37 @@ import { Button } from "@/components/ui/button";
 
 type Section = "overview" | "keys" | "usage" | "webhooks" | "endpoints";
 
-const apiData = Array.from({ length: 24 }).map((_, i) => ({
-  time: `${i}:00`,
-  calls: Math.floor(Math.random() * 5000) + 1000,
-}));
+// Statistics are measured by this API process since it started (GET
+// /api/developer/stats). Fotizo issues no API keys and sends no webhooks yet,
+// so those lists are empty rather than illustrative.
+const API_KEYS: { name: string; key: string; date: string }[] = [];
+const WEBHOOKS: { url: string; events: string; status: string }[] = [];
 
-const API_KEYS = [
-  { name: "Production App", key: "pk_live_*******************8a9b", date: "May 10" },
-  { name: "Staging Env", key: "pk_test_*******************2x4z", date: "Jun 02" },
-];
-
-const WEBHOOKS = [
-  { url: "https://api.myapp.com/webhooks/fotizo", events: "order.created, order.updated", status: "healthy" },
-  { url: "https://api.myapp.com/webhooks/payouts", events: "payout.paid", status: "healthy" },
-];
-
+// Public endpoints this API actually serves.
 const ENDPOINTS = [
-  { method: "GET", path: "/v1/products", desc: "List products" },
-  { method: "POST", path: "/v1/products", desc: "Create a product" },
-  { method: "GET", path: "/v1/services", desc: "List services" },
-  { method: "POST", path: "/v1/orders", desc: "Place an order" },
-  { method: "GET", path: "/v1/orders/:id", desc: "Retrieve an order" },
-  { method: "POST", path: "/v1/webhooks", desc: "Register a webhook" },
+  { method: "GET", path: "/api/products", desc: "List published products" },
+  { method: "GET", path: "/api/products/:id", desc: "Retrieve a product" },
+  { method: "GET", path: "/api/services", desc: "List services" },
+  { method: "GET", path: "/api/vehicles", desc: "List published vehicles" },
+  { method: "POST", path: "/api/support-requests", desc: "Open a support request" },
+  { method: "POST", path: "/api/vehicle-enquiries", desc: "Send a vehicle enquiry" },
+  { method: "GET", path: "/api/currency/rates", desc: "Display exchange rates" },
 ];
 
-const METHODS = ["GET", "POST", "GET", "POST", "DELETE", "GET", "POST", "GET"];
-const PATHS = ["/v1/products", "/v1/orders", "/v1/services/42", "/v1/orders", "/v1/keys/9", "/v1/products/7", "/v1/webhooks", "/v1/orders/88"];
-const STATUSES = [200, 201, 200, 400, 204, 200, 500, 200];
-const RECENT_REQUESTS = Array.from({ length: 8 }).map((_, i) => ({
-  id: i,
-  method: METHODS[i],
-  path: PATHS[i],
-  status: STATUSES[i],
-  latency: Math.floor(Math.random() * 180) + 40,
-  time: `${i * 3 + 1}s ago`,
-}));
+const ago = (iso: string) => {
+  const seconds = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  return seconds < 60 ? `${seconds}s ago` : `${Math.round(seconds / 60)}m ago`;
+};
+type RequestRow = { id: number; method: string; path: string; status: number; latency: number; time: string };
+const requestRows = (stats: DeveloperStats): RequestRow[] =>
+  stats.recent.map((r, i) => ({
+    id: i,
+    method: r.method,
+    path: r.route,
+    status: r.status,
+    latency: r.durationMs,
+    time: ago(r.at),
+  }));
 
 const methodColor = (m: string) =>
   m === "GET" ? "text-blue-600" : m === "POST" ? "text-green-600" : m === "DELETE" ? "text-destructive" : "text-muted-foreground";
@@ -64,6 +62,7 @@ function ApiKeysPanel() {
         <Button size="sm">Generate New Key</Button>
       </div>
       <div className="p-6 space-y-4">
+        {API_KEYS.length === 0 && <p className="text-sm text-muted-foreground">No API keys have been issued.</p>}
         {API_KEYS.map((k, i) => (
           <div key={i} className="flex items-center justify-between p-4 border border-border rounded-xl">
             <div>
@@ -89,6 +88,7 @@ function WebhooksPanel() {
         <Button size="sm" variant="outline">Add Endpoint</Button>
       </div>
       <div className="p-6 space-y-4">
+        {WEBHOOKS.length === 0 && <p className="text-sm text-muted-foreground">No webhook endpoints are registered.</p>}
         {WEBHOOKS.map((w, i) => (
           <div key={i} className="flex flex-col gap-2 p-4 border border-border rounded-xl">
             <div className="flex justify-between items-center">
@@ -103,7 +103,7 @@ function WebhooksPanel() {
   );
 }
 
-function RequestLog() {
+function RequestLog({ rows }: { rows: RequestRow[] }) {
   return (
     <SurfaceCard className="overflow-hidden">
       <div className="p-6 border-b border-border"><h3 className="text-lg font-bold">Recent Requests</h3></div>
@@ -119,7 +119,10 @@ function RequestLog() {
             </tr>
           </thead>
           <tbody className="divide-y border-border font-mono text-xs">
-            {RECENT_REQUESTS.map((r) => (
+            {rows.length === 0 && (
+              <tr><td colSpan={5} className="px-6 py-3 text-muted-foreground">No requests recorded yet.</td></tr>
+            )}
+            {rows.map((r) => (
               <tr key={r.id} className="hover:bg-muted/30">
                 <td className={`px-6 py-3 font-bold ${methodColor(r.method)}`}>{r.method}</td>
                 <td className="px-6 py-3">{r.path}</td>
@@ -136,7 +139,24 @@ function RequestLog() {
 }
 
 export default function DashboardDeveloper() {
-  const { data: developerStats } = useDeveloperStats();
+  const { data: stats } = useStaffQuery(["developer-stats"], operationsService.developerStats);
+  const developerStats = stats && {
+    apiCalls: stats.requests,
+    errorRate: stats.errorRate,
+    avgLatency: stats.avgLatencyMs,
+    webhooksDelivered: 0,
+  };
+  const apiData = (stats?.hourly ?? []).map((h) => ({
+    time: new Date(h.hour).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+    calls: h.requests,
+  }));
+  const recentRows = stats ? requestRows(stats) : [];
+  const systemStatus = [
+    { name: "API", ok: true, label: "Operational" },
+    { name: "Database", ok: stats?.database.ready ?? false, label: stats?.database.ready ? "Operational" : "Not ready" },
+    { name: "Webhooks", ok: false, label: "Not configured" },
+    { name: "Payments", ok: false, label: "Not configured" },
+  ];
   const [section, setSection] = useDashboardSection<Section>(
     ["overview", "keys", "usage", "webhooks", "endpoints"],
     "overview",
@@ -171,7 +191,7 @@ export default function DashboardDeveloper() {
 
           {/* Stat row — shown on every panel for constant visibility */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <StatCard label="API Calls (30d)" value={developerStats.apiCalls.toLocaleString()} valueClassName="text-2xl font-mono" />
+            <StatCard label="API Calls" value={developerStats.apiCalls.toLocaleString()} valueClassName="text-2xl font-mono" />
             <StatCard label="Error Rate" value={`${developerStats.errorRate}%`} valueClassName="text-2xl font-mono text-green-600" />
             <StatCard label="Avg Latency" value={`${developerStats.avgLatency}ms`} valueClassName="text-2xl font-mono" />
             <StatCard label="Webhooks Delivered" value={developerStats.webhooksDelivered.toLocaleString()} valueClassName="text-2xl font-mono" />
@@ -200,22 +220,22 @@ export default function DashboardDeveloper() {
                 </div>
               </SurfaceCard>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2"><RequestLog /></div>
+                <div className="lg:col-span-2"><RequestLog rows={recentRows} /></div>
                 <SurfaceCard className="p-6">
                   <h3 className="text-lg font-bold mb-4">System Status</h3>
                   <div className="space-y-3">
-                    {["API", "Webhooks", "Payments", "Dashboard"].map((s) => (
-                      <div key={s} className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{s}</span>
-                        <span className="inline-flex items-center gap-1.5 text-green-600 font-medium">
-                          <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Operational
+                    {systemStatus.map((s) => (
+                      <div key={s.name} className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{s.name}</span>
+                        <span className={`inline-flex items-center gap-1.5 font-medium ${s.ok ? "text-green-600" : "text-muted-foreground"}`}>
+                          <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> {s.label}
                         </span>
                       </div>
                     ))}
                   </div>
                   <div className="mt-6 rounded-xl bg-primary/5 p-4">
-                    <p className="text-sm font-medium text-primary">Plan: Pro</p>
-                    <p className="text-xs text-muted-foreground mt-1">{developerStats.rateLimit.toLocaleString()} req/min · {developerStats.activeKeys} active keys</p>
+                    <p className="text-sm font-medium text-primary">Environment: {stats?.environment}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Node {stats?.node} · {API_KEYS.length} active keys</p>
                   </div>
                 </SurfaceCard>
               </div>
@@ -223,7 +243,7 @@ export default function DashboardDeveloper() {
           )}
 
           {section === "keys" && <ApiKeysPanel />}
-          {section === "usage" && <RequestLog />}
+          {section === "usage" && <RequestLog rows={recentRows} />}
           {section === "webhooks" && <WebhooksPanel />}
           {section === "endpoints" && (
             <SurfaceCard className="overflow-hidden">

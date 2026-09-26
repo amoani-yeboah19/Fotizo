@@ -16,9 +16,10 @@ export const ShopProductCard = memo(function ShopProductCard({ product }: { prod
 
   const quickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
+    // Shop goods are sourced to order, so local stock does not limit the cart.
     addItem({
       id: `shop-${product.id}`,
-      productId: `shop-${product.id}`,
+      productId: product.id,
       title: product.title,
       price: product.price,
       image: product.image,

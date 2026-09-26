@@ -1,5 +1,4 @@
 import { api, SUPPORT_USE_MOCKS } from "@/api";
-import { delay } from "@/services/mocks/delay";
 
 // The topics a customer can raise. "not-received" is first deliberately — a
 // package that hasn't arrived is the reason most people open this page.
@@ -28,33 +27,17 @@ export interface SupportRequestInput {
 export interface SupportRequest extends SupportRequestInput {
   id: string;
   createdAt: string;
+  status: string;
   /** Shown back to the customer so they can quote it when they follow up. */
   reference: string;
 }
 
-// Mock mode only. A real backend needs POST /support-requests writing to a
-// tickets table, joined to the order so an agent can see where the package
-// actually is — plus a notification to whoever is on support. A ticket that
-// only lives in browser memory is gone the moment the tab closes.
-export const mockSupportRequests: SupportRequest[] = [];
-
-function makeReference(): string {
-  return `FZ-${Date.now().toString(36).toUpperCase().slice(-6)}`;
-}
-
+// Requests are stored server-side and worked by managers from the dashboard
+// queue. Demo builds have no backend, so they cannot accept a request rather
+// than pretending one was received.
 export async function submitSupportRequest(
   input: SupportRequestInput,
 ): Promise<SupportRequest> {
-  if (SUPPORT_USE_MOCKS) {
-    await delay();
-    const request: SupportRequest = {
-      ...input,
-      id: `sr-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      reference: makeReference(),
-    };
-    mockSupportRequests.unshift(request);
-    return request;
-  }
+  if (SUPPORT_USE_MOCKS) throw new Error("Support requests are unavailable in demo mode.");
   return api.post<SupportRequest>("/support-requests", input);
 }

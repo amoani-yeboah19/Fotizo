@@ -1,16 +1,20 @@
+import { AUTH_USE_MOCKS } from "@/api";
+import { Loading } from "@/components/common/QueryStates";
+import { useWishlistView as useWishlist } from "@/features/wishlist/hooks/useWishlistView";
 import { Link } from "wouter";
 import { Heart } from "lucide-react";
-import { useWishlist, wishlistKey } from "@/contexts/WishlistContext";
+import { wishlistKey } from "@/contexts/WishlistContext";
 import { Price } from "@/components/common/Price";
 import { Button } from "@/components/ui/button";
 import { WishlistButton } from "./WishlistButton";
 export function WishlistItems() {
-  const { items, storageError } = useWishlist();
+  const { items, storageError, isLoading, isError, retry } = useWishlist();
+  if (isLoading) return <Loading label="Loading wishlist…" />;
+  if (isError) return <div role="alert"><p>Unable to load your wishlist.</p><Button variant="outline" onClick={retry}>Try again</Button></div>;
   return (
     <>
       <p className="text-sm text-muted-foreground mb-5">
-        {items.length} saved {items.length === 1 ? "item" : "items"} · Saved in
-        this browser. Prices may change; open the listing for current details.
+        {items.length} saved {items.length === 1 ? "item" : "items"} · {AUTH_USE_MOCKS ? "Saved in this browser for the demo." : "Saved to your account."} Prices may change; open the listing for current details.
       </p>
       {storageError && (
         <p role="alert" className="mb-4 text-sm text-destructive">

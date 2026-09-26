@@ -4,10 +4,11 @@ import { SurfaceCard } from "@/components/common/SurfaceCard";
 import { Price } from "@/components/common/Price";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
+import { Loading } from "@/components/common/QueryStates";
 import { Minus, Plus, Trash2, ShoppingCart } from "lucide-react";
 
 export default function CartPage() {
-  const { items, total, updateQuantity, removeItem } = useCart();
+  const { items, total, updateQuantity, removeItem, isLoaded } = useCart();
 
   const shipping = total > 50 ? 0 : 5.99;
   const grandTotal = total + (items.length > 0 ? shipping : 0);
@@ -16,7 +17,9 @@ export default function CartPage() {
     <PageLayout mainClassName="container-app py-24">
       <h1 className="text-3xl font-bold mb-8">Shopping Cart</h1>
 
-      {items.length === 0 ? (
+      {!isLoaded ? (
+        <Loading label="Loading your cart…" />
+      ) : items.length === 0 ? (
         <SurfaceCard className="p-12 text-center max-w-2xl mx-auto mt-12 shadow-none">
           <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-6">
             <ShoppingCart className="w-10 h-10 text-primary" />

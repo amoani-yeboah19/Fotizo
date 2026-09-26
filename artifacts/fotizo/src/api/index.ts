@@ -1,4 +1,4 @@
-export { api, ApiError } from "./client";
+export { api, ApiError, apiErrorMessage } from "./client";
 export type { QueryParams } from "./client";
 export {
   API_BASE_URL,

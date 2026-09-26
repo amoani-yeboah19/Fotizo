@@ -14,6 +14,15 @@ interface FilterSidebarProps {
   rangeMinLabel: string;
   rangeMaxLabel: string;
   showInStock?: boolean;
+  // Optional controls. Pages that pass them get working filters; pages that
+  // omit them render the same sidebar uncontrolled.
+  selectedCategory?: string | null;
+  onCategoryChange?: (id: string | null) => void;
+  onRangeCommit?: (range: [number, number]) => void;
+  minRating?: number | null;
+  onMinRatingChange?: (rating: number | null) => void;
+  inStock?: boolean;
+  onInStockChange?: (inStock: boolean) => void;
 }
 
 // Shared filter sidebar for the product and service listings (differences are props).
@@ -27,9 +36,17 @@ export function FilterSidebar({
   rangeMinLabel,
   rangeMaxLabel,
   showInStock = false,
+  selectedCategory,
+  onCategoryChange,
+  onRangeCommit,
+  minRating,
+  onMinRatingChange,
+  inStock,
+  onInStockChange,
 }: FilterSidebarProps) {
   return (
-    <aside className="w-full md:w-64 shrink-0 space-y-8">
+    // Sticky beside the results on wider screens so only the listing scrolls.
+    <aside className="w-full md:w-64 shrink-0 space-y-8 md:sticky md:top-28 md:self-start md:max-h-[calc(100vh-8rem)] md:overflow-y-auto md:pr-2">
       <div>
         <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
           <SlidersHorizontal className="w-5 h-5" /> Filters
@@ -46,6 +63,10 @@ export function FilterSidebar({
                   <input
                     type="checkbox"
                     className="rounded border-border text-primary focus:ring-primary"
+                    {...(onCategoryChange && {
+                      checked: selectedCategory === c.id,
+                      onChange: () => onCategoryChange(selectedCategory === c.id ? null : c.id),
+                    })}
                   />
                   <span className="text-sm">{c.name}</span>
                   {showCount && (
@@ -62,7 +83,15 @@ export function FilterSidebar({
             <h4 className="font-medium mb-4 text-sm text-muted-foreground uppercase tracking-wider">
               {rangeLabel}
             </h4>
-            <Slider defaultValue={rangeDefault} max={rangeMax} step={rangeStep} className="mb-4" />
+            <Slider
+              defaultValue={rangeDefault}
+              max={rangeMax}
+              step={rangeStep}
+              className="mb-4"
+              onValueCommit={
+                onRangeCommit ? (v) => onRangeCommit([v[0], v[1]]) : undefined
+              }
+            />
             <div className="flex items-center justify-between text-sm">
               <span>{rangeMinLabel}</span>
               <span>{rangeMaxLabel}</span>
@@ -82,6 +111,11 @@ export function FilterSidebar({
                     type="radio"
                     name="rating"
                     className="border-border text-primary focus:ring-primary"
+                    {...(onMinRatingChange && {
+                      checked: minRating === r,
+                      onChange: () => onMinRatingChange(r),
+                      onClick: () => minRating === r && onMinRatingChange(null),
+                    })}
                   />
                   <span className="text-sm">{r} Stars &amp; Up</span>
                 </label>
@@ -96,7 +130,10 @@ export function FilterSidebar({
                 <Label htmlFor="in-stock" className="text-sm font-medium">
                   In Stock Only
                 </Label>
-                <Switch id="in-stock" />
+                <Switch
+                  id="in-stock"
+                  {...(onInStockChange && { checked: inStock ?? false, onCheckedChange: onInStockChange })}
+                />
               </div>
             </>
           )}

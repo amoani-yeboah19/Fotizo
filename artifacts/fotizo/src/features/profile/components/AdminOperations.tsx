@@ -8,7 +8,7 @@ import {
   CASE_ACTION_LABELS,
   type DisputeDecision,
   type ManagedOrder,
-} from "../services/operations.service";
+} from "../services/demo-operations.service";
 import { SurfaceCard } from "@/components/common/SurfaceCard";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Loading } from "@/components/common/QueryStates";

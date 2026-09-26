@@ -56,6 +56,7 @@ function toPublicService(row: ServiceRow, providerName: string) {
     group: row.group,
     packages: row.packages,
     skills: row.skills,
+    status: row.status,
   };
 }
 
@@ -140,6 +141,87 @@ router.post("/services", requireAuth, async (req: AuthenticatedRequest, res) => 
 
   const provider = await db.query.usersTable.findFirst({ where: eq(usersTable.id, req.auth!.userId) });
   res.status(201).json(toPublicService(created, provider?.name ?? "Unknown provider"));
+});
+
+// ── Provider management ──────────────────────────────────────────────────────
+// Providers see and change only their own listings, including withdrawn ones.
+
+async function ownedService(id: string | string[], providerId: string) {
+  const parsedId = z.string().uuid().safeParse(id);
+  if (!parsedId.success) return null;
+  const [row] = await db
+    .select({ service: servicesTable, providerName: usersTable.name })
+    .from(servicesTable)
+    .leftJoin(usersTable, eq(servicesTable.providerId, usersTable.id))
+    .where(and(eq(servicesTable.id, parsedId.data), eq(servicesTable.providerId, providerId)));
+  return row ?? null;
+}
+
+router.get("/provider/services", requireAuth, async (req: AuthenticatedRequest, res) => {
+  const rows = await db
+    .select({ service: servicesTable, providerName: usersTable.name })
+    .from(servicesTable)
+    .leftJoin(usersTable, eq(servicesTable.providerId, usersTable.id))
+    .where(eq(servicesTable.providerId, req.auth!.userId))
+    .orderBy(desc(servicesTable.createdAt))
+    .limit(200);
+  res.json(rows.map((r) => toPublicService(r.service, r.providerName ?? "Unknown provider")));
+});
+
+router.get("/provider/services/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+  const row = await ownedService(req.params.id, req.auth!.userId);
+  if (!row) {
+    res.status(404).json({ error: "Service not found." });
+    return;
+  }
+  res.json(toPublicService(row.service, row.providerName ?? "Unknown provider"));
+});
+
+// Replaces the listing's editable fields. Ratings, reviews and ownership are
+// never client-editable; the group is re-derived from the category.
+router.patch("/services/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+  const row = await ownedService(req.params.id, req.auth!.userId);
+  if (!row) {
+    res.status(404).json({ error: "Service not found." });
+    return;
+  }
+  const parsed = newServiceSchema.strict().safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid service data.", issues: parsed.error.issues });
+    return;
+  }
+  const group = groupForCategory(parsed.data.category);
+  if (!group) {
+    res.status(400).json({ error: "Unknown service category." });
+    return;
+  }
+  const [updated] = await db
+    .update(servicesTable)
+    .set({ ...parsed.data, group })
+    .where(and(eq(servicesTable.id, row.service.id), eq(servicesTable.providerId, req.auth!.userId)))
+    .returning();
+  res.json(toPublicService(updated, row.providerName ?? "Unknown provider"));
+});
+
+// Withdrawing hides the listing from customers without deleting it, so
+// existing bookings keep their reference; republishing shows it again.
+router.post("/services/:id/status", requireAuth, async (req: AuthenticatedRequest, res) => {
+  const body = z.object({ status: z.enum(["active", "unpublished"]) }).strict().safeParse(req.body);
+  const row = await ownedService(req.params.id, req.auth!.userId);
+  if (!row) {
+    res.status(404).json({ error: "Service not found." });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: "Choose to publish or withdraw the service." });
+    return;
+  }
+  const [updated] = await db
+    .update(servicesTable)
+    .set({ status: body.data.status })
+    .where(eq(servicesTable.id, row.service.id))
+    .returning();
+  res.json(toPublicService(updated, row.providerName ?? "Unknown provider"));
 });
 
 export default router;

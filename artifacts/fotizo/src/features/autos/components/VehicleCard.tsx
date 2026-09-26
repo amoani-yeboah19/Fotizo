@@ -18,7 +18,7 @@ export const VehicleCard = memo(function VehicleCard({ vehicle }: { vehicle: Veh
   const FuelIcon = FUEL_ICONS[vehicle.fuel];
 
   return (
-    <Link href={`/autos/${vehicle.id}`}>
+    <Link href={`/autos/${vehicle.slug}`}>
       <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-white transition-shadow hover:shadow-lg cursor-pointer">
         <div className="relative aspect-16/10 overflow-hidden bg-muted">
           <img

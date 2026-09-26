@@ -1,18 +1,16 @@
-# Wishlist
+# features/wishlist/
 
-The header heart beside the cart links to `/wishlist` on desktop and mobile, for
-signed-in users and guests. Hearts on Shop and Marketplace cards/detail pages toggle
-saved products, with filled state and a header count. The buyer dashboard Wishlist
-uses the same records rather than sample products. Saved cards link to their original
-Shop or Marketplace page and can be removed directly.
+Saved products per signed-in account, stored server-side (`/api/wishlist`,
+migration 0006). `useWishlistToggle` powers the heart buttons on product cards
+and the product page; `useWishlist` feeds the buyer dashboard. Signed-out
+visitors are asked to sign in and returned to the same page.
 
-This is frontend-only. `WishlistContext` stores product snapshots in localStorage,
-keyed by user ID (or guest) and identified by source plus product ID. Signing in/out
-switches lists; guest items are not automatically moved into an account. Reloads retain
-the list, storage events synchronize tabs, malformed records are ignored, and unavailable
-storage is reported on the wishlist page. Clearing browser data removes saved records.
-Prices are saved snapshots; the product page provides current price/availability.
+The header heart links to `/wishlist`; its count, page and Shop hearts now share
+that same server-backed query in live mode. Shop results keep their channel so saved
+cards open `/shop/:id` instead of a Marketplace URL. Request errors remain visible
+and optimistic saves roll back when refused.
 
-Backend handoff: account-based cross-device syncing needs authenticated list/add/remove
-wishlist endpoints, ownership checks, source-aware IDs, current availability/price
-resolution, and an explicit guest-to-account merge policy. No backend changes were made.
+Explicit mock-auth demos use WishlistProvider's per-account/guest browser store,
+so sample identities never call authenticated wishlist endpoints. Demo favourites
+are not automatically migrated to real accounts. The buyer dashboard and standalone
+wishlist page use the same source for the current environment.

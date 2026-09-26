@@ -2,22 +2,36 @@ import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { eq, or } from "drizzle-orm";
 import { db, usersTable, type UserRow } from "@workspace/db";
-import { hashPassword, verifyPassword } from "../lib/password";
+import { hashPassword, verifyPassword, passwordSchema } from "../lib/password";
 import {
-  signAuthToken,
   signPendingGoogleSignupToken,
   verifyPendingGoogleSignupToken,
 } from "../lib/jwt";
-import { verifyGoogleCredential, GoogleNotConfiguredError } from "../lib/googleAuth";
+import {
+  verifyGoogleCredential,
+  GoogleNotConfiguredError,
+} from "../lib/googleAuth";
 import { AUTH_COOKIE_NAME, authCookieOptions } from "../lib/cookies";
-import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
+import {
+  requireAuth,
+  type AuthenticatedRequest,
+} from "../middlewares/requireAuth";
+
+import { issueSession, revokeSession } from "../lib/sessions";
+import { changeAccountPassword } from "../lib/account";
+import { limitAuthAttempts, consumeAuthAttempt } from "../middlewares/security";
 
 const router: IRouter = Router();
+router.use((_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
+router.use(limitAuthAttempts);
 
 const signupSchema = z.object({
   name: z.string().trim().min(1).max(120),
   email: z.string().trim().toLowerCase().email().max(255),
-  password: z.string().min(8).max(72),
+  password: passwordSchema,
   // Public signup can only ever create buyer/seller accounts — manager and
   // developer are staff roles and must never be self-assignable from a
   // client-supplied field, no matter what the frontend form currently offers.
@@ -26,7 +40,7 @@ const signupSchema = z.object({
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
-  password: z.string().min(1),
+  password: z.string().min(1).max(1024),
 });
 
 // Shape returned to the client — deliberately excludes passwordHash.
@@ -39,13 +53,16 @@ function toPublicUser(row: UserRow) {
     avatar: row.avatar ?? undefined,
     joinedAt: row.createdAt.toISOString().split("T")[0],
     verified: row.verified,
+    hasPassword: !!row.passwordHash,
   };
 }
 
 router.post("/register", async (req, res) => {
   const parsed = signupSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid signup data.", issues: parsed.error.issues });
+    res
+      .status(400)
+      .json({ error: "Invalid signup data.", issues: parsed.error.issues });
     return;
   }
   const { name, email, password, role } = parsed.data;
@@ -54,7 +71,9 @@ router.post("/register", async (req, res) => {
     where: eq(usersTable.email, email),
   });
   if (existing) {
-    res.status(409).json({ error: "An account with this email already exists." });
+    res
+      .status(409)
+      .json({ error: "An account with this email already exists." });
     return;
   }
 
@@ -64,8 +83,7 @@ router.post("/register", async (req, res) => {
     .values({ name, email, passwordHash, role })
     .returning();
 
-  const token = signAuthToken({ sub: created.id, role: created.role });
-  res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
+  if (!(await issueSession(res, created))) return;
   res.status(201).json(toPublicUser(created));
 });
 
@@ -84,13 +102,16 @@ router.post("/login", async (req, res) => {
   // Same generic error whether the email doesn't exist, the account is
   // Google-only (no passwordHash), or the password is wrong. Telling those
   // apart would let an attacker enumerate real accounts.
-  if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
+  if (
+    !user ||
+    !user.passwordHash ||
+    !(await verifyPassword(password, user.passwordHash))
+  ) {
     res.status(401).json({ error: "Invalid email or password." });
     return;
   }
 
-  const token = signAuthToken({ sub: user.id, role: user.role });
-  res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
+  if (!(await issueSession(res, user))) return;
   res.json(toPublicUser(user));
 });
 
@@ -118,7 +139,9 @@ router.post("/google", async (req, res) => {
     identity = await verifyGoogleCredential(parsed.data.credential);
   } catch (err) {
     if (err instanceof GoogleNotConfiguredError) {
-      res.status(503).json({ error: "Google sign-in isn't set up on this server yet." });
+      res
+        .status(503)
+        .json({ error: "Google sign-in isn't set up on this server yet." });
       return;
     }
     res.status(401).json({ error: "Could not verify Google account." });
@@ -133,7 +156,10 @@ router.post("/google", async (req, res) => {
   const email = identity.email.toLowerCase();
 
   const existing = await db.query.usersTable.findFirst({
-    where: or(eq(usersTable.googleId, identity.googleId), eq(usersTable.email, email)),
+    where: or(
+      eq(usersTable.googleId, identity.googleId),
+      eq(usersTable.email, email),
+    ),
   });
 
   if (existing) {
@@ -149,8 +175,7 @@ router.post("/google", async (req, res) => {
             .returning()
         )[0];
 
-    const token = signAuthToken({ sub: user.id, role: user.role });
-    res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
+    if (!(await issueSession(res, user))) return;
     res.json({ kind: "user", user: toPublicUser(user) });
     return;
   }
@@ -183,7 +208,10 @@ router.post("/google/complete", async (req, res) => {
 
   // Re-check in case the account was created in the gap (e.g. a second tab).
   const existing = await db.query.usersTable.findFirst({
-    where: or(eq(usersTable.googleId, pending.googleId), eq(usersTable.email, pending.email)),
+    where: or(
+      eq(usersTable.googleId, pending.googleId),
+      eq(usersTable.email, pending.email),
+    ),
   });
 
   const user = existing
@@ -209,12 +237,91 @@ router.post("/google/complete", async (req, res) => {
           .returning()
       )[0];
 
-  const token = signAuthToken({ sub: user.id, role: user.role });
-  res.cookie(AUTH_COOKIE_NAME, token, authCookieOptions);
+  if (!(await issueSession(res, user))) return;
   res.status(201).json(toPublicUser(user));
 });
 
-router.post("/logout", (_req, res) => {
+const profileSchema = z
+  .object({ name: z.string().trim().min(1).max(120) })
+  .strict();
+const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1).max(1024),
+    newPassword: passwordSchema,
+  })
+  .strict();
+
+router.patch(
+  "/profile",
+  requireAuth,
+  async (req: AuthenticatedRequest, res) => {
+    const parsed = profileSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res
+        .status(400)
+        .json({
+          error:
+            "Enter a name between 1 and 120 characters. Only your display name can be updated here.",
+        });
+      return;
+    }
+    const [user] = await db
+      .update(usersTable)
+      .set(parsed.data)
+      .where(eq(usersTable.id, req.auth!.userId))
+      .returning();
+    if (!user) {
+      res.status(401).json({ error: "Please sign in again." });
+      return;
+    }
+    res.json(toPublicUser(user));
+  },
+);
+
+router.post(
+  "/password",
+  requireAuth,
+  async (req: AuthenticatedRequest, res) => {
+    const attempts = await consumeAuthAttempt(
+      `password:${req.auth!.userId}`,
+      5,
+    );
+    if (!attempts.allowed) {
+      res.setHeader("Retry-After", attempts.retryAfter);
+      res
+        .status(429)
+        .json({
+          error: "Too many password-change attempts. Please try again later.",
+        });
+      return;
+    }
+    const parsed = changePasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res
+        .status(400)
+        .json({
+          error:
+            "Provide your current password and a new password of at least 8 characters and at most 72 UTF-8 bytes.",
+        });
+      return;
+    }
+    const result = await changeAccountPassword(
+      req.auth!.userId,
+      req.auth!.sessionId,
+      parsed.data.currentPassword,
+      parsed.data.newPassword,
+    );
+    if (result.status !== 204) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    res.clearCookie(AUTH_COOKIE_NAME, authCookieOptions);
+    res.status(204).end();
+  },
+);
+
+router.post("/logout", async (req, res) => {
+  await revokeSession(req.cookies?.[AUTH_COOKIE_NAME]);
   res.clearCookie(AUTH_COOKIE_NAME, authCookieOptions);
   res.status(204).end();
 });

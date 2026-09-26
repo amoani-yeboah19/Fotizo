@@ -1,9 +1,12 @@
-import { useWishlist } from "@/contexts/WishlistContext";
-import { WishlistItems } from "@/features/wishlist/components/WishlistItems";
 import { PurchaseDetailsDialog, purchaseStatusTone } from "@/features/orders/components/PurchaseDetailsDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/contexts/MessagesContext";
-import { useOrders, useBookings, useDashboardSection } from "@/features/profile/hooks";
+import { useOrders, useDashboardSection } from "@/features/profile/hooks";
+import { useBookings, useChangeBookingStatus } from "@/features/bookings/hooks";
+import { useToast } from "@/hooks/use-toast";
+import { apiErrorMessage } from "@/api";
+import { useWishlist } from "@/features/wishlist/hooks";
+import { WishlistItems } from "@/features/wishlist/components/WishlistItems";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { StatCard } from "@/components/common/StatCard";
@@ -39,25 +42,56 @@ function OrderRow({ order }: { order: Order }) {
   );
 }
 
+const BOOKING_LABELS: Record<Booking["status"], string> = {
+  requested: "Awaiting confirmation",
+  confirmed: "Confirmed",
+  declined: "Declined",
+  cancelled: "Cancelled",
+  completed: "Completed",
+};
+
 function BookingCard({ booking }: { booking: Booking }) {
+  const { toast } = useToast();
+  const change = useChangeBookingStatus();
+  const when = new Date(booking.scheduledFor);
+  const open = booking.status === "requested" || booking.status === "confirmed";
+  const cancel = () =>
+    change.mutate(
+      { id: booking.id, status: "cancelled", expectedVersion: booking.statusVersion },
+      {
+        onSuccess: () => toast({ title: "Booking cancelled", description: booking.reference }),
+        onError: (error) =>
+          toast({ variant: "destructive", title: "Booking not cancelled", description: apiErrorMessage(error, "Please try again.") }),
+      },
+    );
   return (
     <div className="border border-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-semibold">{booking.date}</span>
-          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{booking.time}</span>
+          <span className="text-sm font-semibold">{when.toLocaleDateString(undefined, { dateStyle: "medium" })}</span>
+          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{when.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
         </div>
         <p className="font-medium text-sm">{booking.serviceTitle}</p>
         <div className="flex items-center gap-2 mt-2">
           <img loading="lazy" decoding="async" src={booking.providerAvatar} alt={booking.provider} className="w-5 h-5 rounded-full object-cover" />
-          <span className="text-xs text-muted-foreground">{booking.provider}</span>
+          <span className="text-xs text-muted-foreground">{booking.provider} · {booking.package} · {booking.reference}</span>
         </div>
+        {booking.providerNote && <p className="text-xs text-muted-foreground mt-2">“{booking.providerNote}”</p>}
       </div>
-      {booking.meetingLink ? (
-        <Button size="sm" className="gap-2 w-full sm:w-auto"><Video className="w-4 h-4" aria-hidden="true" /> Join</Button>
-      ) : (
-        <span className="text-xs font-medium text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full self-start sm:self-center">Awaiting Link</span>
-      )}
+      <div className="flex flex-col gap-2 self-start sm:self-center sm:items-end">
+        {booking.status === "confirmed" && booking.meetingLink ? (
+          <a href={booking.meetingLink} target="_blank" rel="noopener noreferrer">
+            <Button size="sm" className="gap-2 w-full sm:w-auto"><Video className="w-4 h-4" aria-hidden="true" /> Join</Button>
+          </a>
+        ) : (
+          <span className="text-xs font-medium text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full">{BOOKING_LABELS[booking.status]}</span>
+        )}
+        {open && (
+          <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" disabled={change.isPending} onClick={cancel}>
+            Cancel booking
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -83,8 +117,13 @@ export default function DashboardBuyer() {
   const { user } = useAuth();
   const { totalUnread } = useMessages();
   const { data: orders = [] } = useOrders();
+  const { data: wishlist = [] } = useWishlist();
   const { data: bookings = [] } = useBookings();
-  const { items: wishlist } = useWishlist();
+  const upcoming = bookings.filter((b) => (b.status === "requested" || b.status === "confirmed") && new Date(b.scheduledFor).getTime() >= Date.now());
+  const month = new Date().toISOString().slice(0, 7);
+  const spentThisMonth = orders
+    .filter((o) => o.status !== "cancelled" && o.date.startsWith(month))
+    .reduce((sum, o) => sum + o.price * o.quantity, 0);
   const [section, setSection] = useDashboardSection<Section>(
     ["overview", "orders", "bookings", "wishlist"],
     "overview",
@@ -116,9 +155,9 @@ export default function DashboardBuyer() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <StatCard label="Active Orders" value={String(orders.length)} icon={<Package className="w-6 h-6" />} iconClassName="bg-blue-50 text-blue-600" />
-            <StatCard label="Bookings" value={String(bookings.length)} icon={<Calendar className="w-6 h-6" />} iconClassName="bg-purple-50 text-purple-600" />
-            <StatCard label="Wishlist" value={wishlist.length} icon={<Heart className="w-6 h-6" />} iconClassName="bg-rose-50 text-rose-600" />
-            <StatCard label="Spent This Month" value="£593" icon={<CreditCard className="w-6 h-6" />} iconClassName="bg-green-50 text-green-600" />
+            <StatCard label="Bookings" value={String(upcoming.length)} icon={<Calendar className="w-6 h-6" />} iconClassName="bg-purple-50 text-purple-600" />
+            <StatCard label="Wishlist" value={String(wishlist.length)} icon={<Heart className="w-6 h-6" />} iconClassName="bg-rose-50 text-rose-600" />
+            <StatCard label="Spent This Month" value={<Price amount={spentThisMonth} />} icon={<CreditCard className="w-6 h-6" />} iconClassName="bg-green-50 text-green-600" />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <SurfaceCard className="overflow-hidden">
@@ -127,7 +166,7 @@ export default function DashboardBuyer() {
                 <Button variant="ghost" size="sm" onClick={() => setSection("orders")}>View All</Button>
               </div>
               <div className="divide-y border-border">
-                {orders.slice(0, 3).map((o) => <OrderRow key={o.id} order={o} />)}
+                {orders.length ? orders.slice(0, 3).map((o) => <OrderRow key={o.id} order={o} />) : <Empty label="No orders yet." />}
               </div>
             </SurfaceCard>
             <SurfaceCard className="overflow-hidden">
@@ -136,7 +175,7 @@ export default function DashboardBuyer() {
                 <Button variant="ghost" size="sm" onClick={() => setSection("bookings")}>View All</Button>
               </div>
               <div className="p-6 space-y-4">
-                {bookings.slice(0, 2).map((b) => <BookingCard key={b.id} booking={b} />)}
+                {upcoming.length ? [...upcoming].reverse().slice(0, 2).map((b) => <BookingCard key={b.id} booking={b} />) : <Empty label="No upcoming bookings." />}
               </div>
             </SurfaceCard>
           </div>

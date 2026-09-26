@@ -1,10 +1,9 @@
+import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import { ordersService } from "@/features/payments/services";
-import { bookingsService } from "@/features/bookings/services";
 import { catalogService } from "@/features/marketplace/services";
-import { dashboardService } from "@/features/profile/services";
 
 // Keeps a dashboard's in-page section in sync with the ?tab= query param, so a
 // section is deep-linkable (e.g. from the mobile menu). Falls back to `fallback`
@@ -24,19 +23,10 @@ export function useDashboardSection<T extends string>(valid: readonly T[], fallb
   return [section, setSection] as const;
 }
 
-// Purchases — items the current user bought.
-export const useOrders = () =>
-  useQuery({ queryKey: ["orders"], queryFn: ordersService.listOrders });
-
-// Sales — items bought from the current user (seller fulfilment queue).
-export const useSales = () =>
-  useQuery({ queryKey: ["sales"], queryFn: ordersService.listSales });
-
-export const useBookings = () =>
-  useQuery({ queryKey: ["bookings"], queryFn: bookingsService.listBookings });
-
-export const useSellerProducts = () =>
-  useQuery({ queryKey: ["seller-products"], queryFn: catalogService.listSellerProducts });
-
-export const useDeveloperStats = () =>
-  useQuery({ queryKey: ["developer-stats"], queryFn: dashboardService.getDeveloperStats });
+function useAccountQuery<T>(name: string, queryFn: () => Promise<T>) {
+  const { user, isAuthenticated } = useAuth();
+  return useQuery({ queryKey: [name, user?.id], queryFn, enabled: isAuthenticated });
+}
+export const useOrders = () => useAccountQuery("orders", ordersService.listOrders);
+export const useSales = () => useAccountQuery("sales", ordersService.listSales);
+export const useSellerProducts = () => useAccountQuery("seller-products", catalogService.listSellerProducts);

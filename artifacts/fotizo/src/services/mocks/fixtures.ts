@@ -1,5 +1,5 @@
 import type {
-  Product, Service, Category, Testimonial, Order, Booking, SellerProduct,
+  Product, Service, Category, Testimonial, Order, SellerProduct,
   ManagerMetrics, DeveloperStats, User, Conversation, CurrencyRates,
 } from "@/types";
 
@@ -368,7 +368,7 @@ export const testimonials: Testimonial[] = [
   },
 ];
 
-export const mockOrders: Order[] = [
+const demoOrderLines: Omit<Order, "orderId" | "reference" | "paymentStatus" | "paymentMethod">[] = [
   {
     id: "ord-001",
     productId: "p1",
@@ -407,34 +407,15 @@ export const mockOrders: Order[] = [
   },
 ];
 
-export const mockBookings: Booking[] = [
-  {
-    id: "bk-001",
-    serviceId: "s3",
-    serviceTitle: "Business Strategy & Growth Consulting",
-    provider: "Elena Rodriguez",
-    providerAvatar: "/images/avatar-3.webp",
-    package: "Sprint",
-    price: 2000.00,
-    status: "confirmed",
-    date: "2026-07-05",
-    time: "14:00 GMT",
-    meetingLink: "https://meet.fotizo.com/bk-001",
-  },
-  {
-    id: "bk-002",
-    serviceId: "s1",
-    serviceTitle: "Senior Full-Stack Web Development",
-    provider: "Sarah Jenkins",
-    providerAvatar: "/images/avatar-2.webp",
-    package: "Standard",
-    price: 1500.00,
-    status: "pending",
-    date: "2026-07-12",
-    time: "10:00 GMT",
-    meetingLink: null,
-  },
-];
+export const mockOrders: Order[] = demoOrderLines.map((line) => ({
+  ...line,
+  orderId: line.id,
+  reference: null,
+  paymentStatus: "unpaid",
+  paymentMethod: null,
+}));
+
+
 
 export const sellerProducts: SellerProduct[] = [];
 

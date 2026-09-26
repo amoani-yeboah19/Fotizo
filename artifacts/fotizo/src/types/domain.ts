@@ -24,6 +24,7 @@ export interface User {
   avatar?: string;
   joinedAt: string;
   verified: boolean;
+  hasPassword?: boolean;
 }
 
 export interface SignupData {
@@ -39,6 +40,8 @@ export interface ProductSpec {
 
 export interface Product {
   id: string;
+  channel?: "marketplace" | "shop";
+  status?: "active" | "unpublished";
   title: string;
   description: string;
   price: number;
@@ -82,6 +85,8 @@ export interface Service {
   availability: string;
   packages: ServicePackage[];
   skills: string[];
+  /** Withdrawn listings are hidden from customers but kept for their owner. */
+  status?: "active" | "unpublished";
 }
 
 export interface Category {
@@ -100,8 +105,16 @@ export interface Testimonial {
   text: string;
 }
 
+export type PaymentMethod = "pay_on_delivery" | "mobile_money" | "bank_transfer";
+
 export interface Order {
   id: string;
+  /** The checkout this line belongs to; one checkout can span several sellers. */
+  orderId: string;
+  /** Customer-facing order reference, e.g. FTZ-7K2M9Q4P (absent on early orders). */
+  reference: string | null;
+  paymentStatus: "unpaid" | "paid";
+  paymentMethod: PaymentMethod | null;
   productId: string;
   productTitle: string;
   productImage: string;
@@ -113,18 +126,30 @@ export interface Order {
   trackingNumber: string | null;
 }
 
+export type BookingStatus = "requested" | "confirmed" | "declined" | "cancelled" | "completed";
+
+/** A service booking request; the provider confirms or declines it. */
 export interface Booking {
   id: string;
+  reference: string;
   serviceId: string;
   serviceTitle: string;
   provider: string;
   providerAvatar: string;
+  /** The customer who requested it (shown to the provider). */
+  buyer: string;
   package: string;
   price: number;
-  status: string;
-  date: string;
-  time: string;
+  /** ISO instant; display in the viewer's local time. */
+  scheduledFor: string;
+  /** The customer's time zone when they booked, e.g. Africa/Accra. */
+  timezone: string;
+  notes: string;
+  status: BookingStatus;
+  statusVersion: number;
+  providerNote: string;
   meetingLink: string | null;
+  createdAt: string;
 }
 
 export interface SellerProduct {
@@ -132,7 +157,10 @@ export interface SellerProduct {
   title: string;
   price: number;
   stock: number;
+  /** Units sold, excluding cancelled order lines. */
   sales: number;
+  rating: number;
+  reviewCount: number;
   status: string;
   image: string;
   category: string;
@@ -233,11 +261,38 @@ export type Currency = CurrencyMeta & { rate: number };
 
 export type CurrencyRates = Record<CurrencyCode, number>;
 
+export interface DeliveryDetails {
+  name: string;
+  email: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  postalCode: string;
+  country: "GH" | "GB" | "US";
+}
+
+/** Prices and totals are decided by the server; the cart sends only quantities. */
 export interface PlaceOrderInput {
-  items: { productId: string; quantity: number; price: number }[];
-  total: number;
+  items: { productId: string; quantity: number }[];
+  delivery: DeliveryDetails;
+  paymentMethod: PaymentMethod;
+  /** One per checkout attempt, so a retried submission cannot create a second order. */
+  idempotencyKey: string;
 }
 
 export interface OrderConfirmation {
   orderId: string;
+  reference: string | null;
+  subtotal: number | null;
+  shipping: number;
+  total: number;
+  paymentMethod: PaymentMethod | null;
+  paymentStatus: "unpaid" | "paid";
+}
+
+export interface OrderDetail extends OrderConfirmation {
+  createdAt: string;
+  delivery: Omit<DeliveryDetails, "email">;
+  items: Order[];
 }

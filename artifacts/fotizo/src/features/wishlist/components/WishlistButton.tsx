@@ -1,5 +1,6 @@
+import { useWishlistView as useWishlist } from "@/features/wishlist/hooks/useWishlistView";
 import { Heart } from "lucide-react";
-import { useWishlist, type WishlistItem } from "@/contexts/WishlistContext";
+import { type WishlistItem } from "@/contexts/WishlistContext";
 export function WishlistButton({
   item,
   className = "",

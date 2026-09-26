@@ -1,7 +1,7 @@
 import { WishlistProvider } from "@/contexts/WishlistContext";
 import type { ReactNode } from "react";
 import { Router as WouterRouter } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SessionScope, SessionNotice } from "@/contexts/SessionScope";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,16 +10,8 @@ import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { MessagesProvider } from "@/contexts/MessagesContext";
 import { AppRoutes } from "@/routes/AppRoutes";
+import { AuthModalProvider } from "@/contexts/AuthModalContext";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60_000,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -34,26 +26,29 @@ function GoogleAuthWrapper({ children }: { children: ReactNode }) {
 function App() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
         <GoogleAuthWrapper>
         <AuthProvider>
-        <WishlistProvider>
+        <SessionNotice />
+        <SessionScope>
         <CurrencyProvider>
           <CartProvider>
             <MessagesProvider>
               <TooltipProvider>
                 <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                  <AppRoutes />
+                  <AuthModalProvider>
+                    <WishlistProvider>
+                    <AppRoutes />
+                    </WishlistProvider>
+                  </AuthModalProvider>
                 </WouterRouter>
                 <Toaster />
               </TooltipProvider>
             </MessagesProvider>
           </CartProvider>
         </CurrencyProvider>
-        </WishlistProvider>
+        </SessionScope>
       </AuthProvider>
       </GoogleAuthWrapper>
-      </QueryClientProvider>
     </ErrorBoundary>
   );
 }

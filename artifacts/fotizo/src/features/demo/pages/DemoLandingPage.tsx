@@ -150,7 +150,8 @@ export default function DemoLandingPage() {
     setError(null);
     // Drop whatever role was being viewed before, so switching roles from this
     // page never lands on a dashboard with the previous user's session.
-    logout();
+    const signedOut = await logout();
+    if (!signedOut.success) { setBusy(null); setError(signedOut.error ?? "Could not sign out."); return; }
     const result = await login(role.email, DEMO_PASSWORD);
     setBusy(null);
     if (result.success) {

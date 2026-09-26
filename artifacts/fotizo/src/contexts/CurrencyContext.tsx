@@ -21,10 +21,18 @@ export const CURRENCIES: CurrencyMeta[] = [
   { code: "GHS", symbol: "₵", name: "Ghana Cedi", flag: "🇬🇭" },
 ];
 
-const IDENTITY_RATES: CurrencyRates = { GBP: 1, USD: 1, GHS: 1 };
+function validRates(rates: CurrencyRates): boolean {
+  return (
+    rates?.GBP === 1 &&
+    [rates.USD, rates.GHS].every(
+      (rate) => typeof rate === "number" && Number.isFinite(rate) && rate > 0,
+    )
+  );
+}
 
 interface CurrencyContextType {
   currency: CurrencyMeta;
+  availableCurrencies: CurrencyMeta[];
   setCurrency: (code: CurrencyCode) => void;
   format: (amountGBP: number) => string;
   convert: (amountGBP: number) => number;
@@ -34,33 +42,51 @@ const CurrencyContext = createContext<CurrencyContextType | null>(null);
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [currencyCode, setCurrencyCode] = useState<CurrencyCode>(() => {
-    return (localStorage.getItem("fotizo_currency") as CurrencyCode) || "GBP";
+    try {
+      const saved = localStorage.getItem("fotizo_currency");
+      return CURRENCIES.find((c) => c.code === saved)?.code ?? "GBP";
+    } catch {
+      return "GBP";
+    }
   });
-  const [rates, setRates] = useState<CurrencyRates>(IDENTITY_RATES);
+  const [rates, setRates] = useState<CurrencyRates | null>(null);
 
   useEffect(() => {
     let active = true;
-    currencyService.getRates().then((r) => {
-      if (active) setRates(r);
-    });
+    currencyService
+      .getRates()
+      .then((r) => {
+        if (active && validRates(r)) setRates(r);
+      })
+      .catch(() => {
+        if (active) setRates(null);
+      });
     return () => {
       active = false;
     };
   }, []);
 
+  const effectiveCode = rates ? currencyCode : "GBP";
+  const availableCurrencies = rates ? CURRENCIES : [CURRENCIES[0]];
   const currency = useMemo(
-    () => CURRENCIES.find((c) => c.code === currencyCode)!,
-    [currencyCode],
+    () => CURRENCIES.find((c) => c.code === effectiveCode)!,
+    [effectiveCode],
   );
 
   const setCurrency = useCallback((code: CurrencyCode) => {
+    if (!CURRENCIES.some((c) => c.code === code)) return;
     setCurrencyCode(code);
-    localStorage.setItem("fotizo_currency", code);
+    try {
+      localStorage.setItem("fotizo_currency", code);
+    } catch {
+      /* Storage can be disabled. */
+    }
   }, []);
 
   const convert = useCallback(
-    (amountGBP: number) => Math.round(amountGBP * (rates[currencyCode] ?? 1) * 100) / 100,
-    [rates, currencyCode],
+    (amountGBP: number) =>
+      Math.round(amountGBP * (rates?.[effectiveCode] ?? 1) * 100) / 100,
+    [rates, effectiveCode],
   );
 
   const format = useCallback(
@@ -75,11 +101,15 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ currency, setCurrency, format, convert }),
-    [currency, setCurrency, format, convert],
+    () => ({ currency, availableCurrencies, setCurrency, format, convert }),
+    [currency, rates, setCurrency, format, convert],
   );
 
-  return <CurrencyContext.Provider value={value}>{children}</CurrencyContext.Provider>;
+  return (
+    <CurrencyContext.Provider value={value}>
+      {children}
+    </CurrencyContext.Provider>
+  );
 }
 
 export function useCurrency() {

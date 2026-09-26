@@ -1,5 +1,5 @@
 import { api, ADMIN_USE_MOCKS } from "@/api";
-import { recordDemoAdminAudit, type AdminPage } from "./admin.service";
+import { recordDemoAdminAudit, type AdminPage } from "./demo-admin.service";
 
 export type ApprovalStatus = "pending" | "approved" | "rejected";
 export interface ApprovalEvent {

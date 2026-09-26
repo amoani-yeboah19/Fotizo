@@ -1,3 +1,11 @@
+> Integration note after merging main: production now uses the backend-connected
+> `ManagerDashboard.tsx`, `admin.service.ts` and `operations.service.ts` from main.
+> The extended frontend preview below is retained in `ManagerDemoDashboard.tsx`,
+> `demo-admin.service.ts` and `demo-operations.service.ts`, selected only for explicit
+> demo builds. Contracts below describe that preview and must be reconciled with
+> the implemented API before any further live integration. Main's existing APIs,
+> permission checks, order/payment controls and support queues remain intact.
+
 # Manager workspace — frontend and backend handoff
 
 The frontend is at `/dashboard/manager`, with `?tab=overview`, `users`,
@@ -19,7 +27,7 @@ of live authentication and catalogue settings. Use the existing demo build's man
 role picker for frontend review without a real manager account.
 
 No backend implementation or database migration is included in this change.
-Set `VITE_USE_MOCK_ADMIN=false` only after backend integration is ready.
+The live manager route always uses the implemented API; `VITE_USE_MOCK_ADMIN` controls only the explicitly selected demo workspace.
 
 ## Proposed API contract for backend developers
 
