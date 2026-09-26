@@ -4,6 +4,7 @@
 // client once the OpenAPI contract grows) means changing only this file.
 
 import { API_BASE_URL } from "./config";
+import { reportSessionRejected } from "./session-events";
 
 export class ApiError<T = unknown> extends Error {
   readonly name = "ApiError";
@@ -72,6 +73,9 @@ async function request<T>(
   const data = parseBody(await response.text());
 
   if (!response.ok) {
+    // Auth endpoints answer 401 as part of normal sign-in; anything else means
+    // the session this page believed in has ended.
+    if (response.status === 401 && !path.startsWith("/auth/")) reportSessionRejected();
     throw new ApiError(response.status, response.statusText, data, url);
   }
 

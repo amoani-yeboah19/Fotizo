@@ -21,6 +21,7 @@ import { CartProvider, useCart } from "./CartContext";
 import { RequireSession } from "@/components/common/RequireSession";
 import { authService } from "@/features/auth/services";
 import { messagesService } from "@/features/messaging/services";
+import { reportSessionRejected } from "@/api/session-events";
 
 vi.mock("@/features/auth/services", () => ({
   authService: {
@@ -158,6 +159,19 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("session lifecycle and private state", () => {
+  it("signs out locally when the server rejects the session instead of polling forever", async () => {
+    vi.mocked(authService.getSession).mockResolvedValue(alice);
+    render(<Harness />);
+    await waitFor(() => expect(screen.getByTestId("identity").textContent).toBe("alice"));
+    const polls = vi.mocked(messagesService.listConversations).mock.calls.length;
+    vi.mocked(authService.getSession).mockResolvedValue(null);
+    await act(async () => reportSessionRejected());
+    await waitFor(() => expect(screen.getByTestId("identity").textContent).toBe("anonymous"));
+    expect(screen.getByTestId("status").textContent).toBe("anonymous");
+    // No further conversation polling for the ended session.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(vi.mocked(messagesService.listConversations).mock.calls.length).toBe(polls);
+  });
   it("waits for session restoration instead of redirecting a valid user", async () => {
     const pending = deferred<User | null>();
     vi.mocked(authService.getSession).mockReturnValue(pending.promise);
