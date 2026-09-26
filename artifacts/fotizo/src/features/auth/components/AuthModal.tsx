@@ -1,3 +1,9 @@
+import { ProfileFields } from "@/features/settings/components/ProfileFields";
+import {
+  emptyProfile,
+  validateProfile,
+  saveProfileDraft,
+} from "@/features/settings/profile";
 import { useState, useEffect, type FormEvent } from "react";
 import { useLocation } from "wouter";
 import { Check, Loader2 } from "lucide-react";
@@ -37,12 +43,19 @@ export function AuthModal({
   const [, setLocation] = useLocation();
 
   const [view, setView] = useState<AuthView>(initialView);
+  const [step, setStep] = useState(0);
+  const [details, setDetails] = useState({ ...emptyProfile });
+  const [confirmation, setConfirmation] = useState("");
+  const [accepted, setAccepted] = useState(false);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"buyer" | "seller">("buyer");
-  const [pendingGoogleToken, setPendingGoogleToken] = useState<string | null>(null);
+  const [pendingGoogleToken, setPendingGoogleToken] = useState<string | null>(
+    null,
+  );
 
   // Re-sync when the modal is (re)opened from a specific trigger.
   useEffect(() => {
@@ -50,6 +63,11 @@ export function AuthModal({
       setView(initialView);
       setLoading(false);
       setPassword("");
+      setConfirmation("");
+      setAccepted(false);
+      setError("");
+      setStep(0);
+      setDetails({ ...emptyProfile });
     }
   }, [open, initialView]);
 
@@ -58,21 +76,75 @@ export function AuthModal({
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (loading) return;
+    setError("");
+    if (isJoin) {
+      if (!name.trim() || name.trim().length > 120) {
+        setError("Enter your name using 1–120 characters.");
+        return;
+      }
+      if (
+        password.length < 8 ||
+        new TextEncoder().encode(password).length > 72
+      ) {
+        setError(
+          "Use at least 8 characters. If your password contains many symbols or accented characters, try a shorter passphrase.",
+        );
+        return;
+      }
+      if (password !== confirmation) {
+        setError("Your passwords do not match.");
+        return;
+      }
+      if (step === 0) {
+        setStep(1);
+        return;
+      }
+      const invalid = validateProfile(details, role);
+      if (invalid) {
+        setError(invalid);
+        return;
+      }
+      if (!accepted) {
+        setError(
+          "Please accept the Terms of Service and acknowledge the Privacy Policy.",
+        );
+        return;
+      }
+    }
     setLoading(true);
     try {
       const res = isJoin
-        ? await signup({ name, email, password, role })
-        : await login(email, password);
+        ? await signup({
+            name: name.trim(),
+            email: email.trim(),
+            password,
+            role,
+          })
+        : await login(email.trim(), password);
       if (res.success) {
+        const draftSaved =
+          isJoin && res.user ? saveProfileDraft(res.user.id, details) : false;
+        setPassword("");
+        setConfirmation("");
         toast({
           title: isJoin ? "Welcome to Fotizo!" : "Welcome back!",
-          description: isJoin ? "Your account is ready." : "You have successfully signed in.",
+          description: isJoin
+            ? draftSaved
+              ? "Your account is ready. Your additional profile details are saved as a browser draft."
+              : "Your account is ready, but the profile draft could not be saved. You can add it in Settings."
+            : "You have successfully signed in.",
         });
         onOpenChange(false);
         setLocation(returnTo);
       } else {
-        toast({ variant: "destructive", title: isJoin ? "Sign up failed" : "Sign in failed", description: res.error || "Please try again." });
+        toast({
+          variant: "destructive",
+          title: isJoin ? "Sign up failed" : "Sign in failed",
+          description: res.error || "Please try again.",
+        });
       }
+    } catch {
+      setError("We could not complete your request. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -80,142 +152,342 @@ export function AuthModal({
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)] max-w-[880px] max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-2xl border-0">
-        <div className="grid md:grid-cols-2">
-          {/* ── Left: brand panel ── */}
-          <div className="hidden md:flex flex-col bg-[#08275B] text-white p-10 pb-0">
-            <h2 className="text-3xl font-extrabold tracking-tight">Success starts here</h2>
-            <ul className="mt-6 space-y-3">
-              {PERKS.map((p) => (
-                <li key={p} className="flex items-start gap-2.5 text-sm leading-relaxed text-white/90">
-                  <Check className="w-4 h-4 mt-0.5 shrink-0 text-[#FF6A00]" aria-hidden="true" />
-                  {p}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-auto -mx-10">
-              <img
-                src="/images/auth-panel.webp"
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="w-full h-64 object-cover object-center"
-              />
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!loading) onOpenChange(next);
+        }}
+      >
+        <DialogContent className="w-[calc(100%-2rem)] max-w-[880px] max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-2xl border-0">
+          <div className="grid md:grid-cols-2">
+            {/* ── Left: brand panel ── */}
+            <div className="hidden md:flex flex-col bg-[#08275B] text-white p-10 pb-0">
+              <h2 className="text-3xl font-extrabold tracking-tight">
+                Success starts here
+              </h2>
+              <ul className="mt-6 space-y-3">
+                {PERKS.map((p) => (
+                  <li
+                    key={p}
+                    className="flex items-start gap-2.5 text-sm leading-relaxed text-white/90"
+                  >
+                    <Check
+                      className="w-4 h-4 mt-0.5 shrink-0 text-[#FF6A00]"
+                      aria-hidden="true"
+                    />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-auto -mx-10">
+                <img
+                  src="/images/auth-panel.webp"
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-64 object-cover object-center"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* ── Right: auth options ── */}
-          <div className="flex flex-col p-8 sm:p-10 min-h-[480px]">
-            <DialogTitle className="text-2xl font-extrabold tracking-tight text-foreground">
-              {isJoin ? "Create a new account" : "Sign in to your account"}
-            </DialogTitle>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {isJoin ? "Already have an account? " : "Don't have an account? "}
-              <button
-                type="button"
-                onClick={() => setView(isJoin ? "signin" : "join")}
-                className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80"
-              >
-                {isJoin ? "Sign in" : "Join here"}
-              </button>
-            </p>
+            {/* ── Right: auth options ── */}
+            <div className="flex flex-col p-8 sm:p-10 min-h-[480px]">
+              <DialogTitle className="text-2xl font-extrabold tracking-tight text-foreground">
+                {isJoin ? "Create a new account" : "Sign in to your account"}
+              </DialogTitle>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {isJoin
+                  ? "Already have an account? "
+                  : "Don't have an account? "}
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => {
+                    setView(isJoin ? "signin" : "join");
+                    setStep(0);
+                    setError("");
+                    setPassword("");
+                    setConfirmation("");
+                  }}
+                  className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80"
+                >
+                  {isJoin ? "Sign in" : "Join here"}
+                </button>
+              </p>
 
-            <form onSubmit={submit} className="mt-6 space-y-4">
-                {isJoin && (
-                  <>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="auth-name">Full name</Label>
-                      <Input id="auth-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>I want to</Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {([
-                          { id: "buyer", label: "Buy & hire" },
-                          { id: "seller", label: "Sell & offer services" },
-                        ] as const).map((r) => (
-                          <button
-                            key={r.id}
-                            type="button"
-                            onClick={() => setRole(r.id)}
-                            aria-pressed={role === r.id}
-                            className={`h-10 rounded-lg border text-sm font-medium transition-colors ${
-                              role === r.id
-                                ? "border-primary bg-primary/5 text-primary"
-                                : "border-border text-muted-foreground hover:bg-muted"
-                            }`}
-                          >
-                            {r.label}
-                          </button>
-                        ))}
+              {isJoin && (
+                <ol
+                  aria-label="Registration progress"
+                  className="mt-5 flex gap-3 text-xs font-medium"
+                >
+                  <li
+                    aria-current={step === 0 ? "step" : undefined}
+                    className={
+                      step === 0 ? "text-primary" : "text-muted-foreground"
+                    }
+                  >
+                    1. Account access
+                  </li>
+                  <li
+                    aria-current={step === 1 ? "step" : undefined}
+                    className={
+                      step === 1 ? "text-primary" : "text-muted-foreground"
+                    }
+                  >
+                    2. Your profile
+                  </li>
+                </ol>
+              )}
+              <form onSubmit={submit} className="mt-6 space-y-4">
+                <fieldset disabled={loading} className="space-y-4 min-w-0">
+                  {(!isJoin || step === 0) && (
+                    <>
+                      {isJoin && (
+                        <>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="auth-name">Full name</Label>
+                            <Input
+                              id="auth-name"
+                              autoComplete="name"
+                              maxLength={120}
+                              required
+                              value={name}
+                              onChange={(e) => setName(e.target.value)}
+                              placeholder="Your name"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <p className="text-sm font-medium">
+                              How will you use Fotizo?
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {(
+                                [
+                                  { id: "buyer", label: "Buy & hire" },
+                                  {
+                                    id: "seller",
+                                    label: "Provide services or sell",
+                                  },
+                                ] as const
+                              ).map((r) => (
+                                <button
+                                  key={r.id}
+                                  type="button"
+                                  onClick={() => setRole(r.id)}
+                                  aria-pressed={role === r.id}
+                                  className={`h-10 rounded-lg border text-sm font-medium transition-colors ${
+                                    role === r.id
+                                      ? "border-primary bg-primary/5 text-primary"
+                                      : "border-border text-muted-foreground hover:bg-muted"
+                                  }`}
+                                >
+                                  {r.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="auth-email">Email</Label>
+                        <Input
+                          id="auth-email"
+                          type="email"
+                          autoComplete="email"
+                          maxLength={254}
+                          required
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="you@example.com"
+                        />
                       </div>
-                    </div>
-                  </>
-                )}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="auth-password">Password</Label>
+                        <Input
+                          id="auth-password"
+                          type="password"
+                          autoComplete={
+                            isJoin ? "new-password" : "current-password"
+                          }
+                          required
+                          minLength={isJoin ? 8 : 1}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder={
+                            isJoin ? "At least 8 characters" : "Your password"
+                          }
+                        />
+                      </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="auth-email">Email</Label>
-                  <Input id="auth-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="auth-password">Password</Label>
-                  <Input
-                    id="auth-password"
-                    type="password"
-                    required
-                    minLength={isJoin ? 8 : 1}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={isJoin ? "At least 8 characters" : "Your password"}
+                      {isJoin && (
+                        <div className="space-y-1.5">
+                          <Label htmlFor="auth-confirm">Confirm password</Label>
+                          <Input
+                            id="auth-confirm"
+                            type="password"
+                            autoComplete="new-password"
+                            required
+                            value={confirmation}
+                            onChange={(e) => setConfirmation(e.target.value)}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Use a unique passphrase with at least 8 characters.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {isJoin && step === 1 && (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        {role === "seller"
+                          ? "Build a professional introduction clients can understand."
+                          : "Tell us a little about your buying and hiring needs."}
+                      </p>
+                      <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+                        Profile preview: these additional details stay on this
+                        browser as a draft until account syncing is available.
+                      </p>
+                      <ProfileFields
+                        prefix="join"
+                        value={details}
+                        onChange={setDetails}
+                        role={role}
+                      />
+                      <label className="flex items-start gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          required
+                          checked={accepted}
+                          onChange={(e) => setAccepted(e.target.checked)}
+                          className="mt-1 accent-primary"
+                        />
+                        <span>
+                          I agree to the{" "}
+                          <a
+                            href="/terms"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline"
+                          >
+                            Terms of Service
+                          </a>{" "}
+                          and acknowledge the{" "}
+                          <a
+                            href="/privacy"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline"
+                          >
+                            Privacy Policy
+                          </a>
+                          .
+                        </span>
+                      </label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setStep(0);
+                          setError("");
+                        }}
+                      >
+                        Back to account access
+                      </Button>
+                    </>
+                  )}
+                  {error && (
+                    <p role="alert" className="text-sm text-destructive">
+                      {error}
+                    </p>
+                  )}
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-11 gap-2 font-semibold"
+                  >
+                    {loading && (
+                      <Loader2
+                        className="w-4 h-4 animate-spin"
+                        aria-hidden="true"
+                      />
+                    )}
+                    {loading
+                      ? "Please wait…"
+                      : isJoin
+                        ? step === 0
+                          ? "Continue to profile"
+                          : "Create account"
+                        : "Sign in"}
+                  </Button>
+                </fieldset>
+              </form>
+
+              {step === 0 && !loading && (
+                <>
+                  <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+                    <div className="h-px flex-1 bg-border" />
+                    <span>OR</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+
+                  <GoogleAuthButton
+                    onLoggedIn={() => {
+                      toast({
+                        title: "Welcome back!",
+                        description: "You have successfully signed in.",
+                      });
+                      onOpenChange(false);
+                      setLocation(returnTo);
+                    }}
+                    onNeedsRole={(token) => {
+                      // Two separate dialogs shouldn't be open at once — close this
+                      // one, and the role picker (a sibling, not nested) takes over.
+                      onOpenChange(false);
+                      setPendingGoogleToken(token);
+                    }}
                   />
-                </div>
-
-                <Button type="submit" disabled={loading} className="w-full h-11 gap-2 font-semibold">
-                  {loading && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
-                  {loading ? "Please wait…" : isJoin ? "Create account" : "Sign in"}
-                </Button>
-            </form>
-
-            <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-              <div className="h-px flex-1 bg-border" />
-              <span>OR</span>
-              <div className="h-px flex-1 bg-border" />
+                </>
+              )}
+              <p className="mt-auto pt-8 text-xs text-muted-foreground leading-relaxed">
+                By joining, you agree to the Fotizo{" "}
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2 hover:text-foreground"
+                >
+                  Terms of Service
+                </a>{" "}
+                and{" "}
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2 hover:text-foreground"
+                >
+                  Privacy Policy
+                </a>
+                .
+              </p>
             </div>
-
-            <GoogleAuthButton
-              onLoggedIn={() => {
-                toast({ title: "Welcome back!", description: "You have successfully signed in." });
-                onOpenChange(false);
-                setLocation(returnTo);
-              }}
-              onNeedsRole={(token) => {
-                // Two separate dialogs shouldn't be open at once — close this
-                // one, and the role picker (a sibling, not nested) takes over.
-                onOpenChange(false);
-                setPendingGoogleToken(token);
-              }}
-            />
-
-            <p className="mt-auto pt-8 text-xs text-muted-foreground leading-relaxed">
-              By joining, you agree to the Fotizo{" "}
-              <a href="#" className="underline underline-offset-2 hover:text-foreground">Terms of Service</a> and{" "}
-              <a href="#" className="underline underline-offset-2 hover:text-foreground">Privacy Policy</a>.
-            </p>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
 
-    <GoogleRolePickerDialog
-      pendingToken={pendingGoogleToken}
-      onClose={() => setPendingGoogleToken(null)}
-      onComplete={() => {
-        setPendingGoogleToken(null);
-        toast({ title: "Account created!", description: "Welcome to Fotizo." });
-        setLocation(returnTo);
-      }}
-    />
+      <GoogleRolePickerDialog
+        pendingToken={pendingGoogleToken}
+        onClose={() => setPendingGoogleToken(null)}
+        onComplete={() => {
+          setPendingGoogleToken(null);
+          toast({
+            title: "Account created!",
+            description: "Welcome to Fotizo.",
+          });
+          setLocation(returnTo);
+        }}
+      />
     </>
   );
 }

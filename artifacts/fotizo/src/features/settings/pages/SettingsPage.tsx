@@ -1,3 +1,12 @@
+import {
+  UserRound,
+  LockKeyhole,
+  SlidersHorizontal,
+  BriefcaseBusiness,
+  ArrowUpRight,
+} from "lucide-react";
+import { ProfileDraftForm } from "../components/ProfileDraftForm";
+import { DisplayPreferences } from "../components/DisplayPreferences";
 import { useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -54,7 +63,7 @@ export default function SettingsPage() {
       new TextEncoder().encode(newPassword).length > 72
     ) {
       setPasswordError(
-        "Use at least 8 characters and at most 72 UTF-8 bytes. Some characters use more than one byte.",
+        "Use at least 8 characters. This password is too long if it contains many accented characters or symbols; try a shorter passphrase.",
       );
       return;
     }
@@ -73,120 +82,224 @@ export default function SettingsPage() {
 
   return (
     <PageLayout mainClassName="container-app py-24 md:py-28">
-      <div className="mx-auto max-w-xl space-y-8">
+      <div className="mx-auto max-w-6xl">
         <header>
           <h1 className="text-3xl font-bold">Account settings</h1>
           <p className="mt-2 text-muted-foreground">
-            Manage your display name and password.
+            Manage your profile, protect your account and personalise your
+            experience.
           </p>
         </header>
-        {AUTH_USE_MOCKS && (
-          <p role="status">Account changes are unavailable in this demo.</p>
-        )}
-        <form
-          onSubmit={saveProfile}
-          aria-labelledby="profile-heading"
-          className="space-y-4 rounded-xl border border-border p-6"
-        >
-          <h2 id="profile-heading" className="text-xl font-semibold">
-            Profile
-          </h2>
-          <div>
-            <label htmlFor="account-name">Display name</label>
-            <Input
-              id="account-name"
-              autoComplete="name"
-              required
-              maxLength={120}
-              value={name}
-              onChange={(event) => {
-                setName(event.target.value);
-                setProfileMessage("");
-              }}
-              disabled={disabled}
-            />
-          </div>
-          <p className="text-sm">Email: {user?.email}</p>
-          <p className="text-sm text-muted-foreground">
-            Email changes are not available yet.
-          </p>
-          {profileError && (
-            <p role="alert" className="text-destructive">
-              {profileError}
-            </p>
-          )}
-          {profileMessage && <p role="status">{profileMessage}</p>}
-          <Button type="submit" disabled={disabled}>
-            Save profile
-          </Button>
-        </form>
-        <section
-          aria-labelledby="password-heading"
-          className="space-y-4 rounded-xl border border-border p-6"
-        >
-          <h2 id="password-heading" className="text-xl font-semibold">
-            Password
-          </h2>
-          {user?.hasPassword === true && !AUTH_USE_MOCKS ? (
-            <form onSubmit={savePassword} className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Changing your password signs you out on all devices. Sign in
-                again with your new password.
+        <div className="mt-8 grid items-start gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
+          <aside className="lg:sticky lg:top-28 space-y-5">
+            <div className="rounded-2xl border bg-card p-5">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-xl font-bold text-primary">
+                {user?.name?.charAt(0).toUpperCase() || "F"}
+              </div>
+              <p className="font-semibold break-words">{user?.name}</p>
+              <p className="mt-1 text-xs text-muted-foreground capitalize">
+                {user?.role?.replaceAll("_", " ")} account
               </p>
+            </div>
+            <nav
+              aria-label="Settings sections"
+              className="flex flex-wrap gap-1 lg:flex-col"
+            >
+              {[
+                { id: "account", label: "Account", icon: UserRound },
+                {
+                  id: "details",
+                  label:
+                    user?.role === "seller"
+                      ? "Professional details"
+                      : "Personal preferences",
+                  icon: BriefcaseBusiness,
+                },
+                {
+                  id: "security",
+                  label: "Password & security",
+                  icon: LockKeyhole,
+                },
+                {
+                  id: "preferences",
+                  label: "Display preferences",
+                  icon: SlidersHorizontal,
+                },
+              ].map((item) => (
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium hover:bg-muted focus-visible:outline-primary"
+                >
+                  <item.icon className="h-4 w-4" aria-hidden="true" />
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+            <a
+              href="/support"
+              className="flex items-center gap-2 px-3 text-sm text-muted-foreground hover:text-primary"
+            >
+              Need account help?{" "}
+              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+            </a>
+          </aside>
+          <div className="space-y-6 min-w-0">
+            {AUTH_USE_MOCKS && (
+              <p role="status">
+                Demo account · Display name and password changes are
+                unavailable. You can try the additional profile fields below.
+              </p>
+            )}
+            <form
+              onSubmit={saveProfile}
+              id="account"
+              aria-labelledby="profile-heading"
+              className="scroll-mt-28 space-y-5 rounded-2xl border border-border bg-card p-6 sm:p-8"
+            >
+              <h2 id="profile-heading" className="text-xl font-semibold">
+                Account information
+              </h2>
               <div>
-                <label htmlFor="current-password">Current password</label>
+                <label htmlFor="account-name">Display name</label>
                 <Input
-                  id="current-password"
-                  type="password"
-                  autoComplete="current-password"
+                  id="account-name"
+                  autoComplete="name"
                   required
-                  value={currentPassword}
-                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  maxLength={120}
+                  value={name}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    setProfileMessage("");
+                  }}
                   disabled={disabled}
                 />
               </div>
-              <div>
-                <label htmlFor="new-password">New password</label>
+              <div className="space-y-2">
+                <label htmlFor="account-email" className="text-sm font-medium">
+                  Email address
+                </label>
                 <Input
-                  id="new-password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  minLength={8}
-                  value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}
-                  disabled={disabled}
+                  id="account-email"
+                  value={user?.email ?? ""}
+                  readOnly
+                  className="bg-muted/50"
                 />
               </div>
-              <div>
-                <label htmlFor="confirm-password">Confirm new password</label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  value={confirmation}
-                  onChange={(event) => setConfirmation(event.target.value)}
-                  disabled={disabled}
-                />
-              </div>
-              {passwordError && (
+              <p className="text-sm text-muted-foreground">
+                Your email is private and used for signing in. Contact support
+                if you need help updating it.
+              </p>
+              {profileError && (
                 <p role="alert" className="text-destructive">
-                  {passwordError}
+                  {profileError}
                 </p>
               )}
+              {profileMessage && <p role="status">{profileMessage}</p>}
               <Button type="submit" disabled={disabled}>
-                Change password and sign out
+                Save profile
               </Button>
             </form>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {user?.hasPassword === false
-                ? "You use Google to sign in. Manage your password in your Google account."
-                : "Password changes are unavailable in this session."}
-            </p>
-          )}
-        </section>
+            {user?.id && (
+              <ProfileDraftForm
+                key={user.id}
+                userId={user.id}
+                role={user.role}
+              />
+            )}
+            <section
+              id="security"
+              aria-labelledby="password-heading"
+              className="scroll-mt-28 space-y-5 rounded-2xl border border-border bg-card p-6 sm:p-8"
+            >
+              <h2 id="password-heading" className="text-xl font-semibold">
+                Password & security
+              </h2>
+              {user?.hasPassword === true && !AUTH_USE_MOCKS ? (
+                <form onSubmit={savePassword} className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Changing your password signs you out on all devices. Sign in
+                    again with your new password.
+                  </p>
+                  <div>
+                    <label htmlFor="current-password">Current password</label>
+                    <Input
+                      id="current-password"
+                      type="password"
+                      autoComplete="current-password"
+                      required
+                      value={currentPassword}
+                      onChange={(event) =>
+                        setCurrentPassword(event.target.value)
+                      }
+                      disabled={disabled}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="new-password">New password</label>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      autoComplete="new-password"
+                      required
+                      minLength={8}
+                      value={newPassword}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                      disabled={disabled}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="confirm-password">
+                      Confirm new password
+                    </label>
+                    <Input
+                      id="confirm-password"
+                      type="password"
+                      autoComplete="new-password"
+                      required
+                      value={confirmation}
+                      onChange={(event) => setConfirmation(event.target.value)}
+                      disabled={disabled}
+                    />
+                  </div>
+                  {passwordError && (
+                    <p role="alert" className="text-destructive">
+                      {passwordError}
+                    </p>
+                  )}
+                  <Button type="submit" disabled={disabled}>
+                    Change password and sign out
+                  </Button>
+                </form>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {user?.hasPassword === false
+                    ? "You use Google to sign in. Manage your password in your Google account."
+                    : "Password changes are unavailable in this session."}
+                </p>
+              )}
+            </section>
+            <DisplayPreferences />
+            <section className="rounded-2xl border bg-card p-6 sm:p-8">
+              <h2 className="text-xl font-semibold">
+                Privacy & account support
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                For account closure, personal data requests or sign-in
+                assistance, contact our support team. Requests are reviewed
+                before any account changes are made.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-5 text-sm font-medium text-primary">
+                <a href="/support" className="underline underline-offset-4">
+                  Contact support
+                </a>
+                <a href="/privacy" className="underline underline-offset-4">
+                  Privacy policy
+                </a>
+              </div>
+            </section>
+          </div>
+        </div>
       </div>
     </PageLayout>
   );

@@ -17,6 +17,13 @@ const state = vi.hoisted(() => ({
   navigate: vi.fn(),
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => state }));
+vi.mock("@/contexts/CurrencyContext", () => ({
+  useCurrency: () => ({
+    currency: { code: "GBP" },
+    availableCurrencies: [{ code: "GBP", name: "British Pound" }],
+    setCurrency: vi.fn(),
+  }),
+}));
 vi.mock("@/api", () => ({ AUTH_USE_MOCKS: false }));
 vi.mock("wouter", () => ({ useLocation: () => ["/settings", state.navigate] }));
 vi.mock("@/components/layout/PageLayout", () => ({

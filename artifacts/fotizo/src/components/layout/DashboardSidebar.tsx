@@ -67,19 +67,19 @@ export function DashboardSidebar({ heading, items }: { heading: string; items: S
   return (
     <>
       {/* ── md+ : vertical rail ── */}
-      <aside className="w-64 border-r border-border bg-white hidden md:block shrink-0">
+      <aside className="w-64 min-h-0 overflow-y-auto overscroll-y-contain border-r border-border bg-white hidden md:block shrink-0">
         <div className="p-6">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
             {heading}
           </h3>
-          <nav className="space-y-1">{items.map(renderDesktopItem)}</nav>
+          <nav aria-label={heading} className="space-y-1">{items.map(renderDesktopItem)}</nav>
         </div>
       </aside>
 
       {/* ── < md : horizontal scrollable pill bar ── */}
       <nav
         aria-label={heading}
-        className="md:hidden sticky top-20 z-30 bg-white border-b border-border overflow-x-auto"
+        className="md:hidden shrink-0 z-30 bg-white border-b border-border overflow-x-auto"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         <div className="flex w-max gap-2 px-4 py-3">
