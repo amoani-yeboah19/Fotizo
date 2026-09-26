@@ -4,6 +4,8 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { db, policyAcceptancesTable, servicesTable, usersTable } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
 import { CURRENT_POLICY_VERSIONS, parseProfile, readProfile, toOwnProfile, writeProfile } from "../lib/profile";
+import { listingImagesProblem } from "../lib/storage";
+import { toPublicUser } from "./auth";
 
 const router: IRouter = Router();
 
@@ -73,6 +75,42 @@ router.put("/account/profile", requireAuth, async (req: AuthenticatedRequest, re
     return;
   }
   res.json({ profile: toOwnProfile(saved) });
+});
+
+const avatarSchema = z.object({ avatar: z.string().max(2000).nullable() }).strict();
+
+// Sets or removes the account's profile photo. A new photo must be one this
+// account uploaded (POST /uploads/images?purpose=avatar).
+router.put("/account/avatar", requireAuth, async (req: AuthenticatedRequest, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const body = avatarSchema.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: "Upload a photo, or remove the current one." });
+    return;
+  }
+  const [current] = await db.select().from(usersTable).where(eq(usersTable.id, req.auth!.userId));
+  if (!current) {
+    res.status(401).json({ error: "Please sign in again." });
+    return;
+  }
+  if (body.data.avatar) {
+    const problem = await listingImagesProblem(
+      current.id,
+      "avatar",
+      [body.data.avatar],
+      current.avatar ? [current.avatar] : [],
+    );
+    if (problem) {
+      res.status(400).json({ error: problem === "Use photos you uploaded to this listing." ? "Use a photo you uploaded." : problem });
+      return;
+    }
+  }
+  const [user] = await db
+    .update(usersTable)
+    .set({ avatar: body.data.avatar })
+    .where(eq(usersTable.id, current.id))
+    .returning();
+  res.json(toPublicUser(user));
 });
 
 // Public professional profile: only the fields a professional publishes, plus

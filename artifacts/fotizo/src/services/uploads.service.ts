@@ -1,6 +1,6 @@
 import { api, AUTH_USE_MOCKS } from "@/api";
 
-export type UploadPurpose = "product" | "service";
+export type UploadPurpose = "product" | "service" | "avatar";
 
 /**
  * Stores an image in Fotizo's storage (Supabase) and returns its public URL.

@@ -1,7 +1,7 @@
 // Moves existing images into Supabase Storage and rewrites the references.
 //
 //   node --env-file=artifacts/api-server/.env node_modules/.bin/tsx scripts/src/move-images-to-storage.ts --dry-run
-//   pnpm --filter @workspace/scripts move-images-to-storage -- [--dry-run] [--include-remote]
+//   pnpm --filter @workspace/scripts move-images-to-storage -- [--dry-run] [--include-remote] [--workers 6]
 //
 // Needs DATABASE_URL, SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (the dry run
 // needs only DATABASE_URL). By default it moves images stored inline as data
@@ -18,6 +18,8 @@ import { db, pool } from "@workspace/db";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 const INCLUDE_REMOTE = process.argv.includes("--include-remote");
+// How many rows to work on at once; lower it for slow or rate-limiting image hosts.
+const WORKERS = Math.max(1, Number(process.argv[process.argv.indexOf("--workers") + 1]) || 6);
 const MAX_BYTES = 5 * 1024 * 1024;
 
 const base = (process.env.SUPABASE_URL ?? "").trim().replace(/\/+$/, "");
@@ -43,7 +45,7 @@ const wanted = (value: string | null | undefined): value is string =>
 
 async function readSource(value: string): Promise<Buffer> {
   if (isInline(value)) return Buffer.from(value.slice(value.indexOf(",") + 1), "base64");
-  const response = await fetch(value, { signal: AbortSignal.timeout(20_000), redirect: "follow" });
+  const response = await fetch(value, { signal: AbortSignal.timeout(45_000), redirect: "follow" });
   if (!response.ok) throw new Error(`download failed (${response.status})`);
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.length > MAX_BYTES) throw new Error("larger than 5 MB");
@@ -100,16 +102,45 @@ const textArray = (values: string[]) =>
 
 const describe = (value: string) => (isInline(value) ? "inline" : "remote");
 
+// The underlying database/network message (Drizzle wraps it as "Failed query").
+const reason = (error: unknown) => {
+  const e = error as { message?: string; cause?: { message?: string } };
+  return e?.cause?.message ?? e?.message ?? String(error);
+};
+
+/** Retries brief connection problems before giving up on a row. */
+async function withRetry<T>(work: () => Promise<T>, attempts = 3): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await work();
+    } catch (error) {
+      if (attempt >= attempts) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+}
+
+/** Runs `work` for each item, a few at a time. */
+async function inParallel<T>(items: T[], work: (item: T) => Promise<void>, workers = WORKERS) {
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: workers }, async () => {
+      while (next < items.length) await work(items[next++]);
+    }),
+  );
+}
+
 type Rows<T> = { rows: T[] };
 async function main() {
   if (!DRY_RUN && (!base || !key)) throw new Error("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, or use --dry-run.");
   try {
-    const products = (await db.execute(sql`SELECT id, images FROM products`)) as Rows<{ id: string; images: string[] }>;
-    const services = (await db.execute(sql`SELECT id, avatar FROM services`)) as Rows<{ id: string; avatar: string }>;
-    const users = (await db.execute(sql`SELECT id, avatar FROM users WHERE avatar IS NOT NULL`)) as Rows<{ id: string; avatar: string }>;
-    const lines = (await db.execute(sql`SELECT id, product_image FROM order_items`)) as Rows<{ id: string; product_image: string }>;
+    const read = <T>(query: ReturnType<typeof sql>) => withRetry(() => db.execute(query)) as Promise<Rows<T>>;
+    const products = await read<{ id: string; images: string[] }>(sql`SELECT id, images FROM products`);
+    const services = await read<{ id: string; avatar: string }>(sql`SELECT id, avatar FROM services`);
+    const users = await read<{ id: string; avatar: string }>(sql`SELECT id, avatar FROM users WHERE avatar IS NOT NULL`);
+    const lines = await read<{ id: string; product_image: string }>(sql`SELECT id, product_image FROM order_items`);
     const vehicles = INCLUDE_REMOTE
-      ? ((await db.execute(sql`SELECT id, images FROM vehicles`)) as Rows<{ id: string; images: string[] }>)
+      ? await read<{ id: string; images: string[] }>(sql`SELECT id, images FROM vehicles`)
       : { rows: [] };
 
     const tally: Record<string, Record<string, number>> = {};
@@ -129,33 +160,44 @@ async function main() {
 
     await ensureBucket();
     let updated = 0;
-    for (const row of products.rows) {
-      if (!row.images.some(wanted)) continue;
-      const next = await Promise.all(row.images.map(replacement));
-      const result = (await db.execute(
-        sql`UPDATE products SET images = ${textArray(next)} WHERE id = ${row.id} AND images = ${textArray(row.images)}`,
-      )) as { rowCount?: number | null };
-      updated += result.rowCount ?? 0;
-    }
-    for (const row of vehicles.rows) {
-      if (!row.images.some(wanted)) continue;
-      const next = await Promise.all(row.images.map(replacement));
-      const result = (await db.execute(
-        sql`UPDATE vehicles SET images = ${textArray(next)} WHERE id = ${row.id} AND images = ${textArray(row.images)}`,
-      )) as { rowCount?: number | null };
-      updated += result.rowCount ?? 0;
-    }
-    const single = async (table: "services" | "users" | "order_items", column: "avatar" | "product_image", rows: { id: string; value: string }[]) => {
-      for (const row of rows) {
-        if (!wanted(row.value)) continue;
-        const next = await replacement(row.value);
-        if (next === row.value) continue;
-        const result = (await db.execute(
-          sql`UPDATE ${sql.identifier(table)} SET ${sql.identifier(column)} = ${next} WHERE id = ${row.id} AND ${sql.identifier(column)} = ${row.value}`,
-        )) as { rowCount?: number | null };
+    let done = 0;
+    const rowFailures: string[] = [];
+    // A row that still fails after retries is reported and skipped; re-running picks it up.
+    const save = async (label: string, query: ReturnType<typeof sql>) => {
+      try {
+        const result = (await withRetry(() => db.execute(query))) as { rowCount?: number | null };
         updated += result.rowCount ?? 0;
+      } catch (error) {
+        rowFailures.push(`${label}: ${reason(error)}`);
       }
+      if (++done % 100 === 0) console.log(`… ${done} rows processed`);
     };
+    const arrays = async (table: "products" | "vehicles", rows: { id: string; images: string[] }[]) =>
+      inParallel(
+        rows.filter((row) => row.images.some(wanted)),
+        async (row) => {
+          const next = await Promise.all(row.images.map(replacement));
+          if (next.every((value, i) => value === row.images[i])) return;
+          await save(
+            `${table} ${row.id}`,
+            sql`UPDATE ${sql.identifier(table)} SET images = ${textArray(next)} WHERE id = ${row.id} AND images = ${textArray(row.images)}`,
+          );
+        },
+      );
+    await arrays("products", products.rows);
+    await arrays("vehicles", vehicles.rows);
+    const single = async (table: "services" | "users" | "order_items", column: "avatar" | "product_image", rows: { id: string; value: string }[]) =>
+      inParallel(
+        rows.filter((row) => wanted(row.value)),
+        async (row) => {
+          const next = await replacement(row.value);
+          if (next === row.value) return;
+          await save(
+            `${table} ${row.id}`,
+            sql`UPDATE ${sql.identifier(table)} SET ${sql.identifier(column)} = ${next} WHERE id = ${row.id} AND ${sql.identifier(column)} = ${row.value}`,
+          );
+        },
+      );
     await single("services", "avatar", services.rows.map((r) => ({ id: r.id, value: r.avatar })));
     await single("users", "avatar", users.rows.map((r) => ({ id: r.id, value: r.avatar })));
     await single("order_items", "product_image", lines.rows.map((r) => ({ id: r.id, value: r.product_image })));
@@ -165,12 +207,16 @@ async function main() {
       console.log(`${failures.length} images were left unchanged:`);
       for (const f of failures.slice(0, 50)) console.log(`  ${f.source}… — ${f.reason}`);
     }
+    if (rowFailures.length) {
+      console.log(`${rowFailures.length} rows could not be updated (run again to retry):`);
+      for (const f of rowFailures.slice(0, 50)) console.log(`  ${f}`);
+    }
   } finally {
     await pool.end();
   }
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+  console.error(reason(error));
   process.exit(1);
 });

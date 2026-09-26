@@ -130,7 +130,7 @@ describe("image uploads to Supabase Storage", () => {
     const buyer = await account("buyer");
     expect((await upload("product", JPEG)).status).toBe(401);
     expect((await upload("product", JPEG, buyer.cookie)).status).toBe(403);
-    expect((await upload("avatar", JPEG, seller.cookie)).status).toBe(400);
+    expect((await upload("banner", JPEG, seller.cookie)).status).toBe(400);
     // The declared type is ignored: an SVG labelled as a JPEG is refused.
     expect((await upload("product", SVG, seller.cookie, "image/jpeg")).status).toBe(415);
     expect((await upload("product", Buffer.alloc(0), seller.cookie)).status).toBe(400);
@@ -198,5 +198,42 @@ describe("image uploads to Supabase Storage", () => {
     };
     expect((await send("POST", "/services", { ...service, avatar: mine }, seller.cookie)).status).toBe(400);
     expect((await send("POST", "/services", { ...service, avatar: serviceShot }, seller.cookie)).status).toBe(201);
+  });
+});
+
+describe("profile photos", () => {
+  it("lets any account set, replace and remove its own uploaded photo", async () => {
+    const buyer = await account("buyer");
+    const other = await account("buyer");
+    const photo = await uploaded("avatar", buyer.cookie);
+    const theirs = await uploaded("avatar", other.cookie);
+    const set = (avatar: string | null) => send("PUT", "/account/avatar", { avatar }, buyer.cookie);
+    expect((await set(theirs)).status).toBe(400);
+    expect((await set("https://tracker.example.com/me.jpg")).status).toBe(400);
+    const saved = await set(photo);
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toMatchObject({ id: buyer.id, avatar: photo });
+    const me = await fetch(`${base}/api/auth/me`, { headers: { Cookie: buyer.cookie } });
+    expect(await me.json()).toMatchObject({ avatar: photo });
+    // Keeping the current photo is always allowed; null removes it.
+    expect((await set(photo)).status).toBe(200);
+    expect(await (await set(null)).json()).not.toHaveProperty("avatar");
+  });
+
+  it("lets a provider reuse their profile photo as a service photo", async () => {
+    const seller = await account("seller");
+    const photo = await uploaded("avatar", seller.cookie);
+    await send("PUT", "/account/avatar", { avatar: photo }, seller.cookie);
+    const service = {
+      title: "Website build",
+      category: "web-development",
+      description: "A responsive five-page website with a contact form.",
+      experience: "3–5 years",
+      hourlyRate: 35,
+      availability: "Weekdays",
+      skills: ["React"],
+      packages: [{ name: "Basic", price: 300, delivery: "7 days", description: "Five pages" }],
+    };
+    expect((await send("POST", "/services", { ...service, avatar: photo }, seller.cookie)).status).toBe(201);
   });
 });

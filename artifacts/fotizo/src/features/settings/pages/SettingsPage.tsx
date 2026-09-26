@@ -15,9 +15,10 @@ import { AUTH_USE_MOCKS } from "@/api";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { AvatarUploadInput } from "@/components/common/FormControls";
 
 export default function SettingsPage() {
-  const { user, updateProfile, changePassword } = useAuth();
+  const { user, updateProfile, updateAvatar, changePassword } = useAuth();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const [name, setName] = useState(user?.name ?? "");
@@ -28,7 +29,21 @@ export default function SettingsPage() {
   const [profileMessage, setProfileMessage] = useState("");
   const [profileError, setProfileError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [avatarMessage, setAvatarMessage] = useState("");
+  const [avatarError, setAvatarError] = useState("");
   const disabled = pending || AUTH_USE_MOCKS;
+
+  // The photo is uploaded by the picker; saving it to the account happens at once.
+  async function saveAvatar(url: string) {
+    setAvatarMessage("");
+    setAvatarError("");
+    const result = await updateAvatar(url || null);
+    if (!result.success) {
+      setAvatarError(result.error ?? "Your profile photo could not be saved.");
+      return;
+    }
+    setAvatarMessage(url ? "Your profile photo has been updated." : "Your profile photo has been removed.");
+  }
 
   async function saveProfile(event: FormEvent) {
     event.preventDefault();
@@ -93,9 +108,13 @@ export default function SettingsPage() {
         <div className="mt-8 grid items-start gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
           <aside className="lg:sticky lg:top-28 space-y-5">
             <div className="rounded-2xl border bg-card p-5">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-xl font-bold text-primary">
-                {user?.name?.charAt(0).toUpperCase() || "F"}
-              </div>
+              {user?.avatar ? (
+                <img src={user.avatar} alt="" className="mb-3 h-12 w-12 rounded-full object-cover" />
+              ) : (
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-xl font-bold text-primary">
+                  {user?.name?.charAt(0).toUpperCase() || "F"}
+                </div>
+              )}
               <p className="font-semibold break-words">{user?.name}</p>
               <p className="mt-1 text-xs text-muted-foreground capitalize">
                 {user?.role?.replaceAll("_", " ")} account
@@ -160,6 +179,22 @@ export default function SettingsPage() {
               <h2 id="profile-heading" className="text-xl font-semibold">
                 Account information
               </h2>
+              {!AUTH_USE_MOCKS && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Profile photo</p>
+                  <AvatarUploadInput value={user?.avatar ?? ""} purpose="avatar" onChange={saveAvatar} />
+                  {avatarError && (
+                    <p role="alert" className="text-sm text-destructive">
+                      {avatarError}
+                    </p>
+                  )}
+                  {avatarMessage && (
+                    <p role="status" className="text-sm text-primary">
+                      {avatarMessage}
+                    </p>
+                  )}
+                </div>
+              )}
               <div>
                 <label htmlFor="account-name">Display name</label>
                 <Input

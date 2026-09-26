@@ -1,8 +1,8 @@
 import { pgTable, uuid, text, integer, timestamp } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
-// Created by migrations/0013_media_uploads.sql; constraints live there.
-export const MEDIA_PURPOSES = ["product", "service"] as const;
+// Created by migrations/0013_media_uploads.sql (avatars added in 0014); constraints live there.
+export const MEDIA_PURPOSES = ["product", "service", "avatar"] as const;
 export type MediaPurpose = (typeof MEDIA_PURPOSES)[number];
 export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 export type ImageType = (typeof IMAGE_TYPES)[number];

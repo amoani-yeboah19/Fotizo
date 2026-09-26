@@ -7,10 +7,12 @@ import { MAX_IMAGE_BYTES, StorageError, storeImage } from "../lib/storage";
 
 const router: IRouter = Router();
 
-// Who may upload for which kind of listing, matching who may create it.
-const UPLOAD_ROLES: Record<(typeof MEDIA_PURPOSES)[number], string[]> = {
+// Who may upload for which purpose: listings match who may create them;
+// every signed-in account can have a profile photo.
+const UPLOAD_ROLES: Record<(typeof MEDIA_PURPOSES)[number], string[] | "any"> = {
   product: ["seller", "china_representative"],
   service: ["seller"],
+  avatar: "any",
 };
 const UPLOADS_PER_WINDOW = 60;
 
@@ -27,7 +29,8 @@ router.post(
       res.status(400).json({ error: "Say what the image is for." });
       return;
     }
-    if (!UPLOAD_ROLES[purpose.data].includes(req.auth!.role)) {
+    const allowed = UPLOAD_ROLES[purpose.data];
+    if (allowed !== "any" && !allowed.includes(req.auth!.role)) {
       res.status(403).json({ error: "This account can't upload images for that." });
       return;
     }

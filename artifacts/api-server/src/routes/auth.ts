@@ -55,7 +55,7 @@ const loginSchema = z.object({
 });
 
 // Shape returned to the client — deliberately excludes passwordHash.
-function toPublicUser(row: UserRow) {
+export function toPublicUser(row: UserRow) {
   return {
     id: row.id,
     name: row.name,

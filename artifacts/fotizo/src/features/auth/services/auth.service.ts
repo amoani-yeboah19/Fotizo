@@ -28,6 +28,11 @@ export const authService = {
     if (AUTH_USE_MOCKS) throw new Error("Account changes require a connected backend.");
     return api.patch<User>("/auth/profile", { name });
   },
+  /** Sets the account photo to an uploaded image URL, or removes it with null. */
+  async updateAvatar(avatar: string | null): Promise<User> {
+    if (AUTH_USE_MOCKS) throw new Error("Account changes require a connected backend.");
+    return api.put<User>("/account/avatar", { avatar });
+  },
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
     if (AUTH_USE_MOCKS) throw new Error("Account changes require a connected backend.");
     await api.post("/auth/password", { currentPassword, newPassword });
