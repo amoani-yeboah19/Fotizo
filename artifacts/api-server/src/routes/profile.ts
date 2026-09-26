@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { db, policyAcceptancesTable, usersTable } from "@workspace/db";
+import { db, policyAcceptancesTable, servicesTable, usersTable } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
 import { CURRENT_POLICY_VERSIONS, parseProfile, readProfile, toOwnProfile, writeProfile } from "../lib/profile";
 
@@ -75,8 +75,10 @@ router.put("/account/profile", requireAuth, async (req: AuthenticatedRequest, re
   res.json({ profile: toOwnProfile(saved) });
 });
 
-// Public professional profile: only the fields a professional publishes, for
-// active professional accounts. Location, language, business and purpose stay private.
+// Public professional profile: only the fields a professional publishes, plus
+// their live services, for active professional accounts. Location, language,
+// business and purpose stay private. Providers who haven't written a profile
+// yet still get a page listing their services.
 router.get("/profiles/:userId", async (req, res) => {
   const id = z.string().uuid().safeParse(req.params.userId);
   if (!id.success) {
@@ -93,8 +95,26 @@ router.get("/profiles/:userId", async (req, res) => {
     })
     .from(usersTable)
     .where(and(eq(usersTable.id, id.data), eq(usersTable.role, "seller"), isNull(usersTable.suspendedAt)));
-  const profile = user && (await readProfile(user.id));
-  if (!user || !profile || !profile.headline) {
+  const [profile, services] = user
+    ? await Promise.all([
+        readProfile(user.id),
+        db
+          .select({
+            id: servicesTable.id,
+            title: servicesTable.title,
+            category: servicesTable.category,
+            hourlyRate: servicesTable.hourlyRate,
+            rating: servicesTable.rating,
+            reviewCount: servicesTable.reviewCount,
+            avatar: servicesTable.avatar,
+          })
+          .from(servicesTable)
+          .where(and(eq(servicesTable.providerId, user.id), eq(servicesTable.status, "active")))
+          .orderBy(desc(servicesTable.createdAt))
+          .limit(24),
+      ])
+    : [undefined, []];
+  if (!user || (!profile?.headline && !services.length)) {
     res.status(404).json({ error: "Profile not found." });
     return;
   }
@@ -104,12 +124,13 @@ router.get("/profiles/:userId", async (req, res) => {
     avatar: user.avatar ?? undefined,
     verified: user.verified,
     joinedAt: user.createdAt.toISOString().split("T")[0],
-    headline: profile.headline,
-    about: profile.about,
-    skills: profile.skills,
-    experience: profile.experience,
-    workMode: profile.workMode,
-    website: profile.website,
+    headline: profile?.headline ?? "",
+    about: profile?.about ?? "",
+    skills: profile?.skills ?? [],
+    experience: profile?.experience ?? "",
+    workMode: profile?.workMode ?? "",
+    website: profile?.website ?? "",
+    services,
   });
 });
 

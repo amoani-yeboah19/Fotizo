@@ -152,3 +152,18 @@ it("does not save details that fail the role's requirements", async () => {
   expect(screen.getByRole("alert").textContent).toContain("headline");
   expect(profileService.save).not.toHaveBeenCalled();
 });
+
+it("prompts accounts without a profile and shows which policy versions they accepted", async () => {
+  vi.mocked(profileService.get).mockResolvedValue({
+    profile: null,
+    version: 0,
+    accepted: [
+      { policy: "privacy", version: "2026-08-15", acceptedAt: "2026-09-26T10:00:00Z" },
+      { policy: "terms", version: "2026-08-15", acceptedAt: "2026-09-26T10:00:00Z" },
+    ],
+  });
+  mount();
+  expect(await screen.findByText(/Complete your profile/)).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Terms of Service" }).getAttribute("href")).toBe("/terms");
+  expect(screen.getByText(/Privacy Policy/).closest("p")!.textContent).toContain("version 2026-08-15");
+});

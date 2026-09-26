@@ -156,3 +156,8 @@ export function importableDraft(userId: string, role: string): ProfileDraft | nu
   if (JSON.stringify(draft) === JSON.stringify(emptyProfile)) return null;
   return validateProfile(draft, role) ? null : draft;
 }
+
+/** The label for a stored experience or service-delivery code ("" if unknown). */
+export function profileChoiceLabel(field: "experience" | "workMode" | "purpose", value: string) {
+  return label(field === "experience" ? EXPERIENCE : field === "workMode" ? WORK_MODES : PURPOSES, value);
+}

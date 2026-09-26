@@ -43,9 +43,43 @@ export function AccountProfileForm({ userId, role }: { userId: string; role: str
           </Button>
         </div>
       ) : (
-        <ProfileEditor key={generation} userId={userId} role={role} stored={query.data} onReload={reload} />
+        <>
+          {!AUTH_USE_MOCKS && !query.data.profile && (
+            <p role="status" className="mb-4 text-sm font-medium text-primary">
+              Complete your profile so {role === "seller" ? "clients know what you offer" : "we can tailor Fotizo to you"}.
+            </p>
+          )}
+          <ProfileEditor key={generation} userId={userId} role={role} stored={query.data} onReload={reload} />
+          <PolicyRecord accepted={query.data.accepted ?? []} />
+        </>
       )}
     </section>
+  );
+}
+
+const POLICY_NAMES = { terms: "Terms of Service", privacy: "Privacy Policy" } as const;
+const day = (value: string) => new Date(value).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+
+/** The server's record of which policy versions this account accepted. */
+function PolicyRecord({ accepted }: { accepted: StoredProfile["accepted"] & object }) {
+  if (!accepted.length) return null;
+  // Newest acceptance of each policy.
+  const latest = (["terms", "privacy"] as const)
+    .map((policy) => accepted.find((a) => a.policy === policy))
+    .filter((a): a is NonNullable<typeof a> => !!a);
+  return (
+    <p className="mt-6 border-t pt-4 text-xs text-muted-foreground">
+      {latest.map((a, i) => (
+        <span key={a.policy}>
+          {i > 0 && " "}
+          You accepted the{" "}
+          <a href={a.policy === "terms" ? "/terms" : "/privacy"} className="underline hover:text-primary">
+            {POLICY_NAMES[a.policy]}
+          </a>{" "}
+          (version {a.version}) on {day(a.acceptedAt)}.
+        </span>
+      ))}
+    </p>
   );
 }
 
@@ -73,7 +107,8 @@ function ProfileEditor({
     mutationFn: (next: ProfileDraft) => profileService.save(userId, next, version),
     onSuccess: (saved) => {
       setVersion(saved.version);
-      queryClient.setQueryData(["account-profile", userId], saved);
+      // Keep the policy record loaded with the profile.
+      queryClient.setQueryData<StoredProfile>(["account-profile", userId], (old) => ({ ...old, ...saved }));
       if (!AUTH_USE_MOCKS) clearProfileDraft(userId);
       setDraft(null);
       setMessage(AUTH_USE_MOCKS ? "Details saved on this browser." : "Your details have been saved to your account.");

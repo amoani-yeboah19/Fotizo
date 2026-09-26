@@ -109,6 +109,8 @@ export interface Service {
   skills: string[];
   /** Withdrawn listings are hidden from customers but kept for their owner. */
   status?: "active" | "unpublished";
+  /** Present on the provider's own listings. */
+  moderation?: ListingModeration;
 }
 
 export interface Category {
@@ -176,6 +178,15 @@ export interface Booking {
   createdAt: string;
 }
 
+/** Staff review of a seller's listing, shown only to its owner. */
+export interface ListingModeration {
+  review: "pending" | "approved" | "rejected" | null;
+  /** Why the listing was rejected, when it was. */
+  reason: string | null;
+  /** Taken down by staff; only staff (or an approved resubmission) can lift it. */
+  held: boolean;
+}
+
 export interface SellerProduct {
   id: string;
   title: string;
@@ -188,6 +199,7 @@ export interface SellerProduct {
   status: string;
   image: string;
   category: string;
+  moderation?: ListingModeration;
 }
 
 // Payload a seller submits from the "Post a product" wizard. Server-generated

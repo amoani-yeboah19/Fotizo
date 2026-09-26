@@ -10,6 +10,7 @@ import {
   type ServiceGroupId,
 } from "@workspace/service-taxonomy";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
+import { HOLD_MESSAGE, moderationFor, sameSnapshot, serviceSnapshot, submitForReview } from "../lib/admin";
 
 const router: IRouter = Router();
 
@@ -134,17 +135,38 @@ router.post("/services", requireAuth, async (req: AuthenticatedRequest, res) => 
     return;
   }
 
-  const [created] = await db
-    .insert(servicesTable)
-    .values({ ...parsed.data, group, providerId: req.auth!.userId })
-    .returning();
-
   const provider = await db.query.usersTable.findFirst({ where: eq(usersTable.id, req.auth!.userId) });
+  // Listed straight away and queued for staff review in the same transaction.
+  const created = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(servicesTable)
+      .values({ ...parsed.data, group, providerId: req.auth!.userId })
+      .returning();
+    if (provider)
+      await submitForReview(tx, { kind: "service", listingId: row.id, seller: provider, snapshot: serviceSnapshot(row) });
+    return row;
+  });
   res.status(201).json(toPublicService(created, provider?.name ?? "Unknown provider"));
 });
 
 // ── Provider management ──────────────────────────────────────────────────────
 // Providers see and change only their own listings, including withdrawn ones.
+
+/** Provider view of their listings: adds the review outcome and any staff hold. */
+async function withModeration(rows: { service: ServiceRow; providerName: string | null }[]) {
+  const reviews = await moderationFor(
+    "service",
+    rows.map((r) => r.service.id),
+  );
+  return rows.map((r) => ({
+    ...toPublicService(r.service, r.providerName ?? "Unknown provider"),
+    moderation: {
+      review: reviews.get(r.service.id)?.status ?? null,
+      reason: reviews.get(r.service.id)?.reason ?? null,
+      held: r.service.moderationHold,
+    },
+  }));
+}
 
 async function ownedService(id: string | string[], providerId: string) {
   const parsedId = z.string().uuid().safeParse(id);
@@ -165,7 +187,7 @@ router.get("/provider/services", requireAuth, async (req: AuthenticatedRequest, 
     .where(eq(servicesTable.providerId, req.auth!.userId))
     .orderBy(desc(servicesTable.createdAt))
     .limit(200);
-  res.json(rows.map((r) => toPublicService(r.service, r.providerName ?? "Unknown provider")));
+  res.json(await withModeration(rows));
 });
 
 router.get("/provider/services/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
@@ -174,7 +196,7 @@ router.get("/provider/services/:id", requireAuth, async (req: AuthenticatedReque
     res.status(404).json({ error: "Service not found." });
     return;
   }
-  res.json(toPublicService(row.service, row.providerName ?? "Unknown provider"));
+  res.json((await withModeration([row]))[0]);
 });
 
 // Replaces the listing's editable fields. Ratings, reviews and ownership are
@@ -195,11 +217,22 @@ router.patch("/services/:id", requireAuth, async (req: AuthenticatedRequest, res
     res.status(400).json({ error: "Unknown service category." });
     return;
   }
-  const [updated] = await db
-    .update(servicesTable)
-    .set({ ...parsed.data, group })
-    .where(and(eq(servicesTable.id, row.service.id), eq(servicesTable.providerId, req.auth!.userId)))
-    .returning();
+  // A content change starts a new review version.
+  const updated = await db.transaction(async (tx) => {
+    const [saved] = await tx
+      .update(servicesTable)
+      .set({ ...parsed.data, group })
+      .where(and(eq(servicesTable.id, row.service.id), eq(servicesTable.providerId, req.auth!.userId)))
+      .returning();
+    if (!sameSnapshot(serviceSnapshot(row.service), serviceSnapshot(saved)))
+      await submitForReview(tx, {
+        kind: "service",
+        listingId: saved.id,
+        seller: { id: req.auth!.userId, name: row.providerName ?? "Provider" },
+        snapshot: serviceSnapshot(saved),
+      });
+    return saved;
+  });
   res.json(toPublicService(updated, row.providerName ?? "Unknown provider"));
 });
 
@@ -214,6 +247,10 @@ router.post("/services/:id/status", requireAuth, async (req: AuthenticatedReques
   }
   if (!body.success) {
     res.status(400).json({ error: "Choose to publish or withdraw the service." });
+    return;
+  }
+  if (body.data.status === "active" && row.service.moderationHold) {
+    res.status(409).json({ error: HOLD_MESSAGE });
     return;
   }
   const [updated] = await db

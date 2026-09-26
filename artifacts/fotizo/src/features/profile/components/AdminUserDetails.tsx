@@ -6,7 +6,7 @@ import {
   adminService,
   ADMIN_ROLES,
   type AccountChange,
-} from "../services/demo-admin.service";
+} from "../services/manager.service";
 import {
   Dialog,
   DialogContent,
