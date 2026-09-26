@@ -3,6 +3,7 @@ export type { QueryParams } from "./client";
 export {
   API_BASE_URL,
   USE_MOCKS,
+  ADMIN_USE_MOCKS,
   AUTH_USE_MOCKS,
   CATALOG_USE_MOCKS,
   SELLER_CATALOG_USE_MOCKS,

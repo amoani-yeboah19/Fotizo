@@ -1,3 +1,4 @@
+import { WishlistProvider } from "@/contexts/WishlistContext";
 import type { ReactNode } from "react";
 import { Router as WouterRouter } from "wouter";
 import { SessionScope, SessionNotice } from "@/contexts/SessionScope";
@@ -35,7 +36,9 @@ function App() {
               <TooltipProvider>
                 <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                   <AuthModalProvider>
+                    <WishlistProvider>
                     <AppRoutes />
+                    </WishlistProvider>
                   </AuthModalProvider>
                 </WouterRouter>
                 <Toaster />

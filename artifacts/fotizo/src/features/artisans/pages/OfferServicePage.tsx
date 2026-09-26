@@ -36,7 +36,7 @@ const CATEGORY_GROUPS = groupedServiceCategories().map(({ group, categories }) =
 const EXPERIENCE = ["Less than 1 year", "1–3 years", "3–5 years", "5–10 years", "10+ years"];
 const AVAILABILITY = ["Available now", "Within a few days", "Within a week", "Booking 2+ weeks out"];
 
-const STEPS = ["Basics", "Expertise", "Packages", "Review"];
+const STEPS = ["Service overview", "Expertise & availability", "Packages & deliverables", "Review & publish"];
 
 const schema = z.object({
   title: z.string().min(3, "Give your service a clear title (min 3 characters)"),
@@ -253,7 +253,7 @@ export default function OfferServicePage() {
                   />
                 </Field>
                 <Field label="Experience" htmlFor="experience" required error={errors.experience?.message}>
-                  <NativeSelect id="experience" options={EXPERIENCE} placeholder="How long have you been doing this?" {...register("experience")} />
+                  <NativeSelect id="experience" options={EXPERIENCE} placeholder="Select your professional experience" {...register("experience")} />
                 </Field>
                 <Field
                   label="About this service"
@@ -262,8 +262,8 @@ export default function OfferServicePage() {
                   error={errors.description?.message}
                   hint={
                     !v.title || v.title.length < 3 || !v.category
-                      ? "Add a title and category first, then let AI draft it — or write your own."
-                      : "What you offer, your process, what clients can expect. Or let AI draft it (and your skills)."
+                      ? "Explain the scope of your service, your process and the outcome a client can expect."
+                      : "Include deliverables, exclusions and any information you need from the client. Review any AI suggestions before publishing."
                   }
                 >
                   <div className="mb-2 flex justify-end">
@@ -272,7 +272,7 @@ export default function OfferServicePage() {
                       run={writeWithAi}
                     />
                   </div>
-                  <Textarea id="description" rows={5} placeholder="Describe your service…" {...register("description")} />
+                  <Textarea id="description" rows={5} placeholder="Describe what you deliver, who the service is for, your working process and what is included in the price." {...register("description")} />
                 </Field>
               </>
             )}
@@ -287,7 +287,7 @@ export default function OfferServicePage() {
                     <NativeSelect id="availability" options={AVAILABILITY} placeholder="Select availability" {...register("availability")} />
                   </Field>
                 </div>
-                <Field label="Skills" required hint="The tools and specialities you're known for." error={step === 1 ? stepError : undefined}>
+                <Field label="Skills" required hint="List skills, tools and specialisms directly relevant to this service." error={step === 1 ? stepError : undefined}>
                   <TagsInput value={skills} onChange={setSkills} placeholder="e.g. Figma, Branding — press Enter" />
                 </Field>
               </>
@@ -295,7 +295,7 @@ export default function OfferServicePage() {
 
             {step === 2 && (
               <>
-                <Field label="Packages" required hint="Offer 1–3 tiers clients can book (e.g. Basic, Standard, Premium)." error={step === 2 ? stepError : undefined}>
+                <Field label="Packages" required hint="Define 1–3 packages. State the deliverables, total price and turnaround time for each." error={step === 2 ? stepError : undefined}>
                   <div className="space-y-4">
                     {packages.map((p, i) => (
                       <div key={i} className="rounded-xl border border-border p-4 space-y-3">
@@ -313,11 +313,11 @@ export default function OfferServicePage() {
                           )}
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <Input placeholder="Name (e.g. Basic)" value={p.name} onChange={(e) => setPackage(i, { name: e.target.value })} />
-                          <Input type="number" min="0" step="1" placeholder="Price (£)" value={p.price} onChange={(e) => setPackage(i, { price: e.target.value })} />
-                          <Input placeholder="Delivery (e.g. 3 days)" value={p.delivery} onChange={(e) => setPackage(i, { delivery: e.target.value })} />
+                          <Input aria-label={`Package ${i + 1} name`} placeholder="Name (e.g. Essential)" value={p.name} onChange={(e) => setPackage(i, { name: e.target.value })} />
+                          <Input aria-label={`Package ${i + 1} price in GBP`} type="number" min="0" step="1" placeholder="Price (£)" value={p.price} onChange={(e) => setPackage(i, { price: e.target.value })} />
+                          <Input aria-label={`Package ${i + 1} delivery time`} placeholder="Delivery (e.g. 3 working days)" value={p.delivery} onChange={(e) => setPackage(i, { delivery: e.target.value })} />
                         </div>
-                        <Textarea rows={2} placeholder="What's included in this package?" value={p.description} onChange={(e) => setPackage(i, { description: e.target.value })} />
+                        <Textarea aria-label={`Package ${i + 1} deliverables`} rows={2} placeholder="List the deliverables, scope and any included revisions." value={p.description} onChange={(e) => setPackage(i, { description: e.target.value })} />
                       </div>
                     ))}
                     {packages.length < 3 && (

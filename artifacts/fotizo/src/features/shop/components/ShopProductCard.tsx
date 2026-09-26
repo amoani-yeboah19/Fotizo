@@ -1,3 +1,4 @@
+import { WishlistButton } from "@/features/wishlist/components/WishlistButton";
 import { memo } from "react";
 import { Link } from "wouter";
 import { Star, Plus, Truck, Flame } from "lucide-react";
@@ -38,6 +39,7 @@ export const ShopProductCard = memo(function ShopProductCard({ product }: { prod
             alt={product.title}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
+          <WishlistButton item={{ id: product.id, source: "shop", title: product.title, image: product.image, price: product.price, seller: SHOP_SELLER }} className="absolute top-2 right-2" />
           {off > 0 && (
             <span className="absolute left-0 top-2 rounded-r-full bg-[#FF6A00] px-2 py-0.5 text-xs font-extrabold text-white shadow">
               -{off}%

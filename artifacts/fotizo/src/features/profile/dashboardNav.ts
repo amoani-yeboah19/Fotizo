@@ -1,3 +1,4 @@
+import { DEMO_MODE } from "@/api";
 // Primary in-page sections for each role's dashboard, mirroring the sidebar in
 // each *Dashboard page. Used to deep-link into a section via ?tab= — e.g. so the
 // mobile menu can list a logged-in user's dashboard pages instead of one generic
@@ -20,10 +21,15 @@ export const DASHBOARD_NAV: Record<string, DashboardNavItem[]> = {
     { label: "Orders", tab: "orders" },
     { label: "My Purchases", tab: "purchases" },
   ],
-  manager: [
+  manager: DEMO_MODE ? [
+    {label:"Overview",tab:"overview"}, {label:"Users",tab:"users"}, {label:"Orders & disputes",tab:"orders"}, {label:"Approval queue",tab:"approvals"}, {label:"Publication controls",tab:"moderation"}, {label:"Audit trail",tab:"audit"}
+  ] : [
     { label: "Overview", tab: "overview" },
     { label: "Users", tab: "users" },
     { label: "Account audit", tab: "audit" },
+    { label: "Orders", tab: "orders" },
+    { label: "Support", tab: "support" },
+    { label: "Vehicle enquiries", tab: "enquiries" },
     { label: "Moderation", tab: "moderation" },
   ],
   developer: [

@@ -1,7 +1,7 @@
 # Fotizo
 
 React/Vite frontend, Express API and PostgreSQL/Drizzle workspace. The current completion roadmap is in COMPLETION_PLAN.md; IMPLEMENTATION_STATUS.md records verified work and remaining gates.
-
+ 
 ## Runtime and installation
 
 Use Node 24 and pnpm 11.3.0 (pinned in package.json). Run `pnpm install --frozen-lockfile`. On Windows use `pnpm.cmd` if PowerShell blocks the script shim. No POSIX shell is required.
