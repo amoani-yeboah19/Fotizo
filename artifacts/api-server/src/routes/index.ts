@@ -17,6 +17,7 @@ import wishlistRouter from "./wishlist";
 import bookingsRouter from "./bookings";
 import cartRouter from "./cart";
 import paymentsRouter from "./payments";
+import profileRouter from "./profile";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(wishlistRouter);
 router.use(bookingsRouter);
 router.use(cartRouter);
 router.use(paymentsRouter);
+router.use(profileRouter);
 
 export default router;

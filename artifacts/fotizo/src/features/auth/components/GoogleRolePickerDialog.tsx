@@ -2,7 +2,7 @@ import { ProfileFields } from "@/features/settings/components/ProfileFields";
 import {
   emptyProfile,
   validateProfile,
-  saveProfileDraft,
+  toProfileInput,
 } from "@/features/settings/profile";
 import { useState, useEffect, type FormEvent } from "react";
 import { ShoppingBag, Store, Loader2 } from "lucide-react";
@@ -81,15 +81,9 @@ export function GoogleRolePickerDialog({
     }
     setIsLoading(true);
     try {
-      const res = await completeGoogleSignup(pendingToken, role);
+      const res = await completeGoogleSignup(pendingToken, role, toProfileInput(details));
       if (res.success) {
-        const saved = res.user && saveProfileDraft(res.user.id, details);
-        toast({
-          title: saved ? "Profile draft saved" : "Profile draft not saved",
-          description: saved
-            ? "Your additional details are saved on this browser only."
-            : "You can add your professional details in Account settings.",
-        });
+        toast({ title: "Welcome to Fotizo!", description: "Your account and profile are ready." });
         onComplete(role);
       } else {
         toast({
@@ -157,8 +151,8 @@ export function GoogleRolePickerDialog({
             ) : (
               <>
                 <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
-                  Profile preview · These additional details are saved as a
-                  browser draft until account syncing is available.
+                  These details are saved to your account. You can change
+                  them any time in Account settings.
                 </p>
                 <ProfileFields
                   prefix="google-join"

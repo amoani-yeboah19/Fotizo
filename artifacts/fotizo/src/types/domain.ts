@@ -25,6 +25,24 @@ export interface User {
   joinedAt: string;
   verified: boolean;
   hasPassword?: boolean;
+  /** True once the account has saved a complete profile. */
+  onboardingCompleted?: boolean;
+}
+
+/** Account profile as the API stores it (contract v1; choice fields are codes). */
+export interface AccountProfileInput {
+  country: string;
+  city: string;
+  language: string;
+  accountType: "individual" | "business";
+  company: string;
+  purpose: string;
+  headline: string;
+  about: string;
+  skills: string[];
+  experience: string;
+  workMode: string;
+  website: string;
 }
 
 export interface SignupData {
@@ -32,6 +50,10 @@ export interface SignupData {
   email: string;
   password: string;
   role: UserRole;
+  /** The current Terms and Privacy Policy; the server records the versions. */
+  acceptedTerms?: true;
+  /** Onboarding profile, saved together with the account. */
+  profile?: AccountProfileInput;
 }
 
 export interface ProductSpec {

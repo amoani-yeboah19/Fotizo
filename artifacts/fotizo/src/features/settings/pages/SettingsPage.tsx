@@ -5,7 +5,7 @@ import {
   BriefcaseBusiness,
   ArrowUpRight,
 } from "lucide-react";
-import { ProfileDraftForm } from "../components/ProfileDraftForm";
+import { AccountProfileForm } from "../components/AccountProfileForm";
 import { DisplayPreferences } from "../components/DisplayPreferences";
 import { useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
@@ -201,7 +201,7 @@ export default function SettingsPage() {
               </Button>
             </form>
             {user?.id && (
-              <ProfileDraftForm
+              <AccountProfileForm
                 key={user.id}
                 userId={user.id}
                 role={user.role}

@@ -50,6 +50,7 @@ async function account(role = "buyer") {
     email,
     password: "valid-password",
     role: "buyer",
+    acceptedTerms: true,
   });
   expect(response.status).toBe(201);
   const { id } = (await response.json()) as { id: string };

@@ -11,7 +11,7 @@ import {
 import { authService } from "@/features/auth/services";
 import { ApiError } from "@/api/client";
 import { onSessionRejected } from "@/api/session-events";
-import type { User, SignupData } from "@/types";
+import type { User, SignupData, AccountProfileInput } from "@/types";
 export type { User, UserRole, SignupData } from "@/types";
 
 type Result = { success: boolean; error?: string; user?: User };
@@ -38,6 +38,7 @@ interface AuthContextType {
   completeGoogleSignup: (
     token: string,
     role: "buyer" | "seller",
+    profile?: AccountProfileInput,
   ) => Promise<Result>;
   logout: () => Promise<Result>;
   updateProfile: (name: string) => Promise<Result>;
@@ -192,8 +193,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [authenticate],
   );
   const completeGoogleSignup = useCallback(
-    (token: string, role: "buyer" | "seller") =>
-      authenticate(() => authService.completeGoogleSignup(token, role)),
+    (token: string, role: "buyer" | "seller", profile?: AccountProfileInput) =>
+      authenticate(() => authService.completeGoogleSignup(token, role, profile)),
     [authenticate],
   );
 

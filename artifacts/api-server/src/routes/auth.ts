@@ -20,6 +20,7 @@ import {
 import { issueSession, revokeSession } from "../lib/sessions";
 import { changeAccountPassword } from "../lib/account";
 import { limitAuthAttempts, consumeAuthAttempt } from "../middlewares/security";
+import { parseProfile, recordPolicyAcceptance, writeProfile, type ProfileInput } from "../lib/profile";
 
 const router: IRouter = Router();
 router.use((_req, res, next) => {
@@ -36,7 +37,17 @@ const signupSchema = z.object({
   // developer are staff roles and must never be self-assignable from a
   // client-supplied field, no matter what the frontend form currently offers.
   role: z.enum(["buyer", "seller"]),
+  // Acceptance of the current Terms and Privacy Policy, recorded server-side.
+  acceptedTerms: z.literal(true),
+  // Optional onboarding profile, saved in the same transaction as the account.
+  profile: z.unknown().optional(),
 });
+
+/** Validates an onboarding profile when one was sent. */
+function onboardingProfile(profile: unknown, role: "buyer" | "seller") {
+  if (profile === undefined) return { profile: undefined } as { profile?: ProfileInput; error?: undefined };
+  return parseProfile(profile, role);
+}
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -54,18 +65,28 @@ function toPublicUser(row: UserRow) {
     joinedAt: row.createdAt.toISOString().split("T")[0],
     verified: row.verified,
     hasPassword: !!row.passwordHash,
+    onboardingCompleted: !!row.onboardingCompletedAt,
   };
 }
 
 router.post("/register", async (req, res) => {
   const parsed = signupSchema.safeParse(req.body);
   if (!parsed.success) {
-    res
-      .status(400)
-      .json({ error: "Invalid signup data.", issues: parsed.error.issues });
+    const termsMissing = parsed.error.issues.some((issue) => issue.path[0] === "acceptedTerms");
+    res.status(400).json({
+      error: termsMissing
+        ? "Please accept the Terms of Service and acknowledge the Privacy Policy."
+        : "Invalid signup data.",
+      issues: parsed.error.issues,
+    });
     return;
   }
   const { name, email, password, role } = parsed.data;
+  const onboarding = onboardingProfile(parsed.data.profile, role);
+  if (onboarding.error) {
+    res.status(400).json({ error: onboarding.error });
+    return;
+  }
 
   const existing = await db.query.usersTable.findFirst({
     where: eq(usersTable.email, email),
@@ -78,10 +99,18 @@ router.post("/register", async (req, res) => {
   }
 
   const passwordHash = await hashPassword(password);
-  const [created] = await db
-    .insert(usersTable)
-    .values({ name, email, passwordHash, role })
-    .returning();
+  // The account, its policy acceptance and profile are created together or
+  // not at all, so a failed signup can simply be retried.
+  const created = await db.transaction(async (tx) => {
+    const [user] = await tx
+      .insert(usersTable)
+      .values({ name, email, passwordHash, role })
+      .returning();
+    await recordPolicyAcceptance(tx, user.id);
+    if (onboarding.profile) await writeProfile(tx, user, onboarding.profile, 0);
+    const [current] = await tx.select().from(usersTable).where(eq(usersTable.id, user.id));
+    return current;
+  });
 
   if (!(await issueSession(res, created))) return;
   res.status(201).json(toPublicUser(created));
@@ -122,6 +151,8 @@ const googleAuthSchema = z.object({
 const googleCompleteSchema = z.object({
   pendingToken: z.string().min(1),
   role: z.enum(["buyer", "seller"]),
+  acceptedTerms: z.literal(true),
+  profile: z.unknown().optional(),
 });
 
 // Entry point for the "Continue with Google" button. Either logs an existing
@@ -192,7 +223,17 @@ router.post("/google", async (req, res) => {
 router.post("/google/complete", async (req, res) => {
   const parsed = googleCompleteSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid request." });
+    const termsMissing = parsed.error.issues.some((issue) => issue.path[0] === "acceptedTerms");
+    res.status(400).json({
+      error: termsMissing
+        ? "Please accept the Terms of Service and acknowledge the Privacy Policy."
+        : "Invalid request.",
+    });
+    return;
+  }
+  const onboarding = onboardingProfile(parsed.data.profile, parsed.data.role);
+  if (onboarding.error) {
+    res.status(400).json({ error: onboarding.error });
     return;
   }
 
@@ -224,8 +265,8 @@ router.post("/google/complete", async (req, res) => {
             .where(eq(usersTable.id, existing.id))
             .returning()
         )[0]
-    : (
-        await db
+    : await db.transaction(async (tx) => {
+        const [created] = await tx
           .insert(usersTable)
           .values({
             name: pending.name,
@@ -234,8 +275,12 @@ router.post("/google/complete", async (req, res) => {
             role: parsed.data.role,
             verified: true,
           })
-          .returning()
-      )[0];
+          .returning();
+        await recordPolicyAcceptance(tx, created.id);
+        if (onboarding.profile) await writeProfile(tx, created, onboarding.profile, 0);
+        const [current] = await tx.select().from(usersTable).where(eq(usersTable.id, created.id));
+        return current;
+      });
 
   if (!(await issueSession(res, user))) return;
   res.status(201).json(toPublicUser(user));

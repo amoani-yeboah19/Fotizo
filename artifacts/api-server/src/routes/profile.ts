@@ -1,0 +1,116 @@
+import { Router, type IRouter } from "express";
+import { z } from "zod";
+import { and, desc, eq, isNull } from "drizzle-orm";
+import { db, policyAcceptancesTable, usersTable } from "@workspace/db";
+import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
+import { CURRENT_POLICY_VERSIONS, parseProfile, readProfile, toOwnProfile, writeProfile } from "../lib/profile";
+
+const router: IRouter = Router();
+
+// The owner's full profile, onboarding state and policy acceptance history.
+router.get("/account/profile", requireAuth, async (req: AuthenticatedRequest, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const userId = req.auth!.userId;
+  const [user] = await db
+    .select({ onboardingCompletedAt: usersTable.onboardingCompletedAt })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+  if (!user) {
+    res.status(401).json({ error: "Please sign in again." });
+    return;
+  }
+  const accepted = await db
+    .select({
+      policy: policyAcceptancesTable.policy,
+      version: policyAcceptancesTable.policyVersion,
+      acceptedAt: policyAcceptancesTable.acceptedAt,
+    })
+    .from(policyAcceptancesTable)
+    .where(eq(policyAcceptancesTable.userId, userId))
+    .orderBy(desc(policyAcceptancesTable.acceptedAt));
+  res.json({
+    profile: toOwnProfile(await readProfile(userId)),
+    onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null,
+    policies: {
+      current: CURRENT_POLICY_VERSIONS,
+      accepted: accepted.map((a) => ({ ...a, acceptedAt: a.acceptedAt.toISOString() })),
+    },
+  });
+});
+
+const saveSchema = z.object({ expectedVersion: z.number().int().min(0), profile: z.unknown() }).strict();
+
+// Creates or replaces the owner's profile. `expectedVersion` is the version
+// last read (0 for none); a stale version is rejected so edits from another
+// tab or device are never silently overwritten.
+router.put("/account/profile", requireAuth, async (req: AuthenticatedRequest, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const body = saveSchema.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: "Send the profile and the version you last loaded." });
+    return;
+  }
+  const [user] = await db
+    .select({ id: usersTable.id, role: usersTable.role })
+    .from(usersTable)
+    .where(eq(usersTable.id, req.auth!.userId));
+  if (!user) {
+    res.status(401).json({ error: "Please sign in again." });
+    return;
+  }
+  // Validated against the role stored now, not one the client claims.
+  const parsed = parseProfile(body.data.profile, user.role);
+  if (!parsed.profile) {
+    res.status(400).json({ error: parsed.error });
+    return;
+  }
+  const profile = parsed.profile;
+  const saved = await db.transaction((tx) => writeProfile(tx, user, profile, body.data.expectedVersion));
+  if (!saved) {
+    res.status(409).json({
+      error: "Your profile was changed elsewhere. Reload to see the latest version, then make your changes again.",
+    });
+    return;
+  }
+  res.json({ profile: toOwnProfile(saved) });
+});
+
+// Public professional profile: only the fields a professional publishes, for
+// active professional accounts. Location, language, business and purpose stay private.
+router.get("/profiles/:userId", async (req, res) => {
+  const id = z.string().uuid().safeParse(req.params.userId);
+  if (!id.success) {
+    res.status(404).json({ error: "Profile not found." });
+    return;
+  }
+  const [user] = await db
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      avatar: usersTable.avatar,
+      verified: usersTable.verified,
+      createdAt: usersTable.createdAt,
+    })
+    .from(usersTable)
+    .where(and(eq(usersTable.id, id.data), eq(usersTable.role, "seller"), isNull(usersTable.suspendedAt)));
+  const profile = user && (await readProfile(user.id));
+  if (!user || !profile || !profile.headline) {
+    res.status(404).json({ error: "Profile not found." });
+    return;
+  }
+  res.json({
+    id: user.id,
+    name: user.name,
+    avatar: user.avatar ?? undefined,
+    verified: user.verified,
+    joinedAt: user.createdAt.toISOString().split("T")[0],
+    headline: profile.headline,
+    about: profile.about,
+    skills: profile.skills,
+    experience: profile.experience,
+    workMode: profile.workMode,
+    website: profile.website,
+  });
+});
+
+export default router;

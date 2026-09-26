@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AccountProfileInput } from "@/types";
 
 export const profileSchema = z.object({
   country: z.string().trim().min(2, "Enter your country of residence.").max(80),
@@ -91,4 +92,67 @@ export function clearProfileDraft(id: string): boolean {
   } catch {
     return false;
   }
+}
+
+// The API stores stable codes for the choice fields; the form shows labels.
+const PURPOSES: Record<string, string> = {
+  "Shopping for myself": "shopping",
+  "Hiring professionals": "hiring",
+  "Buying for my business": "business_buying",
+  "Shopping and hiring": "shopping_and_hiring",
+};
+const EXPERIENCE: Record<string, string> = {
+  "Less than 1 year": "under_1",
+  "1–3 years": "1_3",
+  "3–5 years": "3_5",
+  "5–10 years": "5_10",
+  "10+ years": "over_10",
+};
+const WORK_MODES: Record<string, string> = {
+  "On-site": "on_site",
+  Remote: "remote",
+  "On-site and remote": "on_site_and_remote",
+  "Product sales": "product_sales",
+};
+const code = (map: Record<string, string>, label: string) => map[label] ?? "";
+const label = (map: Record<string, string>, value: string) =>
+  Object.keys(map).find((key) => map[key] === value) ?? "";
+
+export function toProfileInput(value: ProfileDraft): AccountProfileInput {
+  const parsed = profileSchema.parse(value);
+  return {
+    ...parsed,
+    company: parsed.accountType === "business" ? parsed.company : "",
+    purpose: code(PURPOSES, parsed.purpose),
+    skills: parsed.skills
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    experience: code(EXPERIENCE, parsed.experience),
+    workMode: code(WORK_MODES, parsed.workMode),
+  };
+}
+
+export function fromProfileInput(value: AccountProfileInput): ProfileDraft {
+  return {
+    country: value.country,
+    city: value.city,
+    language: value.language,
+    accountType: value.accountType,
+    company: value.company,
+    purpose: label(PURPOSES, value.purpose),
+    headline: value.headline,
+    about: value.about,
+    skills: value.skills.join(", "),
+    experience: label(EXPERIENCE, value.experience),
+    workMode: label(WORK_MODES, value.workMode),
+    website: value.website,
+  };
+}
+
+/** A browser draft from before profiles were saved to accounts, if valid. */
+export function importableDraft(userId: string, role: string): ProfileDraft | null {
+  const draft = readProfileDraft(userId);
+  if (JSON.stringify(draft) === JSON.stringify(emptyProfile)) return null;
+  return validateProfile(draft, role) ? null : draft;
 }
