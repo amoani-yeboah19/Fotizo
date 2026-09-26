@@ -12,6 +12,7 @@ import { BookingDialog } from "@/features/artisans/components/BookingDialog";
 import { useMessages } from "@/contexts/MessagesContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { ARTISANS_USE_MOCKS } from "@/api";
 import { Star, CheckCircle2, ChevronRight, MessageSquare, Clock, Briefcase } from "lucide-react";
 
 export default function ServiceDetail() {
@@ -94,7 +95,13 @@ export default function ServiceDetail() {
               <img loading="lazy" decoding="async" src={service.avatar} alt={service.provider} className="w-12 h-12 rounded-full object-cover" />
               <div>
                 <div className="flex items-center gap-1.5">
-                  <p className="font-semibold">{service.provider}</p>
+                  {ARTISANS_USE_MOCKS ? (
+                    <p className="font-semibold">{service.provider}</p>
+                  ) : (
+                    <Link href={`/professionals/${service.providerId}`} className="font-semibold hover:text-primary hover:underline">
+                      {service.provider}
+                    </Link>
+                  )}
                   <CheckCircle2 className="w-4 h-4 text-primary" />
                 </div>
                 <p className="text-xs text-muted-foreground">{serviceCategoryLabel(service.category)}</p>

@@ -10,6 +10,7 @@ import {
   timestamp,
   index,
   check,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { usersTable } from "./users";
@@ -64,6 +65,8 @@ export const productsTable = pgTable(
     tags: text("tags").array().notNull().default([]),
     specs: jsonb("specs").$type<Record<string, string>>().notNull().default({}),
     status: productStatusEnum("status").notNull().default("active"),
+    // Set by staff when they unpublish or reject a listing; the owner cannot clear it.
+    moderationHold: boolean("moderation_hold").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

@@ -4,6 +4,8 @@ import type { Order } from "@/types";
 import { Price } from "@/components/common/Price";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { ORDERS_USE_MOCKS } from "@/api";
+import { ReportProblem } from "./ReportProblem";
 import {
   Dialog,
   DialogTrigger,
@@ -112,6 +114,8 @@ export function PurchaseDetailsDialog({
                 : "No tracking number is available for this item.")}
           </p>
         </div>
+        {/* Demo orders have no server record to report against. */}
+        {!ORDERS_USE_MOCKS && order.orderId && <ReportProblem orderId={order.orderId} />}
         <DialogClose asChild>
           <Button variant="outline" className="w-full sm:w-auto sm:self-end">
             Close

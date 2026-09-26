@@ -39,7 +39,9 @@ export const ordersTable = pgTable("orders", {
   idempotencyKey: text("idempotency_key"),
 });
 
-export const PAYMENT_METHODS = ["pay_on_delivery", "mobile_money", "bank_transfer"] as const;
+export const PAYMENT_METHODS = ["pay_on_delivery", "mobile_money", "bank_transfer", "paystack", "stripe"] as const;
+/** Methods settled online through a payment provider before the order is paid. */
+export const ONLINE_PAYMENT_METHODS = ["paystack", "stripe"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 // One row per product line. Title/image/seller/price are snapshotted at

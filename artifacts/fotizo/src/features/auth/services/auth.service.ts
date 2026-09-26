@@ -1,7 +1,8 @@
 import { api, ApiError, AUTH_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import * as fx from "@/services/mocks/fixtures";
-import type { User, SignupData } from "@/types";
+import type { User, SignupData, AccountProfileInput } from "@/types";
+import { fromProfileInput, saveProfileDraft } from "@/features/settings/profile";
 
 const SESSION_KEY = "fotizo_user";
 
@@ -27,6 +28,11 @@ export const authService = {
     if (AUTH_USE_MOCKS) throw new Error("Account changes require a connected backend.");
     return api.patch<User>("/auth/profile", { name });
   },
+  /** Sets the account photo to an uploaded image URL, or removes it with null. */
+  async updateAvatar(avatar: string | null): Promise<User> {
+    if (AUTH_USE_MOCKS) throw new Error("Account changes require a connected backend.");
+    return api.put<User>("/account/avatar", { avatar });
+  },
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
     if (AUTH_USE_MOCKS) throw new Error("Account changes require a connected backend.");
     await api.post("/auth/password", { currentPassword, newPassword });
@@ -51,7 +57,7 @@ export const authService = {
         (u) => u.email.toLowerCase() === data.email.toLowerCase(),
       );
       if (exists) throw new Error("An account with this email already exists.");
-      return {
+      const user = {
         id: `u${Date.now()}`,
         name: data.name,
         email: data.email,
@@ -59,6 +65,9 @@ export const authService = {
         joinedAt: new Date().toISOString().split("T")[0],
         verified: false,
       };
+      // Demo accounts keep their profile in this browser.
+      if (data.profile) saveProfileDraft(user.id, fromProfileInput(data.profile));
+      return user;
     }
     return api.post<User>("/auth/register", data);
   },
@@ -79,7 +88,11 @@ export const authService = {
     return api.post<GoogleAuthResult>("/auth/google", { credential });
   },
 
-  async completeGoogleSignup(pendingToken: string, role: "buyer" | "seller"): Promise<User> {
+  async completeGoogleSignup(
+    pendingToken: string,
+    role: "buyer" | "seller",
+    profile?: AccountProfileInput,
+  ): Promise<User> {
     if (AUTH_USE_MOCKS) {
       await delay(600);
       const { email, name } = JSON.parse(pendingToken) as { email: string; name: string };
@@ -92,7 +105,7 @@ export const authService = {
         verified: true,
       };
     }
-    return api.post<User>("/auth/google/complete", { pendingToken, role });
+    return api.post<User>("/auth/google/complete", { pendingToken, role, acceptedTerms: true, profile });
   },
 
   // Session persistence. On mocks this is localStorage; against a real backend the

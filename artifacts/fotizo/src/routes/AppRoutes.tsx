@@ -33,6 +33,9 @@ const ServicesPage = lazy(
 const ServiceDetail = lazy(
   () => import("@/features/artisans/pages/ServiceDetailPage"),
 );
+const ProfessionalProfile = lazy(
+  () => import("@/features/artisans/pages/ProfessionalProfilePage"),
+);
 const CartPage = lazy(() => import("@/features/payments/pages/CartPage"));
 const CheckoutPage = lazy(
   () => import("@/features/payments/pages/CheckoutPage"),
@@ -55,9 +58,8 @@ const DashboardBuyer = lazy(
 const DashboardSeller = lazy(
   () => import("@/features/profile/pages/SellerDashboard"),
 );
-const DashboardManager = import.meta.env.VITE_DEMO_MODE === "true"
-  ? lazy(() => import("@/features/profile/pages/ManagerDemoDashboard"))
-  : lazy(() => import("@/features/profile/pages/ManagerDashboard"));
+// Demo builds serve the same workspace from in-memory sample records.
+const DashboardManager = lazy(() => import("@/features/profile/pages/ManagerDashboard"));
 const DashboardDeveloper = lazy(
   () => import("@/features/profile/pages/DeveloperDashboard"),
 );
@@ -147,6 +149,7 @@ export function AppRoutes() {
         <Route path="/autos/:id" component={VehicleDetail} />
         <Route path="/services" component={ServicesPage} />
         <Route path="/services/:id" component={ServiceDetail} />
+        <Route path="/professionals/:id" component={ProfessionalProfile} />
         <Route path="/support" component={SupportPage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/how-it-works" component={HowItWorksPage} />

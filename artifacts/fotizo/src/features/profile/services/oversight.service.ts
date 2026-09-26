@@ -1,5 +1,5 @@
 import { ADMIN_USE_MOCKS, api } from "@/api";
-import { recordDemoAdminAudit, type AdminPage } from "./demo-admin.service";
+import { recordDemoAdminAudit, type AdminPage } from "./manager.service";
 
 export type OrderState =
   | "pending"

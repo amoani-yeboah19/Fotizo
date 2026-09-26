@@ -25,6 +25,24 @@ export interface User {
   joinedAt: string;
   verified: boolean;
   hasPassword?: boolean;
+  /** True once the account has saved a complete profile. */
+  onboardingCompleted?: boolean;
+}
+
+/** Account profile as the API stores it (contract v1; choice fields are codes). */
+export interface AccountProfileInput {
+  country: string;
+  city: string;
+  language: string;
+  accountType: "individual" | "business";
+  company: string;
+  purpose: string;
+  headline: string;
+  about: string;
+  skills: string[];
+  experience: string;
+  workMode: string;
+  website: string;
 }
 
 export interface SignupData {
@@ -32,6 +50,10 @@ export interface SignupData {
   email: string;
   password: string;
   role: UserRole;
+  /** The current Terms and Privacy Policy; the server records the versions. */
+  acceptedTerms?: true;
+  /** Onboarding profile, saved together with the account. */
+  profile?: AccountProfileInput;
 }
 
 export interface ProductSpec {
@@ -87,6 +109,8 @@ export interface Service {
   skills: string[];
   /** Withdrawn listings are hidden from customers but kept for their owner. */
   status?: "active" | "unpublished";
+  /** Present on the provider's own listings. */
+  moderation?: ListingModeration;
 }
 
 export interface Category {
@@ -105,7 +129,9 @@ export interface Testimonial {
   text: string;
 }
 
-export type PaymentMethod = "pay_on_delivery" | "mobile_money" | "bank_transfer";
+export type PaymentMethod = "pay_on_delivery" | "mobile_money" | "bank_transfer" | "paystack" | "stripe";
+/** Paid online at checkout: Paystack for Ghana (in cedis), Stripe elsewhere (in GBP). */
+export type OnlinePaymentMethod = Extract<PaymentMethod, "paystack" | "stripe">;
 
 export interface Order {
   id: string;
@@ -152,6 +178,15 @@ export interface Booking {
   createdAt: string;
 }
 
+/** Staff review of a seller's listing, shown only to its owner. */
+export interface ListingModeration {
+  review: "pending" | "approved" | "rejected" | null;
+  /** Why the listing was rejected, when it was. */
+  reason: string | null;
+  /** Taken down by staff; only staff (or an approved resubmission) can lift it. */
+  held: boolean;
+}
+
 export interface SellerProduct {
   id: string;
   title: string;
@@ -164,6 +199,7 @@ export interface SellerProduct {
   status: string;
   image: string;
   category: string;
+  moderation?: ListingModeration;
 }
 
 // Payload a seller submits from the "Post a product" wizard. Server-generated
@@ -289,6 +325,16 @@ export interface OrderConfirmation {
   total: number;
   paymentMethod: PaymentMethod | null;
   paymentStatus: "unpaid" | "paid";
+  /** Online orders: the provider's payment page, or null if it could not be opened. */
+  checkoutUrl?: string | null;
+  paymentError?: string;
+}
+
+export interface PaymentVerification {
+  paymentStatus: "unpaid" | "paid";
+  attemptStatus: "pending" | "succeeded" | "failed" | "expired" | null;
+  /** False once an unpaid online order was released after the payment window. */
+  orderOpen: boolean;
 }
 
 export interface OrderDetail extends OrderConfirmation {

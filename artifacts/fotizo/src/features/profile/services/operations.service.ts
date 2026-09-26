@@ -1,5 +1,6 @@
 import { api } from "@/api";
 import type { Vehicle } from "@/features/autos/data/vehicles";
+import type { PaymentMethod } from "@/types";
 
 // Staff operations: figures and queues computed server-side from stored
 // records. See artifacts/api-server/src/routes/operations.ts.
@@ -49,7 +50,7 @@ export interface OrderLine {
   status: string;
   createdAt: string;
   reference: string | null;
-  paymentMethod: "pay_on_delivery" | "mobile_money" | "bank_transfer" | null;
+  paymentMethod: PaymentMethod | null;
   paymentStatus: "unpaid" | "paid";
   contactName: string | null;
   contactPhone: string | null;

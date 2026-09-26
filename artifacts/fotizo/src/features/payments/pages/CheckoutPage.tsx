@@ -9,10 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePlaceOrder } from "@/features/payments/hooks";
+import { usePaymentConfig, usePlaceOrder } from "@/features/payments/hooks";
+import { ordersService } from "@/features/payments/services/orders.service";
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage } from "@/api";
-import type { DeliveryDetails, PaymentMethod } from "@/types";
+import type { DeliveryDetails, OnlinePaymentMethod, PaymentMethod } from "@/types";
 import { Loader2, CheckCircle2 } from "lucide-react";
 
 // Same rule the server applies when it prices the order.
@@ -26,6 +27,16 @@ const COUNTRIES: { value: DeliveryDetails["country"]; label: string }[] = [
 ];
 
 export const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; detail: string }[] = [
+  {
+    value: "paystack",
+    label: "Pay online with Paystack",
+    detail: "Card or mobile money on Paystack's secure page, charged in Ghana cedis at today's rate.",
+  },
+  {
+    value: "stripe",
+    label: "Pay online by card",
+    detail: "Visa, Mastercard or Amex on Stripe's secure page, charged in British pounds.",
+  },
   {
     value: "pay_on_delivery",
     label: "Pay on delivery",
@@ -43,6 +54,13 @@ export const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; detail: str
   },
 ];
 
+export const isOnlinePayment = (method: PaymentMethod | null | undefined): method is OnlinePaymentMethod =>
+  method === "paystack" || method === "stripe";
+
+// Same rule the server applies: Ghana pays through Paystack, everyone else Stripe.
+const onlineProviderFor = (country: DeliveryDetails["country"]): OnlinePaymentMethod =>
+  country === "GH" ? "paystack" : "stripe";
+
 type Field = keyof DeliveryDetails;
 const REQUIRED: Field[] = ["name", "email", "phone", "addressLine1", "city"];
 
@@ -51,6 +69,7 @@ export default function CheckoutPage() {
   const { items, total, clearCart, isLoaded } = useCart();
   const { user } = useAuth();
   const placeOrder = usePlaceOrder();
+  const { data: providers } = usePaymentConfig();
   const { toast } = useToast();
 
   const [step, setStep] = useState(1);
@@ -66,14 +85,23 @@ export default function CheckoutPage() {
     country: "GH",
   });
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pay_on_delivery");
+  const [chosenMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   // One key per checkout: a retried or double-clicked submission returns the
   // order already created instead of placing a second one.
   const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   const shipping = total > FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE;
   const grandTotal = total + (items.length > 0 ? shipping : 0);
-  const payment = PAYMENT_OPTIONS.find((p) => p.value === paymentMethod)!;
+  // Offer only the online provider for the delivery country, when configured.
+  const paymentOptions = PAYMENT_OPTIONS.filter(
+    (p) => !isOnlinePayment(p.value) || (p.value === onlineProviderFor(delivery.country) && providers?.[p.value]),
+  );
+  // Online payment is preselected when offered; a choice that no longer applies
+  // (for example after changing country) falls back to the first option.
+  const paymentMethod =
+    chosenMethod && paymentOptions.some((p) => p.value === chosenMethod) ? chosenMethod : paymentOptions[0].value;
+  const payment = paymentOptions.find((p) => p.value === paymentMethod)!;
+  const paysOnline = isOnlinePayment(paymentMethod);
 
   // An empty cart has nothing to check out. Redirect after render (never
   // during it), and only once the saved cart has loaded.
@@ -112,6 +140,14 @@ export default function CheckoutPage() {
         idempotencyKey,
       });
       clearCart();
+      if (order.checkoutUrl) {
+        // Leave for the provider's payment page; it returns to the order page.
+        ordersService.openCheckout(order.checkoutUrl);
+        return;
+      }
+      if (order.paymentError) {
+        toast({ variant: "destructive", title: "Order placed, payment not started", description: order.paymentError });
+      }
       setLocation(`/order-confirmation?order=${order.orderId}`);
     } catch (error) {
       toast({
@@ -223,7 +259,7 @@ export default function CheckoutPage() {
                 <div className="space-y-4 animate-in fade-in">
                   <fieldset className="space-y-3">
                     <legend className="sr-only">Payment method</legend>
-                    {PAYMENT_OPTIONS.map((option) => (
+                    {paymentOptions.map((option) => (
                       <label
                         key={option.value}
                         className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ${paymentMethod === option.value ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}
@@ -243,7 +279,11 @@ export default function CheckoutPage() {
                       </label>
                     ))}
                   </fieldset>
-                  <p className="text-sm text-muted-foreground">No card details are needed. Nothing is charged online.</p>
+                  <p className="text-sm text-muted-foreground">
+                    {paysOnline
+                      ? "You'll be taken to a secure payment page after placing your order. Fotizo never sees your card details."
+                      : "No card details are needed. Nothing is charged online."}
+                  </p>
                   <div className="pt-4 flex gap-4">
                     <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
                     <Button onClick={() => setStep(3)}>Review Order</Button>
@@ -294,7 +334,7 @@ export default function CheckoutPage() {
                     <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
                     <Button onClick={handlePlaceOrder} className="flex-1" disabled={isProcessing}>
                       {isProcessing ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-                      Place Order - <Price amount={grandTotal} />
+                      {paysOnline ? "Place Order & Pay" : "Place Order"} - <Price amount={grandTotal} />
                     </Button>
                   </div>
                 </div>

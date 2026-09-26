@@ -50,6 +50,7 @@ async function account(role = "buyer") {
     email,
     password: "valid-password",
     role: "buyer",
+    acceptedTerms: true,
   });
   expect(response.status).toBe(201);
   const { id } = (await response.json()) as { id: string };
@@ -710,7 +711,7 @@ describe("provider service management", () => {
     hourlyRate: 25,
     availability: "Weekdays",
     skills: ["Braiding"],
-    avatar: "https://example.com/a.jpg",
+    avatar: "data:image/png;base64,iVBORw0KGgo=",
     packages: [{ name: "Basic", price: 30, delivery: "1 day", description: "Shoulder length" }],
   };
 
@@ -736,5 +737,219 @@ describe("provider service management", () => {
 
     expect((await post(`/services/${id}/status`, { status: "active" }, provider.cookie)).status).toBe(200);
     expect((await get(`/services/${id}`)).status).toBe(200);
+  });
+});
+
+describe("online payment (Paystack and Stripe)", () => {
+  // A local stand-in for Paystack, Stripe and the exchange-rate feed.
+  const stub = {
+    paystackInit: [] as Record<string, unknown>[],
+    stripeSessions: [] as Record<string, string>[],
+    paystackVerify: null as null | { status: string; amount?: number; currency?: string },
+    stripeSession: null as null | Record<string, unknown>,
+    down: false,
+  };
+  let provider: Server;
+  const saved: Record<string, string | undefined> = {};
+  const settings = (url: string) => ({
+    PAYSTACK_SECRET_KEY: "sk_test_paystack",
+    STRIPE_SECRET_KEY: "sk_test_stripe",
+    STRIPE_WEBHOOK_SECRET: "whsec_test",
+    PAYSTACK_API_URL: url,
+    STRIPE_API_URL: url,
+    CURRENCY_RATES_URL: `${url}/rates`,
+    APP_URL: "http://localhost:5173",
+  });
+
+  beforeAll(async () => {
+    provider = createServer((req, res) => {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const send = (status: number, data: unknown) => {
+          res.writeHead(status, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(data));
+        };
+        if (stub.down) return send(500, {});
+        const url = req.url ?? "";
+        if (url === "/rates") return send(200, { rates: { USD: 1.3, GHS: 15 } });
+        if (url === "/transaction/initialize") {
+          const parsed = JSON.parse(body) as Record<string, unknown>;
+          stub.paystackInit.push(parsed);
+          return send(200, { status: true, data: { authorization_url: `https://paystack.test/${parsed.reference}` } });
+        }
+        if (url.startsWith("/transaction/verify/")) return send(200, { status: true, data: stub.paystackVerify ?? { status: "abandoned" } });
+        if (url === "/v1/checkout/sessions") {
+          const form = Object.fromEntries(new URLSearchParams(body));
+          stub.stripeSessions.push(form);
+          const id = `cs_test_${stub.stripeSessions.length}`;
+          return send(200, { id, url: `https://stripe.test/${id}` });
+        }
+        if (url.startsWith("/v1/checkout/sessions/")) return send(200, stub.stripeSession ?? { payment_status: "unpaid", status: "open" });
+        send(404, {});
+      });
+    });
+    await new Promise<void>((resolve) => provider.listen(0, "127.0.0.1", resolve));
+    const url = `http://127.0.0.1:${(provider.address() as { port: number }).port}`;
+    for (const [key, value] of Object.entries(settings(url))) {
+      saved[key] = process.env[key];
+      process.env[key] = value;
+    }
+  });
+  afterAll(async () => {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    resetCurrencyCache();
+    await new Promise<void>((resolve) => provider.close(() => resolve()));
+  });
+  beforeEach(() => {
+    stub.paystackInit = [];
+    stub.stripeSessions = [];
+    stub.paystackVerify = null;
+    stub.stripeSession = null;
+    stub.down = false;
+    resetCurrencyCache();
+  });
+
+  const delivery = (country: string) => ({
+    name: "Ama", email: "ama@example.com", phone: "0244000000", addressLine1: "1 Road",
+    addressLine2: "", city: "Accra", postalCode: "", country,
+  });
+  async function checkout(country: "GH" | "GB", paymentMethod: "paystack" | "stripe") {
+    const seller = await account("seller");
+    const buyer = await account();
+    const { rows } = await database.query<{ id: string }>(
+      `INSERT INTO products (title, description, price, seller_id, category, stock_count) VALUES ('Kettle', 'd', 20, $1, 'Home', 5) RETURNING id`,
+      [seller.id],
+    );
+    const response = await post(
+      "/orders",
+      {
+        items: [{ productId: rows[0].id, quantity: 3 }],
+        delivery: delivery(country),
+        paymentMethod,
+        idempotencyKey: crypto.randomUUID(),
+      },
+      buyer.cookie,
+    );
+    return { response, buyer, productId: rows[0].id };
+  }
+  const paidStatus = async (orderId: string) =>
+    (await database.query<{ payment_status: string }>("SELECT payment_status FROM orders WHERE id = $1", [orderId])).rows[0].payment_status;
+  const rawPost = (path: string, body: string, extra: Record<string, string>) =>
+    fetch(`${base}/api${path}`, { method: "POST", headers: { "Content-Type": "application/json", ...extra }, body });
+
+  it("advertises the configured providers and refuses the wrong one for the country", async () => {
+    expect(await (await get("/payments/config")).json()).toEqual({ paystack: true, stripe: true });
+    const { response } = await checkout("GB", "paystack");
+    expect(response.status).toBe(400);
+  });
+
+  it("charges Ghana orders in cedis through Paystack and confirms on return", async () => {
+    const { response, buyer } = await checkout("GH", "paystack");
+    expect(response.status).toBe(201);
+    const placed = (await response.json()) as { orderId: string; total: number; checkoutUrl: string };
+    // 3 x GBP 20 = GBP 60 (free delivery) -> GHS 900.00 at the locked rate of 15.
+    expect(placed.total).toBe(60);
+    expect(placed.checkoutUrl).toMatch(/^https:\/\/paystack\.test\/FZP-/);
+    expect(stub.paystackInit[0]).toMatchObject({
+      email: "ama@example.com",
+      amount: 90000,
+      currency: "GHS",
+      callback_url: `http://localhost:5173/order-confirmation?order=${placed.orderId}`,
+    });
+    expect(await paidStatus(placed.orderId)).toBe("unpaid");
+
+    // A browser redirect alone proves nothing: the provider still says unpaid.
+    const unpaid = (await (await post(`/payments/orders/${placed.orderId}/verify`, {}, buyer.cookie)).json()) as { paymentStatus: string };
+    expect(unpaid.paymentStatus).toBe("unpaid");
+
+    stub.paystackVerify = { status: "success", amount: 90000, currency: "GHS" };
+    const paid = (await (await post(`/payments/orders/${placed.orderId}/verify`, {}, buyer.cookie)).json()) as { paymentStatus: string };
+    expect(paid.paymentStatus).toBe("paid");
+    const stranger = await account();
+    expect((await post(`/payments/orders/${placed.orderId}/verify`, {}, stranger.cookie)).status).toBe(404);
+  });
+
+  it("does not mark an order paid when the provider reports a different amount", async () => {
+    const { response, buyer } = await checkout("GH", "paystack");
+    const placed = (await response.json()) as { orderId: string };
+    stub.paystackVerify = { status: "success", amount: 100, currency: "GHS" };
+    const result = (await (await post(`/payments/orders/${placed.orderId}/verify`, {}, buyer.cookie)).json()) as {
+      paymentStatus: string;
+      attemptStatus: string;
+    };
+    expect(result).toMatchObject({ paymentStatus: "unpaid", attemptStatus: "failed" });
+  });
+
+  it("accepts only correctly signed Paystack webhooks, once", async () => {
+    const { response } = await checkout("GH", "paystack");
+    const placed = (await response.json()) as { orderId: string };
+    const reference = String(stub.paystackInit[0].reference);
+    const body = JSON.stringify({ event: "charge.success", data: { id: 7, reference, status: "success", amount: 90000, currency: "GHS" } });
+    const { createHmac } = await import("node:crypto");
+    const sign = (key: string) => createHmac("sha512", key).update(body).digest("hex");
+    expect((await rawPost("/payments/webhooks/paystack", body, { "x-paystack-signature": sign("wrong") })).status).toBe(401);
+    expect(await paidStatus(placed.orderId)).toBe("unpaid");
+    // No browser headers are needed: this is a server-to-server call.
+    expect((await rawPost("/payments/webhooks/paystack", body, { "x-paystack-signature": sign("sk_test_paystack") })).status).toBe(200);
+    expect(await paidStatus(placed.orderId)).toBe("paid");
+    expect((await rawPost("/payments/webhooks/paystack", body, { "x-paystack-signature": sign("sk_test_paystack") })).status).toBe(200);
+    const { rows } = await database.query<{ n: number }>("SELECT count(*)::int n FROM payment_events");
+    expect(rows[0].n).toBe(1);
+  });
+
+  it("charges international orders in GBP through Stripe and trusts only signed, fresh webhooks", async () => {
+    const { response } = await checkout("GB", "stripe");
+    const placed = (await response.json()) as { orderId: string; checkoutUrl: string };
+    expect(placed.checkoutUrl).toBe("https://stripe.test/cs_test_1");
+    expect(stub.stripeSessions[0]).toMatchObject({
+      mode: "payment",
+      "line_items[0][price_data][currency]": "gbp",
+      "line_items[0][price_data][unit_amount]": "6000",
+      client_reference_id: placed.orderId,
+    });
+    const body = JSON.stringify({
+      id: "evt_1",
+      type: "checkout.session.completed",
+      data: { object: { id: "cs_test_1", payment_status: "paid", amount_total: 6000, currency: "gbp" } },
+    });
+    const { createHmac } = await import("node:crypto");
+    const header = (t: number) => `t=${t},v1=${createHmac("sha256", "whsec_test").update(`${t}.${body}`).digest("hex")}`;
+    const now = Math.floor(Date.now() / 1000);
+    expect((await rawPost("/payments/webhooks/stripe", body, { "stripe-signature": header(now - 3600) })).status).toBe(401);
+    expect(await paidStatus(placed.orderId)).toBe("unpaid");
+    expect((await rawPost("/payments/webhooks/stripe", body, { "stripe-signature": header(now) })).status).toBe(200);
+    expect(await paidStatus(placed.orderId)).toBe("paid");
+  });
+
+  it("keeps the order when the provider is down and lets the buyer retry payment", async () => {
+    stub.down = true;
+    const { response, buyer } = await checkout("GB", "stripe");
+    expect(response.status).toBe(201);
+    const placed = (await response.json()) as { orderId: string; checkoutUrl: string | null; paymentError: string };
+    expect(placed.checkoutUrl).toBeNull();
+    expect(placed.paymentError).toContain("payment provider");
+    stub.down = false;
+    const retry = await post(`/payments/orders/${placed.orderId}/start`, {}, buyer.cookie);
+    expect(retry.status).toBe(200);
+    expect(((await retry.json()) as { checkoutUrl: string }).checkoutUrl).toMatch(/^https:\/\/stripe\.test\//);
+  });
+
+  it("releases stock from online orders left unpaid past the payment window", async () => {
+    const { response, buyer, productId } = await checkout("GB", "stripe");
+    const placed = (await response.json()) as { orderId: string };
+    const stock = async () =>
+      (await database.query<{ stock_count: number }>("SELECT stock_count FROM products WHERE id = $1", [productId])).rows[0].stock_count;
+    expect(await stock()).toBe(2);
+    const { releaseAbandonedOrders } = await import("./lib/payments");
+    expect(await releaseAbandonedOrders()).toBe(0);
+    await database.query("UPDATE orders SET created_at = now() - interval '2 hours' WHERE id = $1", [placed.orderId]);
+    expect(await releaseAbandonedOrders()).toBe(1);
+    expect(await stock()).toBe(5);
+    const retry = await post(`/payments/orders/${placed.orderId}/start`, {}, buyer.cookie);
+    expect(retry.status).toBe(409);
   });
 });

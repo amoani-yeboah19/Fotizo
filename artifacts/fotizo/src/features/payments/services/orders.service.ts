@@ -1,7 +1,14 @@
 import { api, ORDERS_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import * as fx from "@/services/mocks/fixtures";
-import type { Order, OrderDetail, PlaceOrderInput, OrderConfirmation } from "@/types";
+import type {
+  OnlinePaymentMethod,
+  Order,
+  OrderDetail,
+  PlaceOrderInput,
+  OrderConfirmation,
+  PaymentVerification,
+} from "@/types";
 
 export type SaleStatus = "processing" | "shipped" | "delivered" | "cancelled";
 
@@ -24,8 +31,8 @@ export const ordersService = {
     return api.get<Order[]>("/sales");
   },
 
-  // Orders are paid offline (on delivery, mobile money or bank transfer); the
-  // server prices the cart and reserves stock. Demo builds cannot place orders.
+  // The server prices the cart and reserves stock. Online orders come back with
+  // the provider's payment page to send the buyer to. Demo builds cannot order.
   async placeOrder(input: PlaceOrderInput): Promise<OrderConfirmation> {
     if (ORDERS_USE_MOCKS) throw new Error("Ordering is unavailable in demo mode.");
     return api.post<OrderConfirmation>("/orders", input);
@@ -40,6 +47,27 @@ export const ordersService = {
       status,
       ...(trackingNumber ? { trackingNumber } : {}),
     });
+  },
+
+  /** Which online providers this deployment has configured. */
+  async paymentConfig(): Promise<Record<OnlinePaymentMethod, boolean>> {
+    if (ORDERS_USE_MOCKS) return { paystack: false, stripe: false };
+    return api.get<Record<OnlinePaymentMethod, boolean>>("/payments/config");
+  },
+
+  /** Opens (or reopens) the payment page for an unpaid online order. */
+  async startPayment(orderId: string) {
+    return api.post<{ checkoutUrl: string }>(`/payments/orders/${orderId}/start`, {});
+  },
+
+  /** Leaves the app for the provider's hosted payment page. */
+  openCheckout(url: string) {
+    window.location.assign(url);
+  },
+
+  /** Asks the server to confirm payment with the provider after checkout. */
+  async verifyPayment(orderId: string) {
+    return api.post<PaymentVerification>(`/payments/orders/${orderId}/verify`, {});
   },
 
   async markPaid(orderId: string) {

@@ -1,10 +1,12 @@
-> Integration note after merging main: production now uses the backend-connected
-> `ManagerDashboard.tsx`, `admin.service.ts` and `operations.service.ts` from main.
-> The extended frontend preview below is retained in `ManagerDemoDashboard.tsx`,
-> `demo-admin.service.ts` and `demo-operations.service.ts`, selected only for explicit
-> demo builds. Contracts below describe that preview and must be reconciled with
-> the implemented API before any further live integration. Main's existing APIs,
-> permission checks, order/payment controls and support queues remain intact.
+> **Status (26 September 2026): implemented.** The workspace below is now the only
+> manager dashboard (`pages/ManagerDashboard.tsx`) and runs on the real API in
+> production. Its services are `manager.service.ts` (overview, users, listings,
+> decisions, audit), `approvals.service.ts` and `oversight.service.ts` (orders and
+> disputes); demo builds (`VITE_DEMO_MODE=true`) keep the in-memory sample records.
+> Production also shows the live Payments, Support requests and Vehicle enquiries
+> queues. The earlier account-controls screen was removed; its `/admin/accounts` and
+> `/admin/account-audit` endpoints remain in the OpenAPI contract but the frontend no
+> longer calls them. Implementation notes are at the end of this file.
 
 # Manager workspace — frontend and backend handoff
 
@@ -190,3 +192,32 @@ Finance must own refund approval/execution, payment reconciliation, approval lim
 protection against duplicate refunds. Real notifications, attachments, staff assignment,
 returns and shipment investigation need separate backend contracts. These frontend controls
 send no customer messages and make no financial transactions in demo mode.
+
+## Backend implementation (migration 0012)
+
+All endpoints above exist under `/api/admin` and require an active manager; the
+acting manager is re-read and locked inside every decision, so a manager demoted or
+suspended a moment earlier cannot finish one. Decisions check the expected previous
+value or version (409 when stale), validate a trimmed 5-1000 character reason and are
+saved in the same transaction as an `admin_audit` record (actor from the session,
+action, target, reason, before/after). `admin_audit` is append-only (a trigger rejects
+updates and deletes) and includes the earlier suspension history.
+
+- **Accounts:** managers cannot change their own role or status; suspending revokes
+  every session; role changes apply on the next request; removing the last active
+  manager is refused. Staff accounts can now be suspended by another manager.
+- **Publication:** staff unpublishing sets a moderation hold the owner cannot clear
+  (seller republish returns 409); staff publishing lifts it.
+- **Approvals:** reviewed after publication. New and content-edited seller listings
+  (products and services from `seller` accounts; Fotizo shop stock is exempt) join the
+  queue; each change is a new version with its snapshot kept in the history. Rejecting
+  unpublishes the listing with a hold and returns the reason to the seller (seller
+  dashboard and My services); approving lifts the hold but leaves republishing to the
+  seller. Stock-only edits don't need review.
+- **Orders:** one record per checkout; state is rolled up from the lines (the least
+  advanced open line); multiple sellers are listed together. Carrier and delivery
+  exceptions are not recorded yet, so those fields are null.
+- **Disputes:** buyers report a problem from the purchase details popup
+  (`POST /api/orders/:id/disputes`, one unresolved dispute per order); their report is
+  the first statement. Requesting refund review only escalates the case. Notifications,
+  seller statements, attachments, assignment and refunds are not implemented.

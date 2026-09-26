@@ -56,8 +56,12 @@ async function request<T>(
   const url = buildUrl(path, options.params);
   const headers: Record<string, string> = { Accept: "application/json", "X-Fotizo-Request": "1" };
 
-  let body: string | undefined;
-  if (options.body !== undefined) {
+  let body: string | Blob | undefined;
+  if (options.body instanceof Blob) {
+    // Files (image uploads) are sent as-is; the server checks their real type.
+    headers["Content-Type"] = options.body.type || "application/octet-stream";
+    body = options.body;
+  } else if (options.body !== undefined) {
     headers["Content-Type"] = "application/json";
     body = JSON.stringify(options.body);
   }

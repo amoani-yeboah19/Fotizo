@@ -42,6 +42,8 @@ export const usersTable = pgTable(
     accountStatusVersion: integer("account_status_version")
       .notNull()
       .default(0),
+    // First complete profile save (migration 0011).
+    onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -55,6 +57,7 @@ export const insertUserSchema = createInsertSchema(usersTable).omit({
   verified: true,
   suspendedAt: true,
   accountStatusVersion: true,
+  onboardingCompletedAt: true,
   createdAt: true,
 });
 

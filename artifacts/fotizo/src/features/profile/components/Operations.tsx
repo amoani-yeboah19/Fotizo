@@ -615,6 +615,8 @@ const PAYMENT_LABELS: Record<string, string> = {
   pay_on_delivery: "Pay on delivery",
   mobile_money: "Mobile money",
   bank_transfer: "Bank transfer",
+  paystack: "Paystack (online)",
+  stripe: "Stripe (online)",
 };
 
 /**
