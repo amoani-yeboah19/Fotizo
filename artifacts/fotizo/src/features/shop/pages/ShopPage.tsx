@@ -46,7 +46,11 @@ export default function ShopPage() {
   const query = useSearch();
   const [activeCat, setActiveCat] = useState<string | null>(() => categoryFromQuery(query));
   const [sort, setSort] = useState<Sort>("recommended");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => new URLSearchParams(query).get("q") ?? "");
+  useEffect(() => {
+    const q = new URLSearchParams(query).get("q");
+    if (q !== null) setSearch(q);
+  }, [query]);
 
   // Re-sync when the URL changes under us (another chip clicked while already
   // on the page, or back/forward), without fighting in-page tab changes.

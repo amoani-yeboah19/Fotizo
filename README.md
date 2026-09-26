@@ -63,6 +63,10 @@ Storefront browsing now uses bounded server pages, full-catalogue search/filter/
 
 Production shop pages read published API inventory. An empty shop is expected until reviewed inventory is published; fixture data is not a production fallback. Product channel is assigned by the server, and owners can edit or republish their unpublished listings. Product prices currently use GBP as the base; this is not a decision to launch the UK market first. Currency selection stays on GBP if valid rates are unavailable. Market-specific charge currencies and money storage remain completion-plan work.
 
+## Search
+
+The navbar search (desktop and mobile) searches everything customers can browse in one request: `GET /api/search?q=&limit=` returns the best matches and totals for marketplace products, Fotizo Shop items, services and vehicles (active listings only; at least two characters). Products match title, seller and category; services match title, description, provider, skills and service-category names or aliases (so "plumber" finds Plumbing); vehicles match make, model, body type, fuel and description. Typing shows suggestions (arrow keys and Enter work); Enter opens `/search?q=` with every group, and each group's "See all" link opens its own page already filtered (`/products?q=`, `/shop?q=`, `/services?q=`).
+
 ## Images (Supabase Storage)
 
 Listing photos are stored in a public Supabase Storage bucket (`fotizo-images` by default, created on first upload). Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `artifacts/api-server/.env` and on the API host; the service-role key stays on the server.

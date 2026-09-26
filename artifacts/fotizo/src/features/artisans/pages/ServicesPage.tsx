@@ -57,7 +57,11 @@ function filterFromQuery(query: string): ServiceFilter {
 
 export default function ServicesPage() {
   const query = useSearch();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => new URLSearchParams(query).get("q") ?? "");
+  useEffect(() => {
+    const q = new URLSearchParams(query).get("q");
+    if (q !== null) setSearch(q);
+  }, [query]);
   const [filter, setFilter] = useState<ServiceFilter>(() => filterFromQuery(query));
 
   // Re-sync when the URL changes under us (carousel click while already on the

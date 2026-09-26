@@ -1,7 +1,7 @@
 import { useWishlistView as useWishlist } from "@/features/wishlist/hooks/useWishlistView";
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { Search, Menu, X, Heart, ShoppingCart, MessageSquare } from "lucide-react";
+import { Menu, X, Heart, ShoppingCart, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
@@ -12,6 +12,7 @@ import { UserMenu } from "@/components/layout/navbar/UserMenu";
 import { NavbarMobileMenu } from "@/components/layout/navbar/NavbarMobileMenu";
 import type { AuthView } from "@/features/auth/components/AuthModal";
 import { useAuthModal } from "@/contexts/AuthModalContext";
+import { GlobalSearch } from "@/features/search/components/GlobalSearch";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -64,15 +65,7 @@ export function Navbar() {
 
           {/* Search Bar (Desktop) */}
           <div className="hidden lg:flex flex-1 max-w-md mx-8 relative">
-            <div className="relative w-full">
-              <Search aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search products, services..."
-                aria-label="Search products and services"
-                className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-transparent focus:bg-white focus:border-primary/30 rounded-full text-sm outline-none transition-all"
-              />
-            </div>
+            <GlobalSearch />
           </div>
 
           {/* Actions */}
@@ -144,6 +137,8 @@ export function Navbar() {
                 )}
               </button>
             </Link>
+            {/* Quick account access on phones: dashboard, messages, settings, sign out. */}
+            {isAuthenticated && <UserMenu compact />}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}

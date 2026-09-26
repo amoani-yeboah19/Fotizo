@@ -41,7 +41,7 @@ const newServiceSchema = z.object({
 // Shape returned to the client — provider name is looked up via the FK at
 // read time rather than stored on the row, so a renamed provider never goes
 // stale (same reasoning as toPublicProduct in products.ts).
-function toPublicService(row: ServiceRow, providerName: string) {
+export function toPublicService(row: ServiceRow, providerName: string) {
   return {
     id: row.id,
     title: row.title,

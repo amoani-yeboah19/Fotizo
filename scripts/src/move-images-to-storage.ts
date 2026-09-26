@@ -43,9 +43,23 @@ const isRemote = (value: string) => /^https?:\/\//i.test(value) && !value.starts
 const wanted = (value: string | null | undefined): value is string =>
   !!value && (isInline(value) || (INCLUDE_REMOTE && isRemote(value)));
 
+// Wikimedia originals can be thousands of pixels wide; its 1280px rendition
+// is plenty for the site and stays under the size limit.
+function sourceUrl(value: string) {
+  const original = value.match(/^https:\/\/upload\.wikimedia\.org\/wikipedia\/commons\/([0-9a-f])\/([0-9a-f]{2})\/([^/?#]+)$/i);
+  if (!original) return value;
+  const [, a, ab, file] = original;
+  return `https://upload.wikimedia.org/wikipedia/commons/thumb/${a}/${ab}/${file}/1280px-${file}`;
+}
+
 async function readSource(value: string): Promise<Buffer> {
   if (isInline(value)) return Buffer.from(value.slice(value.indexOf(",") + 1), "base64");
-  const response = await fetch(value, { signal: AbortSignal.timeout(45_000), redirect: "follow" });
+  // Some hosts (Wikimedia included) refuse requests without a descriptive User-Agent.
+  const response = await fetch(sourceUrl(value), {
+    signal: AbortSignal.timeout(45_000),
+    redirect: "follow",
+    headers: { "User-Agent": "FotizoImageMigration/1.0 (image migration for the Fotizo marketplace)" },
+  });
   if (!response.ok) throw new Error(`download failed (${response.status})`);
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.length > MAX_BYTES) throw new Error("larger than 5 MB");
