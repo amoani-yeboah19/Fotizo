@@ -2,6 +2,7 @@ import { ReactNode, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
+import { Loading } from "@/components/common/QueryStates";
 
 // Dashboard shell. Owns the auth guard so individual dashboards no longer repeat it.
 export function DashboardLayout({
@@ -11,13 +12,14 @@ export function DashboardLayout({
   sidebar: ReactNode;
   children: ReactNode;
 }) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (!isAuthenticated) setLocation("/login");
-  }, [isAuthenticated, setLocation]);
+    if (!isLoading && !isAuthenticated) setLocation("/login");
+  }, [isAuthenticated, isLoading, setLocation]);
 
+  if (isLoading) return <Loading label="Checking your session…" />;
   if (!user) return null;
 
   return (

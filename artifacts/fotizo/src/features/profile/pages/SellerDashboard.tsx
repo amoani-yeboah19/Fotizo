@@ -1,3 +1,4 @@
+import { PurchaseDetailsDialog } from "@/features/orders/components/PurchaseDetailsDialog";
 import { useState } from "react";
 import { Link } from "wouter";
 import {
@@ -188,7 +189,16 @@ export default function DashboardSeller() {
               {rows.map((order) => (
                 <tr key={order.id} className="hover:bg-muted/30">
                   <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{order.id.slice(0, 8)}</td>
-                  <td className="px-6 py-4 font-medium">{order.productTitle}</td>
+                  <td className="px-6 py-4 font-medium">
+                    {mode === "purchases" ? (
+                      <PurchaseDetailsDialog order={order}>
+                        <button type="button" aria-label={`View purchase details for ${order.productTitle}`} className="flex items-center gap-3 rounded-lg text-left hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary p-2 -m-2">
+                          <img src={order.productImage} alt="" loading="lazy" className="h-12 w-12 shrink-0 rounded-lg bg-muted object-contain p-1" />
+                          <span><span className="block">{order.productTitle}</span><span className="block mt-1 text-xs font-normal text-primary">View purchase</span></span>
+                        </button>
+                      </PurchaseDetailsDialog>
+                    ) : order.productTitle}
+                  </td>
                   <td className="px-6 py-4">{mode === "purchases" ? order.seller : `×${order.quantity}`}</td>
                   <td className="px-6 py-4"><Price amount={order.price * order.quantity} /></td>
                   <td className="px-6 py-4 capitalize"><StatusBadge tone={statusTone(order.status)}>{order.status}</StatusBadge></td>

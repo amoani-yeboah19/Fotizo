@@ -1,3 +1,4 @@
+import { PurchaseDetailsDialog, purchaseStatusTone } from "@/features/orders/components/PurchaseDetailsDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/contexts/MessagesContext";
 import { useOrders, useBookings, useDashboardSection } from "@/features/profile/hooks";
@@ -17,24 +18,24 @@ import {
 
 type Section = "overview" | "orders" | "bookings" | "wishlist";
 
-const orderTone = (s: string) =>
-  s === "delivered" ? "success" : s === "in_transit" ? "info" : "warning";
-
 function OrderRow({ order }: { order: Order }) {
   return (
-    <div className="p-6 flex items-center justify-between">
-      <div className="flex items-center gap-4 min-w-0">
-        <img loading="lazy" decoding="async" src={order.productImage} alt={order.productTitle} className="w-12 h-12 rounded-lg bg-muted object-contain p-1 shrink-0" />
-        <div className="min-w-0">
-          <p className="font-medium text-sm line-clamp-1">{order.productTitle}</p>
-          <p className="text-xs text-muted-foreground">{order.seller}</p>
-        </div>
-      </div>
-      <div className="flex flex-col items-end shrink-0 pl-4">
-        <StatusBadge tone={orderTone(order.status)} className="mb-1">{order.status.replace("_", " ")}</StatusBadge>
-        <Price amount={order.price} className="text-sm font-bold" />
-      </div>
-    </div>
+    <PurchaseDetailsDialog order={order}>
+      <button type="button" aria-label={`View purchase details for ${order.productTitle}`} className="w-full p-6 flex items-center justify-between text-left hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary">
+        <span className="flex items-center gap-4 min-w-0">
+          <img loading="lazy" decoding="async" src={order.productImage} alt="" className="w-12 h-12 rounded-lg bg-muted object-contain p-1 shrink-0" />
+          <span className="min-w-0">
+            <span className="block font-medium text-sm line-clamp-1">{order.productTitle}</span>
+            <span className="block text-xs text-muted-foreground">{order.seller} · Qty {order.quantity}</span>
+            <span className="block mt-1 text-xs text-primary">View purchase</span>
+          </span>
+        </span>
+        <span className="flex flex-col items-end shrink-0 pl-4">
+          <StatusBadge tone={purchaseStatusTone(order.status)} className="mb-1">{order.status.replaceAll("_", " ")}</StatusBadge>
+          <Price amount={order.price * order.quantity} className="text-sm font-bold" />
+        </span>
+      </button>
+    </PurchaseDetailsDialog>
   );
 }
 

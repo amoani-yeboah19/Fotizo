@@ -98,6 +98,7 @@ export function AppRoutes() {
         <Route path="/dashboard/representative" component={DashboardRepresentative} />
         <Route path="/dashboard/china_representative" component={DashboardChinaRepresentative} />
         {DEMO_MODE && DemoLanding && <Route path="/demo" component={DemoLanding} />}
+        {DEMO_MODE && DemoLanding && <Route path="/dashboards" component={DemoLanding} />}
         <Route component={NotFound} />
       </Switch>
     </Suspense>

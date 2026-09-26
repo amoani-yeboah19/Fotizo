@@ -38,8 +38,5 @@ export const useBookings = () =>
 export const useSellerProducts = () =>
   useQuery({ queryKey: ["seller-products"], queryFn: catalogService.listSellerProducts });
 
-export const useManagerMetrics = () =>
-  useQuery({ queryKey: ["manager-metrics"], queryFn: dashboardService.getManagerMetrics });
-
 export const useDeveloperStats = () =>
   useQuery({ queryKey: ["developer-stats"], queryFn: dashboardService.getDeveloperStats });

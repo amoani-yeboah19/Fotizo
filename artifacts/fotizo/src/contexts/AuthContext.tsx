@@ -20,8 +20,12 @@ type GoogleLoginOutcome =
 
 interface AuthContextType {
   user: User | null;
+  isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<{ success: boolean; error?: string }>;
   signup: (data: SignupData) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogle: (credential: string) => Promise<GoogleLoginOutcome>;
   completeGoogleSignup: (
@@ -36,12 +40,21 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    authService.getSession().then((session) => {
-      if (active && session) setUser(session);
-    });
+    authService
+      .getSession()
+      .then((session) => {
+        if (active && session) setUser(session);
+      })
+      .catch(() => {
+        if (active) setUser(null);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
     return () => {
       active = false;
     };
@@ -54,7 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authService.saveSession(loggedIn);
       return { success: true };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : "Login failed." };
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : "Login failed.",
+      };
     }
   }, []);
 
@@ -65,40 +81,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authService.saveSession(created);
       return { success: true };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : "Sign up failed." };
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : "Sign up failed.",
+      };
     }
   }, []);
 
-  const loginWithGoogle = useCallback(async (credential: string): Promise<GoogleLoginOutcome> => {
-    try {
-      const result = await authService.loginWithGoogle(credential);
-      if (result.kind === "user") {
-        setUser(result.user);
-        authService.saveSession(result.user);
-        return { success: true, needsRole: false };
+  const loginWithGoogle = useCallback(
+    async (credential: string): Promise<GoogleLoginOutcome> => {
+      try {
+        const result = await authService.loginWithGoogle(credential);
+        if (result.kind === "user") {
+          setUser(result.user);
+          authService.saveSession(result.user);
+          return { success: true, needsRole: false };
+        }
+        return {
+          success: true,
+          needsRole: true,
+          pendingToken: result.pendingToken,
+        };
+      } catch (err) {
+        return {
+          success: false,
+          error: err instanceof Error ? err.message : "Google sign-in failed.",
+        };
       }
-      return { success: true, needsRole: true, pendingToken: result.pendingToken };
-    } catch (err) {
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : "Google sign-in failed.",
-      };
-    }
-  }, []);
+    },
+    [],
+  );
 
-  const completeGoogleSignup = useCallback(async (pendingToken: string, role: "buyer" | "seller") => {
-    try {
-      const created = await authService.completeGoogleSignup(pendingToken, role);
-      setUser(created);
-      authService.saveSession(created);
-      return { success: true };
-    } catch (err) {
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : "Could not finish creating your account.",
-      };
-    }
-  }, []);
+  const completeGoogleSignup = useCallback(
+    async (pendingToken: string, role: "buyer" | "seller") => {
+      try {
+        const created = await authService.completeGoogleSignup(
+          pendingToken,
+          role,
+        );
+        setUser(created);
+        authService.saveSession(created);
+        return { success: true };
+      } catch (err) {
+        return {
+          success: false,
+          error:
+            err instanceof Error
+              ? err.message
+              : "Could not finish creating your account.",
+        };
+      }
+    },
+    [],
+  );
 
   const logout = useCallback(() => {
     setUser(null);
@@ -117,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       user,
+      isLoading,
       isAuthenticated: !!user,
       login,
       signup,
@@ -125,7 +161,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       updateUser,
     }),
-    [user, login, signup, loginWithGoogle, completeGoogleSignup, logout, updateUser],
+    [
+      user,
+      isLoading,
+      login,
+      signup,
+      loginWithGoogle,
+      completeGoogleSignup,
+      logout,
+      updateUser,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -23,7 +23,10 @@ export const DASHBOARD_NAV: Record<string, DashboardNavItem[]> = {
   manager: [
     { label: "Overview", tab: "overview" },
     { label: "Users", tab: "users" },
-    { label: "Moderation", tab: "moderation" },
+    { label: "Orders & disputes", tab: "orders" },
+    { label: "Approval queue", tab: "approvals" },
+    { label: "Publication controls", tab: "moderation" },
+    { label: "Audit trail", tab: "audit" },
   ],
   developer: [
     { label: "Console", tab: "overview" },
