@@ -13,7 +13,7 @@ import { ApiError } from "@/api/client";
 import type { User, SignupData } from "@/types";
 export type { User, UserRole, SignupData } from "@/types";
 
-type Result = { success: boolean; error?: string };
+type Result = { success: boolean; error?: string; user?: User };
 type GoogleLoginOutcome =
   | { success: true; needsRole: false }
   | { success: true; needsRole: true; pendingToken: string }
@@ -155,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
         replaceIdentity(next);
         announceSessionChange();
-        return { success: true };
+        return { success: true, user: next };
       } catch (error) {
         if (mounted.current && generation.current === requestGeneration)
           setStatus((current) =>
