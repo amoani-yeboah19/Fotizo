@@ -10,6 +10,7 @@ import {
 } from "react";
 import { authService } from "@/features/auth/services";
 import { ApiError } from "@/api/client";
+import { onSessionRejected } from "@/api/session-events";
 import type { User, SignupData } from "@/types";
 export type { User, UserRole, SignupData } from "@/types";
 
@@ -122,6 +123,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void restore();
     }
   }, [restore]);
+
+  // A private request was refused: re-check the session so the app shows the
+  // signed-out state and stops polling, instead of retrying forever.
+  const statusRef = useRef(status);
+  statusRef.current = status;
+  useEffect(
+    () =>
+      onSessionRejected(() => {
+        if (statusRef.current === "authenticated" && !busy.current) void restore();
+      }),
+    [restore],
+  );
 
   useEffect(() => {
     const onSessionChange = (event: StorageEvent) => {
