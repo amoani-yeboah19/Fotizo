@@ -21,6 +21,7 @@ import profileRouter from "./profile";
 import adminWorkspaceRouter from "./admin-workspace";
 import disputesRouter from "./disputes";
 import uploadsRouter from "./uploads";
+import searchRouter from "./search";
 
 const router: IRouter = Router();
 
@@ -46,5 +47,6 @@ router.use(paymentsRouter);
 router.use(profileRouter);
 router.use(disputesRouter);
 router.use(uploadsRouter);
+router.use(searchRouter);
 
 export default router;

@@ -33,6 +33,7 @@ const ServicesPage = lazy(
 const ServiceDetail = lazy(
   () => import("@/features/artisans/pages/ServiceDetailPage"),
 );
+const SearchPage = lazy(() => import("@/features/search/pages/SearchPage"));
 const ProfessionalProfile = lazy(
   () => import("@/features/artisans/pages/ProfessionalProfilePage"),
 );
@@ -150,6 +151,7 @@ export function AppRoutes() {
         <Route path="/services" component={ServicesPage} />
         <Route path="/services/:id" component={ServiceDetail} />
         <Route path="/professionals/:id" component={ProfessionalProfile} />
+        <Route path="/search" component={SearchPage} />
         <Route path="/support" component={SupportPage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/how-it-works" component={HowItWorksPage} />

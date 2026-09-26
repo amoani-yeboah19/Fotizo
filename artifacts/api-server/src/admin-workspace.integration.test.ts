@@ -306,3 +306,37 @@ describe("public professional pages", () => {
     expect((await get(`/profiles/${seller.id}`)).status).toBe(404);
   });
 });
+
+describe("global search", () => {
+  type Group = { total: number; items: { id: string; title?: string; model?: string }[] };
+  type Results = { products: Group; shop: Group; services: Group; vehicles: Group };
+  const search = async (query: string) => json<Results>(await get(`/search?${query}`));
+
+  it("finds live products, shop items, services and vehicles in one request", async () => {
+    const seller = await account("seller", "Ama Mensah");
+    const rep = await account("china_representative");
+    await post("/products", product, seller.cookie);
+    const hidden = await json<{ id: string }>(await post("/products", { ...product, title: "Hidden drill press" }, seller.cookie));
+    await send("PATCH", `/products/${hidden.id}`, { status: "unpublished" }, seller.cookie);
+    await post("/products", { ...product, title: "Drill bit set 100% steel" }, rep.cookie);
+    await post("/services", service, seller.cookie);
+    await database.query(
+      `INSERT INTO vehicles (slug, make, model, body_type, fuel, seats, transmission, drivetrain, powertrain,
+        efficiency, landed_price, lead_time_min_weeks, lead_time_max_weeks, images, highlights, description, status)
+       VALUES ('drill-rig', 'Toyota', 'Hilux Drill Rig', 'suv', 'hybrid', 5, 'Manual', '4WD', '2.8L diesel', '9 L/100km',
+        30000, 8, 12, ARRAY['https://example.com/a.jpg'], ARRAY['Tough'], 'A work truck', 'active')`,
+    );
+
+    const drill = await search("q=drill");
+    expect(drill.products).toMatchObject({ total: 1, items: [{ title: "Cordless drill set" }] });
+    expect(drill.shop).toMatchObject({ total: 1, items: [{ title: "Drill bit set 100% steel" }] });
+    expect(drill.vehicles).toMatchObject({ total: 1, items: [{ model: "Hilux Drill Rig" }] });
+    // A category alias finds services whose words don't match directly.
+    expect((await search("q=programmer")).services.total).toBe(1);
+    // Seller names are searchable; wildcards are literal.
+    expect((await search("q=Ama%20Mensah")).products.total).toBe(1);
+    expect((await search(`q=${encodeURIComponent("100%")}`)).shop.total).toBe(1);
+    expect((await search("q=d")).products.total).toBe(0);
+    expect((await get("/search?q=drill&limit=50")).status).toBe(400);
+  });
+});
