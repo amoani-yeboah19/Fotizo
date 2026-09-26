@@ -138,7 +138,7 @@ export default function PostProductPage() {
       }
       const dashboardBase =
         user?.role === "china_representative" ? "/dashboard/china_representative" : "/dashboard/seller";
-      setLocation(dashboardBase);
+      setLocation(`${dashboardBase}?tab=${user?.role === "china_representative" ? "shop" : "products"}`);
     } catch {
       toast({
         variant: "destructive",

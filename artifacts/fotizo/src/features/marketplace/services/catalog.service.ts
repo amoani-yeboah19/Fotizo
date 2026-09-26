@@ -135,6 +135,7 @@ export const catalogService = {
           stock: updated.stockCount,
           image: updated.image,
           category: updated.category,
+          status: updated.status === "unpublished" ? "unpublished" : updated.stockCount > 0 ? "active" : "out_of_stock",
         };
       }
       return updated;
