@@ -105,7 +105,9 @@ export interface Testimonial {
   text: string;
 }
 
-export type PaymentMethod = "pay_on_delivery" | "mobile_money" | "bank_transfer";
+export type PaymentMethod = "pay_on_delivery" | "mobile_money" | "bank_transfer" | "paystack" | "stripe";
+/** Paid online at checkout: Paystack for Ghana (in cedis), Stripe elsewhere (in GBP). */
+export type OnlinePaymentMethod = Extract<PaymentMethod, "paystack" | "stripe">;
 
 export interface Order {
   id: string;
@@ -289,6 +291,16 @@ export interface OrderConfirmation {
   total: number;
   paymentMethod: PaymentMethod | null;
   paymentStatus: "unpaid" | "paid";
+  /** Online orders: the provider's payment page, or null if it could not be opened. */
+  checkoutUrl?: string | null;
+  paymentError?: string;
+}
+
+export interface PaymentVerification {
+  paymentStatus: "unpaid" | "paid";
+  attemptStatus: "pending" | "succeeded" | "failed" | "expired" | null;
+  /** False once an unpaid online order was released after the payment window. */
+  orderOpen: boolean;
 }
 
 export interface OrderDetail extends OrderConfirmation {

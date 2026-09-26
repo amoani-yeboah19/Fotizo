@@ -16,6 +16,7 @@ import developerRouter from "./developer";
 import wishlistRouter from "./wishlist";
 import bookingsRouter from "./bookings";
 import cartRouter from "./cart";
+import paymentsRouter from "./payments";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(developerRouter);
 router.use(wishlistRouter);
 router.use(bookingsRouter);
 router.use(cartRouter);
+router.use(paymentsRouter);
 
 export default router;

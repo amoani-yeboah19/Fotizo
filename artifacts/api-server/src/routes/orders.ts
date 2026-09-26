@@ -14,6 +14,14 @@ import {
 } from "@workspace/db";
 import { requireAuth, requireRole, type AuthenticatedRequest } from "../middlewares/requireAuth";
 import { caseReference } from "../lib/cases";
+import {
+  PaymentError,
+  isOnlineMethod,
+  latestAttempt,
+  providerForCountry,
+  providersAvailable,
+  startPayment,
+} from "../lib/payments";
 
 const router: IRouter = Router();
 
@@ -125,7 +133,8 @@ async function findByKey(buyerId: string, key: string) {
   return existing;
 }
 
-const confirmation = (order: OrderRow) => ({
+const confirmation = (order: OrderRow, checkout?: { checkoutUrl: string | null; paymentError?: string }) => ({
+  ...checkout,
   orderId: order.id,
   reference: order.reference,
   subtotal: order.subtotal,
@@ -148,9 +157,25 @@ router.post("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
   }
   const buyerId = req.auth!.userId;
   const input = parsed.data;
+  // Online payment goes through the provider for the delivery country and
+  // must be configured before any stock is reserved.
+  if (isOnlineMethod(input.paymentMethod)) {
+    if (input.paymentMethod !== providerForCountry(input.delivery.country)) {
+      res.status(400).json({ error: "Choose the online payment option offered for your country." });
+      return;
+    }
+    if (!providersAvailable()[input.paymentMethod]) {
+      res.status(503).json({ error: "Online payment is not available right now. Choose another payment method." });
+      return;
+    }
+  }
   const previous = await findByKey(buyerId, input.idempotencyKey);
   if (previous) {
-    res.json(confirmation(previous));
+    // A retried submission returns the same order and its open checkout page.
+    const attempt = isOnlineMethod(previous.paymentMethod) ? await latestAttempt(previous.id) : undefined;
+    res.json(
+      confirmation(previous, attempt ? { checkoutUrl: attempt.status === "pending" ? attempt.checkoutUrl : null } : undefined),
+    );
     return;
   }
   try {
@@ -223,7 +248,19 @@ router.post("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
             .where(eq(productsTable.id, l.product.id));
       return created;
     });
-    res.status(201).json(confirmation(order));
+    if (!isOnlineMethod(order.paymentMethod)) {
+      res.status(201).json(confirmation(order));
+      return;
+    }
+    // The order exists either way; if the provider is unavailable the buyer can
+    // retry payment from the order page before the payment window closes.
+    try {
+      const { checkoutUrl } = await startPayment(order);
+      res.status(201).json(confirmation(order, { checkoutUrl }));
+    } catch (error) {
+      if (!(error instanceof PaymentError)) throw error;
+      res.status(201).json(confirmation(order, { checkoutUrl: null, paymentError: error.message }));
+    }
   } catch (error) {
     if (error instanceof CheckoutError) {
       res.status(error.status).json({ error: error.message });

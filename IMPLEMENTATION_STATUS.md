@@ -33,6 +33,8 @@ Updated 24 September 2026. Work is local and has not been deployed. The complete
 
 ## Verification record
 
+Online payment: Paystack for Ghana (GHS, rate locked per attempt) and Stripe Checkout for the UK and US (GBP), alongside the offline methods. Migration 0010 adds payment attempts and webhook de-duplication. Orders become paid only on a provider-confirmed amount and currency match, from signed webhooks (Paystack HMAC-SHA512, Stripe HMAC-SHA256 with a five-minute tolerance) or a provider lookup when the buyer returns; unpaid online orders release their stock after 60 minutes. API tests run against a local stand-in for both providers (signatures, replayed events, amount mismatch, provider outage and retry, release); no live or test-mode provider call has been made, because no keys are configured here. The checkout keeps its design and offers the provider for the delivery country; the order page confirms payment and offers "Pay now".
+
 Saved carts and service management: carts persist per account on the server (migration 0009, applied) or in the browser when signed out, merge on sign-in, save changes in order and fall back to the server's copy on failure; checkout removes ordered products from the saved cart and no longer redirects during render. Providers can list, edit, withdraw and republish only their own services. A signed-out cart surviving a reload was checked in the browser. `pnpm run check` passed: 135 tests and all builds.
 
 Offline checkout and booking requests: at the user's direction orders are paid offline (pay on delivery, mobile money or bank transfer) and bookings are requests the provider confirms. Migrations 0007 and 0008 were applied to the Supabase database. Checkout uses the original three-step design with a payment-method choice instead of card fields; the server prices orders, applies the existing delivery rule, reserves marketplace stock transactionally and deduplicates retries by idempotency key (tested with concurrent submissions). Sellers progress order lines with tracking and restocking on cancellation; managers record payment. Booking requests snapshot the package price, reject past times, self-booking and duplicate open requests, and use versioned provider/customer transitions (tested with concurrent decisions). The confirmation page shows the real order and no longer claims an email was sent. No emails or SMS are sent. `pnpm run check` passed: 124 tests and all builds.
@@ -53,7 +55,7 @@ Manager account-controls batch: all TypeScript projects, all 73 tests across nin
 
 Previous account-settings and API-operations batch: `pnpm run check` passed all TypeScript projects, all 55 tests across seven files, and API/frontend/mockup production builds. This includes cross-tab state clearing, password-change concurrency and rollback, stale-credential session issuance, readiness failure/recovery, concurrent probes, active HTTP request draining and shutdown deadlines. API client/schema generation succeeded. A smoke test of the built API against an intentionally unavailable local database exited with code 1 before listening, as expected. The earlier foundation batch passed 29 tests. `git diff --check` passed.
 
-API tests use an isolated PostgreSQL engine in WASM, bcrypt and actual HTTP requests. Session and currency tests use React with jsdom. SQL migration application/reapplication is tested against a synthetic previous schema. The migration runner applied 0001-0009 to the hosted Supabase database on 24 September 2026; rollback and restore have not been rehearsed.
+API tests use an isolated PostgreSQL engine in WASM, bcrypt and actual HTTP requests. Session and currency tests use React with jsdom. SQL migration application/reapplication is tested against a synthetic previous schema. The migration runner applied 0001-0009 to the hosted Supabase database on 24 September 2026 and 0010 on 26 September 2026; rollback and restore have not been rehearsed.
 
 Browser visual/mobile/keyboard acceptance remains pending: the browser tool reported no connected browsers after an initial connection timeout. This is not covered by passing jsdom tests. The temporary frontend server was stopped after the attempt. No live database migration, hosting change, payment, email or production seed was performed.
 
@@ -61,7 +63,7 @@ Builds currently emit source-map warnings for the UI label/tooltip modules and a
 
 ## Deployment prerequisites for these changes
 
-1. Inspect the target schema and take a verified backup. Follow README.md to apply 0001-0009 using the migration runner before this API version starts. Do not use schema push on production.
+1. Inspect the target schema and take a verified backup. Follow README.md to apply 0001-0010 using the migration runner before this API version starts. Do not use schema push on production.
 2. Configure a strong JWT_SECRET, exact CORS_ORIGIN values and the verified trusted-proxy hop count. Existing tokens require a fresh sign-in.
 3. Deploy frontend and API together because writes require X-Fotizo-Request and public product lists now return a bounded page envelope instead of an array. Verify actual proxy forwarding, secure cookies and revocation in staging.
 4. Publish only reviewed shop inventory. Empty/unpublished inventory must stay unavailable.
