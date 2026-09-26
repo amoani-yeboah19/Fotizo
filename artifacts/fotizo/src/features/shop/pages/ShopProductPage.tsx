@@ -1,3 +1,4 @@
+import { WishlistButton } from "@/features/wishlist/components/WishlistButton";
 import { useState } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import { Star, Truck, ShieldCheck, Flame, Minus, Plus, ShoppingCart, ChevronRight } from "lucide-react";
@@ -177,6 +178,7 @@ export default function ShopProductPage() {
 
           {/* Actions */}
           <div className="mt-6 flex gap-3">
+            <WishlistButton item={{ id: product.id, source: "shop", title: product.title, image: product.image, price: product.price, seller: "Fotizo Import" }} className="border border-border shrink-0" />
             <Button variant="outline" className="flex-1 gap-2" onClick={() => add(false)}>
               <ShoppingCart className="h-4 w-4" aria-hidden="true" /> Add to cart
             </Button>

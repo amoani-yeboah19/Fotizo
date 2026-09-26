@@ -1,5 +1,6 @@
+import { WishlistButton } from "@/features/wishlist/components/WishlistButton";
 import { memo } from "react";
-import { Heart, ShoppingCart } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Price } from "@/components/common/Price";
@@ -27,13 +28,7 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
             alt={product.title} 
             className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
           />
-          <button
-            aria-label="Add to wishlist"
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/80 backdrop-blur-sm text-muted-foreground hover:text-accent hover:bg-white transition-colors"
-            onClick={(e) => { e.preventDefault(); /* Add wishlist logic */ }}
-          >
-            <Heart className="w-5 h-5" />
-          </button>
+          <WishlistButton item={{ id: product.id, source: "marketplace", title: product.title, image: product.image, price: product.price, seller: product.seller }} className="absolute top-4 right-4" />
           {product.originalPrice && (
             <div className="absolute top-4 left-4 px-2.5 py-1 bg-accent text-white text-xs font-bold rounded-full">
               Sale

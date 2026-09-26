@@ -1,3 +1,4 @@
+import { WishlistProvider } from "@/contexts/WishlistContext";
 import type { ReactNode } from "react";
 import { Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -36,6 +37,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <GoogleAuthWrapper>
         <AuthProvider>
+        <WishlistProvider>
         <CurrencyProvider>
           <CartProvider>
             <MessagesProvider>
@@ -48,6 +50,7 @@ function App() {
             </MessagesProvider>
           </CartProvider>
         </CurrencyProvider>
+        </WishlistProvider>
       </AuthProvider>
       </GoogleAuthWrapper>
       </QueryClientProvider>

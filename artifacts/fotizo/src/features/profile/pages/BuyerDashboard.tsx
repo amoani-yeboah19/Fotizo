@@ -1,9 +1,9 @@
+import { useWishlist } from "@/contexts/WishlistContext";
+import { WishlistItems } from "@/features/wishlist/components/WishlistItems";
 import { PurchaseDetailsDialog, purchaseStatusTone } from "@/features/orders/components/PurchaseDetailsDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/contexts/MessagesContext";
 import { useOrders, useBookings, useDashboardSection } from "@/features/profile/hooks";
-import { useProducts } from "@/features/marketplace/hooks";
-import { ProductCard } from "@/features/marketplace/components/ProductCard";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { StatCard } from "@/components/common/StatCard";
@@ -84,7 +84,7 @@ export default function DashboardBuyer() {
   const { totalUnread } = useMessages();
   const { data: orders = [] } = useOrders();
   const { data: bookings = [] } = useBookings();
-  const { data: products = [] } = useProducts();
+  const { items: wishlist } = useWishlist();
   const [section, setSection] = useDashboardSection<Section>(
     ["overview", "orders", "bookings", "wishlist"],
     "overview",
@@ -117,7 +117,7 @@ export default function DashboardBuyer() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <StatCard label="Active Orders" value={String(orders.length)} icon={<Package className="w-6 h-6" />} iconClassName="bg-blue-50 text-blue-600" />
             <StatCard label="Bookings" value={String(bookings.length)} icon={<Calendar className="w-6 h-6" />} iconClassName="bg-purple-50 text-purple-600" />
-            <StatCard label="Wishlist" value="8" icon={<Heart className="w-6 h-6" />} iconClassName="bg-rose-50 text-rose-600" />
+            <StatCard label="Wishlist" value={wishlist.length} icon={<Heart className="w-6 h-6" />} iconClassName="bg-rose-50 text-rose-600" />
             <StatCard label="Spent This Month" value="£593" icon={<CreditCard className="w-6 h-6" />} iconClassName="bg-green-50 text-green-600" />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -159,11 +159,7 @@ export default function DashboardBuyer() {
         </SurfaceCard>
       )}
 
-      {section === "wishlist" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products.slice(2, 8).map((p) => <ProductCard key={p.id} product={p} />)}
-        </div>
-      )}
+      {section === "wishlist" && <WishlistItems />}
     </DashboardLayout>
   );
 }

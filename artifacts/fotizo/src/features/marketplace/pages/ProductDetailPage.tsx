@@ -1,3 +1,4 @@
+import { WishlistButton } from "@/features/wishlist/components/WishlistButton";
 import { useState } from "react";
 import { useRoute, Link, useLocation } from "wouter";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -11,7 +12,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useMessages } from "@/contexts/MessagesContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Star, Heart, MessageSquare, ChevronRight, Minus, Plus, Truck, ShieldCheck } from "lucide-react";
+import { Star, MessageSquare, ChevronRight, Minus, Plus, Truck, ShieldCheck } from "lucide-react";
 
 export default function ProductDetail() {
   const [, params] = useRoute("/products/:id");
@@ -184,9 +185,7 @@ export default function ProductDetail() {
                 Add to Cart
               </Button>
               
-              <Button aria-label="Add to wishlist" variant="outline" size="icon" className="w-12 h-12 rounded-full shrink-0">
-                <Heart className="w-5 h-5" />
-              </Button>
+              <WishlistButton item={{ id: product.id, source: "marketplace", title: product.title, image: product.image, price: product.price, seller: product.seller }} className="w-12 h-12 border border-border shrink-0" />
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground border-t border-border pt-8">

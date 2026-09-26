@@ -1,6 +1,7 @@
+import { useWishlist } from "@/contexts/WishlistContext";
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { Search, Menu, X, ShoppingCart, MessageSquare } from "lucide-react";
+import { Search, Menu, X, Heart, ShoppingCart, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
@@ -17,6 +18,8 @@ export function Navbar() {
   const [authView, setAuthView] = useState<AuthView | null>(null);
   const { isAuthenticated } = useAuth();
   const { count } = useCart();
+  const { items: wishlist } = useWishlist();
+  const wishlistLink = <Link href="/wishlist" aria-label={`Wishlist, ${wishlist.length} saved items`} className="relative p-2 text-foreground hover:text-primary transition-colors"><Heart className="w-5 h-5" aria-hidden="true" />{wishlist.length > 0 && <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">{wishlist.length > 99 ? "99+" : wishlist.length}</span>}</Link>;
   const { totalUnread } = useMessages();
 
   const openAuth = (view: AuthView) => {
@@ -85,6 +88,7 @@ export function Navbar() {
                     )}
                   </button>
                 </Link>
+                {wishlistLink}
                 <Link href="/cart">
                   <button aria-label="Cart" className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer">
                     <ShoppingCart className="w-5 h-5" />
@@ -99,6 +103,8 @@ export function Navbar() {
               </div>
             ) : (
               <>
+                {wishlistLink}
+                <Link href="/cart" aria-label={`Cart, ${count} items`} className="relative p-2 text-foreground hover:text-primary"><ShoppingCart className="w-5 h-5" aria-hidden="true" />{count > 0 && <span className="absolute top-0 right-0 min-w-4 h-4 px-1 bg-accent text-white text-[10px] rounded-full text-center">{count}</span>}</Link>
                 <Button variant="ghost" className="text-sm font-medium" onClick={() => openAuth("signin")}>
                   Sign In
                 </Button>
@@ -113,7 +119,7 @@ export function Navbar() {
           </div>
 
           {/* Mobile Toggle */}
-          <div className="flex md:hidden items-center gap-4">
+          <div className="flex md:hidden items-center gap-1 sm:gap-3">
             {isAuthenticated && (
               <Link href="/messages">
                 <button aria-label="Messages" className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer">
@@ -126,7 +132,8 @@ export function Navbar() {
                 </button>
               </Link>
             )}
-            <Link href="/cart">
+            {wishlistLink}
+                <Link href="/cart">
               <button aria-label="Cart" className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer">
                 <ShoppingCart className="w-5 h-5" />
                 {count > 0 && (

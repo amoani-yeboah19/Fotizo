@@ -1,12 +1,18 @@
 # Wishlist
 
-Saved products and services, organised into collections.
+The header heart beside the cart links to `/wishlist` on desktop and mobile, for
+signed-in users and guests. Hearts on Shop and Marketplace cards/detail pages toggle
+saved products, with filled state and a header count. The buyer dashboard Wishlist
+uses the same records rather than sample products. Saved cards link to their original
+Shop or Marketplace page and can be removed directly.
 
-_Scaffold — no code yet._ Add pieces here as the feature is built, following the same layout the
-populated features use:
+This is frontend-only. `WishlistContext` stores product snapshots in localStorage,
+keyed by user ID (or guest) and identified by source plus product ID. Signing in/out
+switches lists; guest items are not automatically moved into an account. Reloads retain
+the list, storage events synchronize tabs, malformed records are ignored, and unavailable
+storage is reported on the wishlist page. Clearing browser data removes saved records.
+Prices are saved snapshots; the product page provides current price/availability.
 
-- `pages/` — routed screens
-- `components/` — feature-specific UI
-- `hooks/` — React Query / stateful hooks
-- `services/` — data access (mock + real API), mirroring e.g. `features/marketplace/services`
-- `types/` — feature-local types
+Backend handoff: account-based cross-device syncing needs authenticated list/add/remove
+wishlist endpoints, ownership checks, source-aware IDs, current availability/price
+resolution, and an explicit guest-to-account merge policy. No backend changes were made.
