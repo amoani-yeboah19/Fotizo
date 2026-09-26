@@ -137,6 +137,8 @@ export function Navbar() {
                 )}
               </button>
             </Link>
+            {/* Quick account access on phones: dashboard, messages, settings, sign out. */}
+            {isAuthenticated && <UserMenu compact />}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
