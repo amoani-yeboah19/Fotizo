@@ -12,6 +12,7 @@ import { DEMO_MODE } from "@/api";
 // dashboards) loads only when its route is visited.
 const WishlistPage = lazy(() => import("@/features/wishlist/pages/WishlistPage"));
 const Home = lazy(() => import("@/features/home/pages/HomePage"));
+const ProfessionalProfile = lazy(() => import("@/features/profile/pages/ProfessionalProfilePage"));
 const Settings = lazy(() => import("@/features/settings/pages/SettingsPage"));
 const ProductsPage = lazy(
   () => import("@/features/marketplace/pages/ProductsPage"),
@@ -185,6 +186,7 @@ export function AppRoutes() {
             </RequireSession>
           )}
         </Route>
+        <Route path="/profile">{() => <RequireSession><ProfessionalProfile /></RequireSession>}</Route>
         <Route path="/dashboard">
           {() => (
             <RequireSession>

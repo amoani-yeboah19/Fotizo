@@ -1,6 +1,9 @@
 import { Link } from "wouter";
 import { Facebook, Twitter, Instagram, Linkedin, Globe } from "lucide-react";
-import { SERVICE_CATEGORIES, serviceCategoryLabel } from "@workspace/service-taxonomy";
+import {
+  SERVICE_CATEGORIES,
+  serviceCategoryLabel,
+} from "@workspace/service-taxonomy";
 import { CurrencySwitcher } from "@/components/layout/navbar/CurrencySwitcher";
 import { categoryLabel as shopCategoryLabel } from "@/features/shop/data/categories";
 
@@ -29,7 +32,9 @@ const POPULAR_SERVICE_IDS = [
 const POPULAR_SHOP_IDS = ["wigs", "phones", "appliances", "shoes-bags"];
 
 const CATEGORY_LINKS: FooterLink[] = [
-  ...POPULAR_SERVICE_IDS.filter((id) => SERVICE_CATEGORIES.some((c) => c.id === id)).map((id) => ({
+  ...POPULAR_SERVICE_IDS.filter((id) =>
+    SERVICE_CATEGORIES.some((c) => c.id === id),
+  ).map((id) => ({
     label: serviceCategoryLabel(id),
     href: `/services?category=${id}`,
   })),
@@ -42,7 +47,7 @@ const CATEGORY_LINKS: FooterLink[] = [
 const COLUMNS: { heading: string; links: FooterLink[] }[] = [
   { heading: "Popular categories", links: CATEGORY_LINKS },
   {
-    heading: "Buy",
+    heading: "For buyers",
     links: [
       { label: "Fotizo Shop", href: "/shop" },
       { label: "Fotizo Autos", href: "/autos" },
@@ -51,10 +56,11 @@ const COLUMNS: { heading: string; links: FooterLink[] }[] = [
     ],
   },
   {
-    heading: "Sell",
+    heading: "For sellers & professionals",
     links: [
       { label: "Become a seller", href: "/signup" },
       { label: "Post a product", href: "/dashboard/seller/products/new" },
+      { label: "Create a professional profile", href: "/profile" },
       { label: "Offer a service", href: "/dashboard/seller/services/new" },
       { label: "Seller dashboard", href: "/dashboard/seller" },
       { label: "Fotizo guides", href: "/guides" },
@@ -75,12 +81,13 @@ const COLUMNS: { heading: string; links: FooterLink[] }[] = [
 // Social profiles. Each is null until the real account exists — a null entry is
 // not rendered, so we never ship an icon that goes nowhere. Fill these in and
 // the icons appear.
-const SOCIALS: { icon: typeof Facebook; label: string; href: string | null }[] = [
-  { icon: Facebook, label: "Fotizo on Facebook", href: null },
-  { icon: Twitter, label: "Fotizo on X", href: null },
-  { icon: Instagram, label: "Fotizo on Instagram", href: null },
-  { icon: Linkedin, label: "Fotizo on LinkedIn", href: null },
-];
+const SOCIALS: { icon: typeof Facebook; label: string; href: string | null }[] =
+  [
+    { icon: Facebook, label: "Fotizo on Facebook", href: null },
+    { icon: Twitter, label: "Fotizo on X", href: null },
+    { icon: Instagram, label: "Fotizo on Instagram", href: null },
+    { icon: Linkedin, label: "Fotizo on LinkedIn", href: null },
+  ];
 
 export function Footer() {
   const socials = SOCIALS.filter((s) => s.href);
@@ -110,7 +117,7 @@ export function Footer() {
 
         {/* Bottom bar */}
         <div className="pt-6 border-t border-border flex flex-col md:flex-row items-center justify-between gap-5">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-4">
             <Link href="/">
               <img
                 loading="lazy"
@@ -121,7 +128,7 @@ export function Footer() {
               />
             </Link>
             <p className="text-sm text-muted-foreground">
-              © Fotizo International Ltd. {new Date().getFullYear()}
+              © {new Date().getFullYear()} Fotizo LTD. All rights reserved.
             </p>
           </div>
 

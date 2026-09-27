@@ -32,3 +32,11 @@ Additional profile fields are explicitly **browser drafts**, not account updates
 6. Add audited account deactivation/deletion and data export workflows with reauthentication, ownership checks and appropriate retention rules. Current UI directs these requests to Support.
 
 Frontend validation: settings save/failure paths, role-specific profile requirements, account isolation, corrupted/blocked browser storage, password confirmation, email payload compatibility and Google onboarding are covered by component tests. A hosted mobile/keyboard review and end-to-end tests against the new profile APIs remain release checks after backend integration.
+
+## Professional profile workspace
+
+`/profile` is an authenticated profile builder and private preview, available through desktop/mobile account navigation, the services page and footer. It reuses the existing account-scoped profile draft and validation. Buyers can prepare professional details without changing their backend role; only existing sellers receive links to create/manage live services. Completion is calculated from entered fields and does not imply verification or approval.
+
+Public profile publication, portfolio media uploads, profile discovery and buyer-to-seller activation still need authenticated backend contracts. The current preview does not claim to be public or shareable. Add separate public/private serializers before exposing profile fields to clients.
+
+The account dropdown now uses click/keyboard interaction, dismisses on Escape/outside clicks, and links only to implemented destinations. The home-page newsletter has been replaced with a buying/selling Join Fotizo banner. Signed-out visitors enter registration; signed-in visitors go to their existing role dashboard. Footer branding is Fotizo LTD.

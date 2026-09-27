@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearch } from "wouter";
+import { Link, useSearch } from "wouter";
 import {
   SERVICE_GROUPS,
   serviceCategoryLabel,
@@ -83,6 +83,7 @@ export default function ServicesPage() {
 
   return (
     <PageLayout mainClassName="container-app py-24 md:py-32">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-primary/5 p-5"><div><p className="font-semibold">Your expertise deserves a place of its own.</p><p className="mt-1 text-sm text-muted-foreground">Build your professional profile and introduce the work you do best.</p></div><Link href="/profile" className="rounded-full bg-primary px-5 py-3 text-sm font-medium text-white">Create your profile →</Link></div>
       {/* Provider groups — the top level of the taxonomy, always visible so it's
           obvious the platform holds freelancers, artisans and businesses. */}
       <div className="mb-8">
