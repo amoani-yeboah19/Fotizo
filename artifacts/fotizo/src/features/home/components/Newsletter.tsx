@@ -1,45 +1,65 @@
-import { motion } from "framer-motion";
+import { ArrowUpRight, ShoppingBag, Store } from "lucide-react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAuthModal } from "@/contexts/AuthModalContext";
 
 export function Newsletter() {
+  const { user } = useAuth();
+  const openAuth = useAuthModal();
+  const [, navigate] = useLocation();
   return (
-    <section className="py-20 bg-white border-t border-border/50">
+    <section
+      className="bg-white py-16 sm:py-24"
+      aria-labelledby="join-fotizo-heading"
+    >
       <div className="container-app">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="max-w-4xl mx-auto bg-muted rounded-[2.5rem] p-10 lg:p-16 text-center relative overflow-hidden"
-        >
-          {/* Decorative background shapes */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-          
-          <div className="relative z-10 max-w-2xl mx-auto">
-            <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
-              Join 2 million+ buyers and sellers
-            </h2>
-            <p className="text-muted-foreground text-lg mb-8">
-              Subscribe to our newsletter for exclusive deals, new feature announcements, and marketplace insights.
-            </p>
-            
-            <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
-              <input 
-                type="email" 
-                placeholder="Enter your email address" 
-                className="flex-1 px-6 py-4 rounded-full border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
-                required
-              />
-              <Button type="submit" className="bg-accent hover:bg-accent/90 text-white rounded-full px-8 py-4 h-auto text-base font-semibold shadow-md">
-                Subscribe
-              </Button>
-            </form>
-            <p className="text-xs text-muted-foreground mt-4">
-              We care about your data in our <a href="#" className="underline hover:text-foreground">privacy policy</a>.
-            </p>
+        <div className="relative overflow-hidden rounded-3xl bg-[#08275B] px-7 py-12 text-white sm:p-14 lg:p-16">
+          <div
+            aria-hidden="true"
+            className="absolute -right-16 -top-24 h-80 w-80 rounded-full border-[48px] border-white/5"
+          />
+          <div className="relative grid items-center gap-10 lg:grid-cols-[1fr_auto]">
+            <div className="max-w-3xl">
+              <p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-orange-300">
+                Your next opportunity starts here
+              </p>
+              <h2
+                id="join-fotizo-heading"
+                className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl"
+              >
+                Great finds. New customers.
+                <br />
+                <span className="text-orange-300">One marketplace.</span>
+              </h2>
+              <p className="mt-5 max-w-xl text-base leading-relaxed text-white/75">
+                Buy what you love. Sell what you do best. Make your next
+                connection on Fotizo.
+              </p>
+              <div className="mt-7 flex flex-wrap gap-5 text-sm text-white/80">
+                <span className="flex items-center gap-2">
+                  <ShoppingBag className="h-4 w-4" />
+                  Discover products
+                </span>
+                <span className="flex items-center gap-2">
+                  <Store className="h-4 w-4" />
+                  Grow your business
+                </span>
+              </div>
+            </div>
+            <Button
+              onClick={() =>
+                user
+                  ? navigate(`/dashboard/${user.role}`)
+                  : openAuth("join", "/dashboard")
+              }
+              className="h-14 gap-3 rounded-full bg-white px-8 text-base font-semibold text-[#08275B] hover:bg-orange-100"
+            >
+              Join Fotizo{" "}
+              <ArrowUpRight className="h-5 w-5" aria-hidden="true" />
+            </Button>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
