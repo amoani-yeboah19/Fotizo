@@ -12,7 +12,7 @@ import { DEMO_MODE } from "@/api";
 // dashboards) loads only when its route is visited.
 const WishlistPage = lazy(() => import("@/features/wishlist/pages/WishlistPage"));
 const Home = lazy(() => import("@/features/home/pages/HomePage"));
-const ProfessionalProfile = lazy(() => import("@/features/profile/pages/ProfessionalProfilePage"));
+const ProfileWorkspace = lazy(() => import("@/features/profile/pages/ProfessionalProfilePage"));
 const Settings = lazy(() => import("@/features/settings/pages/SettingsPage"));
 const ProductsPage = lazy(
   () => import("@/features/marketplace/pages/ProductsPage"),
@@ -33,6 +33,10 @@ const ServicesPage = lazy(
 );
 const ServiceDetail = lazy(
   () => import("@/features/artisans/pages/ServiceDetailPage"),
+);
+const SearchPage = lazy(() => import("@/features/search/pages/SearchPage"));
+const ProfessionalProfile = lazy(
+  () => import("@/features/artisans/pages/ProfessionalProfilePage"),
 );
 const CartPage = lazy(() => import("@/features/payments/pages/CartPage"));
 const CheckoutPage = lazy(
@@ -56,9 +60,8 @@ const DashboardBuyer = lazy(
 const DashboardSeller = lazy(
   () => import("@/features/profile/pages/SellerDashboard"),
 );
-const DashboardManager = import.meta.env.VITE_DEMO_MODE === "true"
-  ? lazy(() => import("@/features/profile/pages/ManagerDemoDashboard"))
-  : lazy(() => import("@/features/profile/pages/ManagerDashboard"));
+// Demo builds serve the same workspace from in-memory sample records.
+const DashboardManager = lazy(() => import("@/features/profile/pages/ManagerDashboard"));
 const DashboardDeveloper = lazy(
   () => import("@/features/profile/pages/DeveloperDashboard"),
 );
@@ -148,6 +151,8 @@ export function AppRoutes() {
         <Route path="/autos/:id" component={VehicleDetail} />
         <Route path="/services" component={ServicesPage} />
         <Route path="/services/:id" component={ServiceDetail} />
+        <Route path="/professionals/:id" component={ProfessionalProfile} />
+        <Route path="/search" component={SearchPage} />
         <Route path="/support" component={SupportPage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/how-it-works" component={HowItWorksPage} />
@@ -186,7 +191,7 @@ export function AppRoutes() {
             </RequireSession>
           )}
         </Route>
-        <Route path="/profile">{() => <RequireSession><ProfessionalProfile /></RequireSession>}</Route>
+        <Route path="/profile">{() => <RequireSession><ProfileWorkspace /></RequireSession>}</Route>
         <Route path="/dashboard">
           {() => (
             <RequireSession>

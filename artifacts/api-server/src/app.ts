@@ -5,6 +5,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { recordRequestMetrics } from "./lib/request-metrics";
+import { paymentWebhooks } from "./routes/payments";
 
 import {
   configuredOrigins,
@@ -46,6 +47,9 @@ app.use(
   }),
 );
 app.use("/api", recordRequestMetrics);
+// Provider webhooks are server-to-server and signature-verified over the raw
+// body, so they sit before the JSON parser and the browser-origin check.
+app.use("/api/payments/webhooks", paymentWebhooks);
 app.use("/api", protectBrowserWrites(origins));
 // Default 100kb body limit is too small for product/service photos, which
 // arrive as base64 data URLs (a single downscaled JPEG easily exceeds it).

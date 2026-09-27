@@ -14,9 +14,10 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { InitialsAvatar } from "@/components/common/InitialsAvatar";
-export function UserMenu() {
+export function UserMenu({ compact = false }: { compact?: boolean }) {
   const { user, logout } = useAuth();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  useEffect(() => setOpen(false), [location]);
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -59,7 +60,7 @@ export function UserMenu() {
   return (
     <div
       ref={root}
-      className="relative ml-2"
+      className={`relative ${compact ? "ml-1" : "ml-2"}`}
       onKeyDown={(e) => {
         if (e.key === "Escape") {
           setOpen(false);
@@ -74,16 +75,16 @@ export function UserMenu() {
         ref={trigger}
         aria-label="Account menu"
         aria-expanded={open}
-        aria-controls="account-panel"
+        aria-controls={compact ? "account-panel-mobile" : "account-panel"}
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 rounded-full p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
       >
         {user?.avatar ? <img src={user.avatar} alt={user.name} className="h-9 w-9 rounded-full border object-cover" /> : <InitialsAvatar name={user?.name} className="h-9 w-9 border text-xs" />}
-        <ChevronDown className="h-3 w-3" />
+        {!compact && <ChevronDown className="h-3 w-3" />}
       </button>
       {open && (
         <div
-          id="account-panel"
+          id={compact ? "account-panel-mobile" : "account-panel"}
           className="absolute right-0 top-full mt-3 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border bg-white shadow-xl"
         >
           <div className="bg-primary/5 p-5">

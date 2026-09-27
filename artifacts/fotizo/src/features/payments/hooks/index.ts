@@ -16,6 +16,39 @@ export const usePlaceOrder = () => {
   });
 };
 
+export const usePaymentConfig = () =>
+  useQuery({
+    queryKey: ["payment-config"],
+    queryFn: ordersService.paymentConfig,
+    staleTime: 5 * 60 * 1000,
+  });
+
+/**
+ * On return from Paystack or Stripe, confirms the payment with the provider.
+ * Checks again a few times while the provider is still settling it.
+ */
+export const useVerifyPayment = (orderId: string | null, enabled: boolean) => {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: ["payment-verify", user?.id, orderId],
+    queryFn: async () => {
+      const result = await ordersService.verifyPayment(orderId!);
+      if (result.paymentStatus === "paid") qc.invalidateQueries({ queryKey: ["order", user?.id, orderId] });
+      return result;
+    },
+    enabled: Boolean(orderId && user && enabled),
+    retry: false,
+    refetchOnWindowFocus: true,
+    refetchInterval: (query) =>
+      query.state.data?.paymentStatus === "unpaid" &&
+      query.state.data.attemptStatus === "pending" &&
+      query.state.dataUpdateCount < 5
+        ? 3000
+        : false,
+  });
+};
+
 export const useOrderDetail = (id: string | null) => {
   const { user } = useAuth();
   return useQuery({

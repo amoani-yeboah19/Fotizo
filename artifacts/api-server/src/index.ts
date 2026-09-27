@@ -5,6 +5,18 @@ import { pool } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { checkDatabaseReadiness, runtimeState } from "./lib/readiness";
 import { createShutdown, parsePort } from "./lib/lifecycle";
+import { releaseAbandonedOrders } from "./lib/payments";
+
+// Releases stock held by online orders whose payment was never completed.
+const RELEASE_INTERVAL_MS = 10 * 60 * 1000;
+function scheduleAbandonedOrderRelease() {
+  const timer = setInterval(() => {
+    releaseAbandonedOrders()
+      .then((released) => released && logger.info({ released }, "Released unpaid online orders"))
+      .catch((error: Error) => logger.warn({ errorType: error.name }, "Releasing unpaid orders failed"));
+  }, RELEASE_INTERVAL_MS);
+  timer.unref();
+}
 
 async function start() {
   const port = parsePort(process.env.PORT);
@@ -35,6 +47,7 @@ async function start() {
     void shutdown();
   });
   server.listen(port, () => logger.info({ port }, "Server listening"));
+  scheduleAbandonedOrderRelease();
 }
 
 // Idle pool errors need a listener; readiness still fails while the DB is unavailable.

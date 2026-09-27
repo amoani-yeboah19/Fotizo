@@ -1,3 +1,5 @@
+import { AUTH_USE_MOCKS } from "@/api";
+import { AccountProfileForm } from "@/features/settings/components/AccountProfileForm";
 import { useState } from "react";
 import { Link } from "wouter";
 import {
@@ -19,6 +21,11 @@ import {
 } from "@/features/settings/profile";
 
 export default function ProfessionalProfilePage() {
+  const { user } = useAuth();
+  if (AUTH_USE_MOCKS) return <DraftProfessionalProfilePage />;
+  return <PageLayout mainClassName="container-app py-28"><header className="mb-8"><p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Your professional identity</p><h1 className="text-3xl font-bold">Make your expertise stand out.</h1><p className="mt-3 text-muted-foreground">Manage the profile saved to your Fotizo account.</p></header>{user && <AccountProfileForm userId={user.id} role={user.role} />}{user?.role === "seller" && <Link href="/dashboard/seller?tab=services" className="mt-6 inline-flex rounded-lg bg-primary px-5 py-3 text-white">Manage my services →</Link>}</PageLayout>;
+}
+function DraftProfessionalProfilePage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState(() =>
     readProfileDraft(user?.id ?? ""),

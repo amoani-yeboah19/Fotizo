@@ -4,6 +4,7 @@ import {
   usersTable,
   sessionsTable,
   accountAuditTable,
+  adminAuditTable,
 } from "@workspace/db";
 
 export async function changeAccountStatus(
@@ -76,6 +77,18 @@ export async function changeAccountStatus(
         suspendedAt,
       })
       .returning({ id: accountAuditTable.id });
+    await tx.insert(adminAuditTable).values({
+      id: audit.id,
+      actorId,
+      actorName: actor.name,
+      action: input.action === "suspend" ? "user.suspend" : "user.reinstate",
+      targetType: "user",
+      targetId,
+      targetLabel: target.name,
+      reason: input.reason,
+      before: { status: target.suspendedAt ? "suspended" : "active" },
+      after: { status: suspendedAt ? "suspended" : "active" },
+    });
     return {
       status: 200,
       result: {

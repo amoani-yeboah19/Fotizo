@@ -16,6 +16,7 @@ import { SurfaceCard } from "@/components/common/SurfaceCard";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Price } from "@/components/common/Price";
 import { StatusBadge } from "@/components/common/StatusBadge";
+import { ModerationNote } from "@/components/common/ModerationNote";
 import { chartColors, chartAxisTick, chartTooltipStyle } from "@/constants/chart";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -150,6 +151,7 @@ export default function DashboardSeller() {
                   <StatusBadge tone={product.status === "active" ? "success" : product.status === "unpublished" ? "warning" : "danger"}>
                     {product.status.replace("_", " ")}
                   </StatusBadge>
+                  <ModerationNote moderation={product.moderation} />
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex justify-end gap-2">

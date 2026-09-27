@@ -2,7 +2,7 @@ import { ProfileFields } from "@/features/settings/components/ProfileFields";
 import {
   emptyProfile,
   validateProfile,
-  saveProfileDraft,
+  toProfileInput,
 } from "@/features/settings/profile";
 import { useState, useEffect, type FormEvent } from "react";
 import { useLocation } from "wouter";
@@ -119,19 +119,17 @@ export function AuthModal({
             email: email.trim(),
             password,
             role,
+            acceptedTerms: true,
+            profile: toProfileInput(details),
           })
         : await login(email.trim(), password);
       if (res.success) {
-        const draftSaved =
-          isJoin && res.user ? saveProfileDraft(res.user.id, details) : false;
         setPassword("");
         setConfirmation("");
         toast({
           title: isJoin ? "Welcome to Fotizo!" : "Welcome back!",
           description: isJoin
-            ? draftSaved
-              ? "Your account is ready. Your additional profile details are saved as a browser draft."
-              : "Your account is ready, but the profile draft could not be saved. You can add it in Settings."
+            ? "Your account and profile are ready."
             : "You have successfully signed in.",
         });
         onOpenChange(false);
@@ -346,8 +344,8 @@ export function AuthModal({
                           : "Tell us a little about your buying and hiring needs."}
                       </p>
                       <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-                        Profile preview: these additional details stay on this
-                        browser as a draft until account syncing is available.
+                        These details are saved to your account. You can change
+                        them any time in Account settings.
                       </p>
                       <ProfileFields
                         prefix="join"

@@ -25,9 +25,14 @@ const SERVER_SORT: Record<Sort, NonNullable<CatalogueFilters["sort"]>> = {
 const PRICE_MAX = 2000;
 
 export default function ProductsPage() {
-  const [search, setSearch] = useState("");
-  // Category links (e.g. from the home page) arrive as ?category=<id>.
+  // Category links (e.g. from the home page) arrive as ?category=<id>; the
+  // global search's "See all" link arrives as ?q=<text>.
   const query = useSearch();
+  const [search, setSearch] = useState(() => new URLSearchParams(query).get("q") ?? "");
+  useEffect(() => {
+    const q = new URLSearchParams(query).get("q");
+    if (q !== null) setSearch(q);
+  }, [query]);
   const [category, setCategory] = useState<string | null>(
     () => new URLSearchParams(query).get("category"),
   );

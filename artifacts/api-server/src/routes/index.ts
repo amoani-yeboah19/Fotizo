@@ -16,11 +16,18 @@ import developerRouter from "./developer";
 import wishlistRouter from "./wishlist";
 import bookingsRouter from "./bookings";
 import cartRouter from "./cart";
+import paymentsRouter from "./payments";
+import profileRouter from "./profile";
+import adminWorkspaceRouter from "./admin-workspace";
+import disputesRouter from "./disputes";
+import uploadsRouter from "./uploads";
+import searchRouter from "./search";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use("/admin", adminRouter);
+router.use("/admin", adminWorkspaceRouter);
 router.use("/auth", authRouter);
 router.use(productsRouter);
 router.use(categoriesRouter);
@@ -36,5 +43,10 @@ router.use(developerRouter);
 router.use(wishlistRouter);
 router.use(bookingsRouter);
 router.use(cartRouter);
+router.use(paymentsRouter);
+router.use(profileRouter);
+router.use(disputesRouter);
+router.use(uploadsRouter);
+router.use(searchRouter);
 
 export default router;

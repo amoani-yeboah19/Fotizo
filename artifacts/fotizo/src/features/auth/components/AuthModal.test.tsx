@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import { AuthModal } from "./AuthModal";
 import { GoogleRolePickerDialog } from "./GoogleRolePickerDialog";
-import { readProfileDraft } from "@/features/settings/profile";
+import { emptyProfile, readProfileDraft } from "@/features/settings/profile";
 const state = vi.hoisted(() => ({
   signup: vi.fn(),
   login: vi.fn(),
@@ -75,8 +75,11 @@ it("collects buyer details before signup while preserving the supported API payl
     email: "alice@example.com",
     password: "my-long-passphrase",
     role: "buyer",
+    acceptedTerms: true,
+    profile: expect.objectContaining({ country: "Ghana", language: "English", purpose: "hiring" }),
   });
-  expect(readProfileDraft("alice").country).toBe("Ghana");
+  // The profile goes to the account, not to browser storage.
+  expect(readProfileDraft("alice")).toEqual(emptyProfile);
   expect(JSON.stringify(localStorage)).not.toContain("my-long-passphrase");
 });
 it("retains account fields when returning from the professional step", () => {
@@ -113,5 +116,9 @@ it("uses the same buyer onboarding for Google accounts", async () => {
   buyerDetails();
   fireEvent.click(screen.getByRole("button", { name: "Create account" }));
   await waitFor(() => expect(onComplete).toHaveBeenCalledWith("buyer"));
-  expect(readProfileDraft("google-user").country).toBe("Ghana");
+  expect(state.completeGoogleSignup).toHaveBeenCalledWith(
+    "pending",
+    "buyer",
+    expect.objectContaining({ country: "Ghana", purpose: "hiring" }),
+  );
 });

@@ -1,4 +1,13 @@
 import { Router, type IRouter } from "express";
+import { listingImagesProblem } from "../lib/storage";
+import {
+  HOLD_MESSAGE,
+  REVIEWED_ROLES,
+  moderationFor,
+  productSnapshot,
+  sameSnapshot,
+  submitForReview,
+} from "../lib/admin";
 import { z } from "zod";
 import type { CatalogueProduct } from "@workspace/api-zod";
 import { eq, and, ne, desc, sql } from "drizzle-orm";
@@ -235,18 +244,34 @@ router.post(
       return;
     }
 
-    const [created] = await db
-      .insert(productsTable)
-      .values({
-        ...parsed.data,
-        sellerId: req.auth!.userId,
-        channel:
-          req.auth!.role === "china_representative" ? "shop" : "marketplace",
-      })
-      .returning();
+    const imageProblem = await listingImagesProblem(req.auth!.userId, "product", parsed.data.images);
+    if (imageProblem) {
+      res.status(400).json({ error: imageProblem });
+      return;
+    }
 
     const seller = await db.query.usersTable.findFirst({
       where: eq(usersTable.id, req.auth!.userId),
+    });
+    // Seller listings go live and join the review queue in one transaction.
+    const created = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(productsTable)
+        .values({
+          ...parsed.data,
+          sellerId: req.auth!.userId,
+          channel:
+            req.auth!.role === "china_representative" ? "shop" : "marketplace",
+        })
+        .returning();
+      if (seller && REVIEWED_ROLES.has(req.auth!.role))
+        await submitForReview(tx, {
+          kind: "product",
+          listingId: row.id,
+          seller,
+          snapshot: productSnapshot(row),
+        });
+      return row;
     });
     res
       .status(201)
@@ -278,6 +303,10 @@ router.get(
       )
       .groupBy(orderItemsTable.productId);
     const unitsSold = new Map(sold.map((s) => [s.productId, s.units]));
+    const reviews = await moderationFor(
+      "product",
+      rows.map((r) => r.id),
+    );
 
     res.json(
       rows.map((row) => ({
@@ -296,6 +325,12 @@ router.get(
               : "out_of_stock",
         image: row.images[0] ?? "",
         category: row.category,
+        // Review outcome and any staff hold, so the seller sees why a listing is down.
+        moderation: {
+          review: reviews.get(row.id)?.status ?? null,
+          reason: reviews.get(row.id)?.reason ?? null,
+          held: row.moderationHold,
+        },
       })),
     );
   },
@@ -364,14 +399,45 @@ router.patch(
       return;
     }
 
-    const [updated] = await db
-      .update(productsTable)
-      .set(parsed.data)
-      .where(eq(productsTable.id, found.product.id))
-      .returning();
+    if (parsed.data.status === "active" && found.product.moderationHold) {
+      res.status(409).json({ error: HOLD_MESSAGE });
+      return;
+    }
+    if (parsed.data.images) {
+      const imageProblem = await listingImagesProblem(
+        req.auth!.userId,
+        "product",
+        parsed.data.images,
+        found.product.images,
+      );
+      if (imageProblem) {
+        res.status(400).json({ error: imageProblem });
+        return;
+      }
+    }
 
     const seller = await db.query.usersTable.findFirst({
       where: eq(usersTable.id, req.auth!.userId),
+    });
+    // A content change starts a new review version; stock and publication don't.
+    const updated = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(productsTable)
+        .set(parsed.data)
+        .where(eq(productsTable.id, found.product.id))
+        .returning();
+      if (
+        seller &&
+        REVIEWED_ROLES.has(req.auth!.role) &&
+        !sameSnapshot(productSnapshot(found.product), productSnapshot(row))
+      )
+        await submitForReview(tx, {
+          kind: "product",
+          listingId: row.id,
+          seller,
+          snapshot: productSnapshot(row),
+        });
+      return row;
     });
     res.json(toPublicProduct(updated, seller?.name ?? "Unknown seller"));
   },

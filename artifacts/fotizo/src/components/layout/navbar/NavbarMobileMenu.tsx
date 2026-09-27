@@ -1,11 +1,11 @@
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
-import { Search } from "lucide-react";
 import { SERVICE_GROUPS } from "@workspace/service-taxonomy";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/contexts/MessagesContext";
 import { InitialsAvatar } from "@/components/common/InitialsAvatar";
+import { GlobalSearch } from "@/features/search/components/GlobalSearch";
 import { dashboardNavItems, dashboardHref } from "@/features/profile/dashboardNav";
 
 const linkClass =
@@ -38,15 +38,7 @@ export function NavbarMobileMenu({
 
   return (
     <div className="md:hidden border-t border-border bg-white absolute top-full left-0 w-full p-4 flex flex-col gap-4 shadow-lg h-[calc(100vh-80px)] overflow-y-auto">
-      <div className="relative w-full">
-        <Search aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Search..."
-          aria-label="Search"
-          className="w-full pl-10 pr-4 py-3 bg-muted border border-transparent rounded-lg text-sm outline-none"
-        />
-      </div>
+      <GlobalSearch variant="mobile" onNavigate={onClose} />
       {/* Mirrors the desktop grouping: buy something, or hire someone. */}
       <nav className="flex flex-col gap-1">
         <p className={sectionClass}>Shop</p>

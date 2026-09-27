@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, uuid, text, integer, real, numeric, jsonb, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, uuid, text, integer, real, numeric, jsonb, timestamp, index, boolean } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
 // "unpublished" is a soft delete, same reasoning as products: keep the row so
@@ -39,6 +39,8 @@ export const servicesTable = pgTable("services", {
     .default([]),
   skills: text("skills").array().notNull().default([]),
   status: serviceStatusEnum("status").notNull().default("active"),
+  // Set by staff when they unpublish or reject a listing; the owner cannot clear it.
+  moderationHold: boolean("moderation_hold").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   // Browsing is almost always "active listings in this group/category, newest

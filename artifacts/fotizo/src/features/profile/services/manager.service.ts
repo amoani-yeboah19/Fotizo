@@ -207,7 +207,7 @@ export const adminService = {
   },
   async overview(): Promise<AdminOverview> {
     if (!ADMIN_USE_MOCKS) return api.get("/admin/overview");
-    const { demoOrdersThisMonth } = await import("./demo-operations.service");
+    const { demoOrdersThisMonth } = await import("./oversight.service");
     return {
       totalUsers: demoUsers.length,
       newUsersThisMonth: demoUsers.filter(

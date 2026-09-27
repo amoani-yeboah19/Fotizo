@@ -10,7 +10,8 @@ import {
 } from "react";
 import { authService } from "@/features/auth/services";
 import { ApiError } from "@/api/client";
-import type { User, SignupData } from "@/types";
+import { onSessionRejected } from "@/api/session-events";
+import type { User, SignupData, AccountProfileInput } from "@/types";
 export type { User, UserRole, SignupData } from "@/types";
 
 type Result = { success: boolean; error?: string; user?: User };
@@ -37,9 +38,12 @@ interface AuthContextType {
   completeGoogleSignup: (
     token: string,
     role: "buyer" | "seller",
+    profile?: AccountProfileInput,
   ) => Promise<Result>;
   logout: () => Promise<Result>;
   updateProfile: (name: string) => Promise<Result>;
+  /** Sets (uploaded URL) or removes (null) the account's profile photo. */
+  updateAvatar: (avatar: string | null) => Promise<Result>;
   changePassword: (
     currentPassword: string,
     newPassword: string,
@@ -123,6 +127,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [restore]);
 
+  // A private request was refused: re-check the session so the app shows the
+  // signed-out state and stops polling, instead of retrying forever.
+  const statusRef = useRef(status);
+  statusRef.current = status;
+  useEffect(
+    () =>
+      onSessionRejected(() => {
+        if (statusRef.current === "authenticated" && !busy.current) void restore();
+      }),
+    [restore],
+  );
+
   useEffect(() => {
     const onSessionChange = (event: StorageEvent) => {
       if (event.key !== SESSION_EVENT_KEY || !event.newValue) return;
@@ -179,8 +195,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [authenticate],
   );
   const completeGoogleSignup = useCallback(
-    (token: string, role: "buyer" | "seller") =>
-      authenticate(() => authService.completeGoogleSignup(token, role)),
+    (token: string, role: "buyer" | "seller", profile?: AccountProfileInput) =>
+      authenticate(() => authService.completeGoogleSignup(token, role, profile)),
     [authenticate],
   );
 
@@ -263,8 +279,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [replaceIdentity, finishMutation]);
 
-  const updateProfile = useCallback(
-    async (name: string): Promise<Result> => {
+  // Applies an account change that returns the updated user, unless the
+  // session changed while it was in flight.
+  const applyAccountUpdate = useCallback(
+    async (request: () => Promise<User>): Promise<Result> => {
       if (busy.current || logoutFailed.current || !user)
         return {
           success: false,
@@ -273,7 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       busy.current = true;
       const requestGeneration = ++generation.current;
       try {
-        const next = await authService.updateProfile(name);
+        const next = await request();
         if (
           !mounted.current ||
           generation.current !== requestGeneration ||
@@ -283,7 +301,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             success: false,
             error: "Session changed. Please try again.",
           };
-        // A rename must not discard the customer's cart or remount their form.
+        // An account edit must not discard the customer's cart or remount their form.
         setUser(next);
         authService.saveSession(next);
         return { success: true };
@@ -294,6 +312,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     [user, finishMutation],
+  );
+  const updateProfile = useCallback(
+    (name: string) => applyAccountUpdate(() => authService.updateProfile(name)),
+    [applyAccountUpdate],
+  );
+  const updateAvatar = useCallback(
+    (avatar: string | null) => applyAccountUpdate(() => authService.updateAvatar(avatar)),
+    [applyAccountUpdate],
   );
 
   const changePassword = useCallback(
@@ -366,6 +392,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       completeGoogleSignup,
       logout,
       updateProfile,
+      updateAvatar,
       changePassword,
     }),
     [
@@ -380,6 +407,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       completeGoogleSignup,
       logout,
       updateProfile,
+      updateAvatar,
       changePassword,
     ],
   );

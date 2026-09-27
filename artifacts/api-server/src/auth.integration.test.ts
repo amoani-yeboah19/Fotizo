@@ -60,6 +60,7 @@ const account = {
   email: "alice@example.com",
   password: "valid-password",
   role: "buyer",
+  acceptedTerms: true,
 };
 const headers = {
   "Content-Type": "application/json",
@@ -294,7 +295,7 @@ describe("catalogue ownership and publication", () => {
     price: 20.5,
     originalPrice: null,
     stockCount: 3,
-    images: ["https://example.com/photo.jpg"],
+    images: ["data:image/png;base64,iVBORw0KGgo="],
   };
   async function change(id: string, cookie: string, changes: unknown) {
     return fetch(`${base}/api/products/${id}`, {
@@ -985,7 +986,7 @@ describe("bounded public catalogue", () => {
           category: "Electronics",
           price: 10,
           stockCount: 3,
-          images: ["https://example.com/product.jpg"],
+          images: ["data:image/png;base64,iVBORw0KGgo="],
           createdAt: new Date("2026-01-01T00:00:00Z"),
           ...row,
         })),
@@ -1103,13 +1104,13 @@ describe("bounded public catalogue", () => {
       {
         category: "Furniture",
         count: 27,
-        image: "https://example.com/product.jpg",
+        image: "data:image/png;base64,iVBORw0KGgo=",
       },
     ]);
     const shop = await fetch(`${base}/api/products/categories?channel=shop`);
     expect(shop.status).toBe(200);
     expect(ListCatalogueCategoriesResponse.parse(await shop.json())).toEqual([
-      { category: "wigs", count: 3, image: "https://example.com/product.jpg" },
+      { category: "wigs", count: 3, image: "data:image/png;base64,iVBORw0KGgo=" },
     ]);
     expect((await get("channel=shop&category=wigs")).total).toBe(3);
   });
@@ -1172,5 +1173,130 @@ describe("bounded public catalogue", () => {
       (await fetch(`${base}/api/products/categories?channel=invalid`)).status,
     ).toBe(400);
     expect(await get()).toMatchObject({ items: [], total: 0, hasMore: false });
+  });
+});
+
+describe("account profiles, onboarding and policy acceptance", () => {
+  const buyerProfile = {
+    country: "Ghana",
+    city: "Accra",
+    language: "English",
+    accountType: "individual",
+    purpose: "hiring",
+  };
+  const professional = {
+    country: "Ghana",
+    city: "Kumasi",
+    language: "English, Twi",
+    accountType: "business",
+    company: "Owusu Electrical",
+    headline: "Residential electrician and solar installer",
+    about:
+      "I install and maintain residential electrical systems and solar panels, helping clients plan safe, reliable home improvements.",
+    skills: ["Wiring", "Solar systems"],
+    experience: "5_10",
+    workMode: "on_site",
+    website: "https://owusu.example.com",
+  };
+  const send = (method: string, path: string, data: unknown, cookie?: string) =>
+    fetch(`${base}/api${path}`, {
+      method,
+      headers: { ...headers, ...(cookie ? { Cookie: cookie } : {}) },
+      body: JSON.stringify(data),
+    });
+  const read = async (cookie: string) => {
+    const response = await fetch(`${base}/api/account/profile`, { headers: { Cookie: cookie } });
+    expect(response.status).toBe(200);
+    return response.json() as Promise<{
+      profile: (Record<string, unknown> & { version: number }) | null;
+      onboardingCompletedAt: string | null;
+      policies: { current: Record<string, string>; accepted: { policy: string; version: string }[] };
+    }>;
+  };
+  const users = async () => (await database.query<{ n: number }>("SELECT count(*)::int n FROM users")).rows[0].n;
+
+  it("requires server-recorded policy acceptance and creates nothing on an invalid profile", async () => {
+    const { acceptedTerms: _accepted, ...withoutTerms } = account;
+    const refused = await post("/auth/register", withoutTerms);
+    expect(refused.status).toBe(400);
+    expect(((await refused.json()) as { error: string }).error).toContain("Terms of Service");
+    const incomplete = await post("/auth/register", {
+      ...account,
+      role: "seller",
+      profile: { ...professional, headline: "Short" },
+    });
+    expect(incomplete.status).toBe(400);
+    expect(((await incomplete.json()) as { error: string }).error).toContain("headline");
+    expect(await users()).toBe(0);
+  });
+
+  it("saves a professional's profile with the account and publishes only professional fields", async () => {
+    const { user, cookie } = await register({ ...account, role: "seller", profile: professional } as typeof account);
+    expect(user).toMatchObject({ onboardingCompleted: true });
+    const own = await read(cookie);
+    expect(own.profile).toMatchObject({ ...professional, version: 1 });
+    expect(own.onboardingCompletedAt).not.toBeNull();
+    expect(own.policies.accepted.map((p) => `${p.policy}@${p.version}`).sort()).toEqual([
+      `privacy@${own.policies.current.privacy}`,
+      `terms@${own.policies.current.terms}`,
+    ]);
+    const publicProfile = (await (await fetch(`${base}/api/profiles/${user.id}`)).json()) as Record<string, unknown>;
+    expect(publicProfile).toMatchObject({ headline: professional.headline, skills: professional.skills, workMode: "on_site" });
+    for (const hidden of ["country", "city", "language", "company", "accountType", "purpose", "email"])
+      expect(publicProfile).not.toHaveProperty(hidden);
+  });
+
+  it("updates with version checks and validates against the stored role", async () => {
+    const { user, cookie } = await register();
+    expect(user).toMatchObject({ onboardingCompleted: false });
+    expect((await read(cookie)).profile).toBeNull();
+    expect((await send("PUT", "/account/profile", { expectedVersion: 0, profile: buyerProfile })).status).toBe(401);
+    // A buyer must say how they'll use Fotizo; professional fields are not kept.
+    const missing = await send("PUT", "/account/profile", { expectedVersion: 0, profile: { ...buyerProfile, purpose: "" } }, cookie);
+    expect(missing.status).toBe(400);
+    const created = await send(
+      "PUT",
+      "/account/profile",
+      { expectedVersion: 0, profile: { ...buyerProfile, headline: "Should not be stored" } },
+      cookie,
+    );
+    expect(created.status).toBe(200);
+    expect(((await created.json()) as { profile: Record<string, unknown> }).profile).toMatchObject({ version: 1, headline: "" });
+    expect((await read(cookie)).onboardingCompletedAt).not.toBeNull();
+
+    const edit = { expectedVersion: 1, profile: { ...buyerProfile, city: "Tema" } };
+    const [first, second] = await Promise.all([
+      send("PUT", "/account/profile", edit, cookie),
+      send("PUT", "/account/profile", edit, cookie),
+    ]);
+    expect([first.status, second.status].sort()).toEqual([200, 409]);
+    expect((await read(cookie)).profile).toMatchObject({ city: "Tema", version: 2 });
+    expect((await send("PUT", "/account/profile", { expectedVersion: 0, profile: buyerProfile }, cookie)).status).toBe(409);
+    for (const profile of [
+      { ...buyerProfile, role: "manager" },
+      { ...buyerProfile, website: "http://insecure.example.com" },
+      { ...buyerProfile, purpose: "Shopping for myself" },
+      { ...buyerProfile, skills: Array.from({ length: 11 }, (_, i) => `Skill ${i}`) },
+    ])
+      expect((await send("PUT", "/account/profile", { expectedVersion: 2, profile }, cookie)).status).toBe(400);
+    expect((await fetch(`${base}/api/profiles/${user.id}`)).status).toBe(404);
+  });
+
+  it("completes a Google signup with its profile and policy acceptance in one step", async () => {
+    const pendingToken = signPendingGoogleSignupToken({ googleId: "google-new", email: "new@example.com", name: "Nana" });
+    expect((await post("/auth/google/complete", { pendingToken, role: "buyer", profile: buyerProfile })).status).toBe(400);
+    expect(await users()).toBe(0);
+    const response = await post("/auth/google/complete", {
+      pendingToken,
+      role: "buyer",
+      acceptedTerms: true,
+      profile: buyerProfile,
+    });
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({ onboardingCompleted: true, verified: true });
+    const cookie = response.headers.get("set-cookie")!.split(";")[0];
+    const own = await read(cookie);
+    expect(own.profile).toMatchObject({ purpose: "hiring", version: 1 });
+    expect(own.policies.accepted).toHaveLength(2);
   });
 });

@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Briefcase, Edit2, Eye, EyeOff, Plus, RotateCcw } from "lucide-react";
 import { SurfaceCard } from "@/components/common/SurfaceCard";
 import { StatusBadge } from "@/components/common/StatusBadge";
+import { ModerationNote } from "@/components/common/ModerationNote";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Price } from "@/components/common/Price";
 import { Button } from "@/components/ui/button";
@@ -87,6 +88,7 @@ export function MyServicesTable() {
                     <td className="px-6 py-4">{service.packages.length}</td>
                     <td className="px-6 py-4">
                       <StatusBadge tone={live ? "success" : "warning"}>{live ? "active" : "withdrawn"}</StatusBadge>
+                      <ModerationNote moderation={service.moderation} />
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">

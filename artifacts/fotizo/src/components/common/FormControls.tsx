@@ -2,6 +2,8 @@ import { useState, useRef, type ReactNode, type SelectHTMLAttributes } from "rea
 import { X, ImagePlus, Camera, Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { apiErrorMessage } from "@/api";
+import { uploadImage, type UploadPurpose } from "@/services/uploads.service";
 
 // Label + optional hint/error wrapper used by the posting wizards.
 export function Field({
@@ -89,10 +91,9 @@ export function GroupedNativeSelect({
   );
 }
 
-// Downscale a picked/captured photo on a canvas so multi-MB camera shots become
-// reasonably-sized data URLs (kept in memory / mock data; a real backend would
-// receive file uploads instead).
-async function fileToImageDataUrl(file: File, maxDim = 1200, quality = 0.82): Promise<string> {
+// Downscale a picked/captured photo on a canvas so multi-MB camera shots
+// upload quickly, then store it (Supabase Storage; inline in demo builds).
+async function uploadPhoto(file: File, purpose: UploadPurpose, maxDim = 1200, quality = 0.82): Promise<string> {
   const objectUrl = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -106,11 +107,16 @@ async function fileToImageDataUrl(file: File, maxDim = 1200, quality = 0.82): Pr
     canvas.width = Math.max(1, Math.round(img.width * scale));
     canvas.height = Math.max(1, Math.round(img.height * scale));
     canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", quality);
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not read image"))), "image/jpeg", quality),
+    );
+    return await uploadImage(blob, purpose);
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
 }
+
+const uploadFailure = (error: unknown) => apiErrorMessage(error, "We couldn't upload that photo. Please try again.");
 
 // Photo uploader: pick from the device, drag & drop, or take a picture on
 // phones. Previews render as removable thumbnails; the first image is the cover.
@@ -118,28 +124,31 @@ export function ImageUploadInput({
   value,
   onChange,
   error,
+  purpose = "product",
 }: {
   value: string[];
   onChange: (next: string[]) => void;
   error?: string;
+  purpose?: UploadPurpose;
 }) {
   const pickRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   const addFiles = async (files: FileList | File[] | null) => {
     const list = Array.from(files ?? []).filter((f) => f.type.startsWith("image/"));
     if (!list.length) return;
     setBusy(true);
-    try {
-      const dataUrls = await Promise.all(list.map((f) => fileToImageDataUrl(f)));
-      onChange([...value, ...dataUrls.filter((d) => !value.includes(d))]);
-    } catch {
-      // Unreadable file — ignore; the user can retry with another photo.
-    } finally {
-      setBusy(false);
-    }
+    setUploadError("");
+    // Keep every photo that uploaded, and say so if any didn't.
+    const results = await Promise.allSettled(list.map((f) => uploadPhoto(f, purpose)));
+    const urls = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+    const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+    if (urls.length) onChange([...value, ...urls.filter((u) => !value.includes(u))]);
+    if (failed) setUploadError(uploadFailure(failed.reason));
+    setBusy(false);
   };
 
   return (
@@ -194,7 +203,7 @@ export function ImageUploadInput({
           <ImagePlus className="w-6 h-6 text-muted-foreground" aria-hidden="true" />
         )}
         <p className="text-sm font-medium text-foreground">
-          {busy ? "Adding photos…" : "Tap to upload photos"}
+          {busy ? "Uploading photos…" : "Tap to upload photos"}
         </p>
         <p className="text-xs text-muted-foreground">or drag &amp; drop images here</p>
       </div>
@@ -232,6 +241,11 @@ export function ImageUploadInput({
           ))}
         </ul>
       )}
+      {uploadError && (
+        <p role="alert" className="text-xs text-destructive">
+          {uploadError}
+        </p>
+      )}
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
@@ -242,22 +256,26 @@ export function ImageUploadInput({
 export function AvatarUploadInput({
   value,
   onChange,
+  purpose = "service",
 }: {
   value: string;
   onChange: (next: string) => void;
+  purpose?: UploadPurpose;
 }) {
   const pickRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   const addFile = async (files: FileList | null) => {
     const file = files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
     setBusy(true);
+    setUploadError("");
     try {
-      onChange(await fileToImageDataUrl(file, 600));
-    } catch {
-      // Unreadable file — user can retry.
+      onChange(await uploadPhoto(file, purpose, 600));
+    } catch (error) {
+      setUploadError(uploadFailure(error));
     } finally {
       setBusy(false);
     }
@@ -323,6 +341,11 @@ export function AvatarUploadInput({
           <Camera className="w-4 h-4" aria-hidden="true" /> Take a photo
         </button>
       </div>
+      {uploadError && (
+        <p role="alert" className="text-xs text-destructive">
+          {uploadError}
+        </p>
+      )}
     </div>
   );
 }

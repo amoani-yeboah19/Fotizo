@@ -4,6 +4,7 @@
 // client once the OpenAPI contract grows) means changing only this file.
 
 import { API_BASE_URL } from "./config";
+import { reportSessionRejected } from "./session-events";
 
 export class ApiError<T = unknown> extends Error {
   readonly name = "ApiError";
@@ -55,8 +56,12 @@ async function request<T>(
   const url = buildUrl(path, options.params);
   const headers: Record<string, string> = { Accept: "application/json", "X-Fotizo-Request": "1" };
 
-  let body: string | undefined;
-  if (options.body !== undefined) {
+  let body: string | Blob | undefined;
+  if (options.body instanceof Blob) {
+    // Files (image uploads) are sent as-is; the server checks their real type.
+    headers["Content-Type"] = options.body.type || "application/octet-stream";
+    body = options.body;
+  } else if (options.body !== undefined) {
     headers["Content-Type"] = "application/json";
     body = JSON.stringify(options.body);
   }
@@ -72,6 +77,9 @@ async function request<T>(
   const data = parseBody(await response.text());
 
   if (!response.ok) {
+    // Auth endpoints answer 401 as part of normal sign-in; anything else means
+    // the session this page believed in has ended.
+    if (response.status === 401 && !path.startsWith("/auth/")) reportSessionRejected();
     throw new ApiError(response.status, response.statusText, data, url);
   }
 
