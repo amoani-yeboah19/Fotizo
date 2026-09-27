@@ -5,10 +5,12 @@ import { db, mediaUploadsTable, type ImageType, type MediaPurpose } from "@works
 // Images live in one public Supabase Storage bucket: anyone can read them by
 // URL, only this server (with the service-role key) can write. Configuration is
 // read on each call so tests and deployments can change it without a restart.
+// Values pasted into a hosting dashboard sometimes keep their quotes.
+const setting = (name: string) => (process.env[name] ?? "").trim().replace(/^(["'])(.*)\1$/, "$2").trim();
 const env = {
-  url: () => process.env.SUPABASE_URL?.trim().replace(/\/+$/, "") || "",
-  key: () => process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "",
-  bucket: () => process.env.SUPABASE_STORAGE_BUCKET?.trim() || "fotizo-images",
+  url: () => setting("SUPABASE_URL").replace(/\/+$/, ""),
+  key: () => setting("SUPABASE_SERVICE_ROLE_KEY"),
+  bucket: () => setting("SUPABASE_STORAGE_BUCKET") || "fotizo-images",
 };
 
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -18,6 +20,8 @@ export class StorageError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /** For server logs only: what actually went wrong (never sent to users). */
+    readonly reason?: string,
   ) {
     super(message);
   }
@@ -50,8 +54,12 @@ const authHeaders = () => ({ Authorization: `Bearer ${env.key()}`, apikey: env.k
 async function storageFetch(path: string, init: RequestInit) {
   try {
     return await fetch(`${env.url()}/storage/v1${path}`, { ...init, signal: AbortSignal.timeout(20_000) });
-  } catch {
-    throw new StorageError(503, "Image storage could not be reached. Please try again.");
+  } catch (error) {
+    throw new StorageError(
+      503,
+      "Image storage could not be reached. Please try again.",
+      `unreachable: ${(error as Error)?.cause ?? (error as Error)?.message ?? error}`,
+    );
   }
 }
 
@@ -73,7 +81,7 @@ function ensureBucket() {
     if (response.ok) return;
     const text = await response.text();
     if (response.status === 409 || /already exists|409/i.test(text)) return;
-    throw new StorageError(503, "Image storage is not set up correctly.");
+    throw new StorageError(503, "Image storage is not set up correctly.", `bucket rejected (${response.status}): ${text.slice(0, 200)}`);
   })().catch((error) => {
     bucketReady = null;
     throw error;
@@ -83,7 +91,8 @@ function ensureBucket() {
 
 /** Writes bytes to the bucket at `path`. Overwrites only when asked (content-addressed copies). */
 export async function putObject(path: string, bytes: Buffer, contentType: ImageType, upsert = false) {
-  if (!storageConfigured()) throw new StorageError(503, "Image uploads are not available right now.");
+  if (!storageConfigured())
+    throw new StorageError(503, "Image uploads are not available right now.", "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set");
   await ensureBucket();
   const response = await storageFetch(`/object/${env.bucket()}/${path}`, {
     method: "POST",
@@ -95,7 +104,12 @@ export async function putObject(path: string, bytes: Buffer, contentType: ImageT
     },
     body: new Uint8Array(bytes),
   });
-  if (!response.ok) throw new StorageError(503, "The image could not be stored. Please try again.");
+  if (!response.ok)
+    throw new StorageError(
+      503,
+      "The image could not be stored. Please try again.",
+      `upload rejected (${response.status}): ${(await response.text()).slice(0, 200)}`,
+    );
   return publicUrl(path);
 }
 
@@ -155,6 +169,32 @@ export async function listingImagesProblem(
     );
   const ownedPaths = new Set(owned.map((o) => o.path));
   return paths.every((p) => ownedPaths.has(p!)) ? null : "Use photos you uploaded to this listing.";
+}
+
+/**
+ * Whether uploads can work here, for operators: configuration present, and the
+ * key accepted by Supabase. Never includes the key or other secrets.
+ */
+export async function storageHealth() {
+  const base = { configured: storageConfigured(), bucket: env.bucket(), url: env.url() || null };
+  if (!base.configured)
+    return { ...base, ready: false, problem: "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY on the API server." };
+  if (!/^https?:\/\/[^/\s]+$/i.test(env.url()))
+    return { ...base, ready: false, problem: "SUPABASE_URL should be just the project URL, like https://<project-ref>.supabase.co" };
+  try {
+    await ensureBucket();
+    return { ...base, ready: true, problem: null };
+  } catch (error) {
+    const reason = error instanceof StorageError ? (error.reason ?? error.message) : String(error);
+    const keyRejected = /\((400|401|403)\)/.test(reason) && /jwt|signature|unauthori|invalid|compact/i.test(reason);
+    return {
+      ...base,
+      ready: false,
+      problem: keyRejected
+        ? "Supabase rejected SUPABASE_SERVICE_ROLE_KEY. Use the service_role key (not the anon key) from Project Settings -> API."
+        : reason,
+    };
+  }
 }
 
 /** For tests: forget whether the bucket was created. */

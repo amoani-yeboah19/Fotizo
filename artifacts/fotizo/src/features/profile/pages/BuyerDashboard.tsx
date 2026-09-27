@@ -2,9 +2,8 @@ import { PurchaseDetailsDialog, purchaseStatusTone } from "@/features/orders/com
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/contexts/MessagesContext";
 import { useOrders, useDashboardSection } from "@/features/profile/hooks";
-import { useBookings, useChangeBookingStatus } from "@/features/bookings/hooks";
-import { useToast } from "@/hooks/use-toast";
-import { apiErrorMessage } from "@/api";
+import { useBookings } from "@/features/bookings/hooks";
+import { MyBookingCard } from "@/features/bookings/components/MyBookingCard";
 import { useWishlist } from "@/features/wishlist/hooks";
 import { WishlistItems } from "@/features/wishlist/components/WishlistItems";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -15,8 +14,9 @@ import { Price } from "@/components/common/Price";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Button } from "@/components/ui/button";
 import type { Order, Booking } from "@/types";
+import { Link } from "wouter";
 import {
-  LayoutDashboard, Heart, MessageSquare, CreditCard, Package, Calendar, Video,
+  LayoutDashboard, Heart, MessageSquare, CreditCard, Package, Calendar,
 } from "lucide-react";
 
 type Section = "overview" | "orders" | "bookings" | "wishlist";
@@ -42,56 +42,26 @@ function OrderRow({ order }: { order: Order }) {
   );
 }
 
-const BOOKING_LABELS: Record<Booking["status"], string> = {
-  requested: "Awaiting confirmation",
-  confirmed: "Confirmed",
-  declined: "Declined",
-  cancelled: "Cancelled",
-  completed: "Completed",
-};
+// Soonest first for what's coming up; most recent first for everything else.
+function splitBookings(bookings: Booking[]) {
+  const now = Date.now();
+  const time = (b: Booking) => new Date(b.scheduledFor).getTime();
+  const isUpcoming = (b: Booking) => (b.status === "requested" || b.status === "confirmed") && time(b) >= now;
+  return {
+    upcoming: bookings.filter(isUpcoming).sort((a, b) => time(a) - time(b)),
+    past: bookings.filter((b) => !isUpcoming(b)).sort((a, b) => time(b) - time(a)),
+  };
+}
 
-function BookingCard({ booking }: { booking: Booking }) {
-  const { toast } = useToast();
-  const change = useChangeBookingStatus();
-  const when = new Date(booking.scheduledFor);
-  const open = booking.status === "requested" || booking.status === "confirmed";
-  const cancel = () =>
-    change.mutate(
-      { id: booking.id, status: "cancelled", expectedVersion: booking.statusVersion },
-      {
-        onSuccess: () => toast({ title: "Booking cancelled", description: booking.reference }),
-        onError: (error) =>
-          toast({ variant: "destructive", title: "Booking not cancelled", description: apiErrorMessage(error, "Please try again.") }),
-      },
-    );
+function BookingsEmpty() {
   return (
-    <div className="border border-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-semibold">{when.toLocaleDateString(undefined, { dateStyle: "medium" })}</span>
-          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{when.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>
-        </div>
-        <p className="font-medium text-sm">{booking.serviceTitle}</p>
-        <div className="flex items-center gap-2 mt-2">
-          <img loading="lazy" decoding="async" src={booking.providerAvatar} alt={booking.provider} className="w-5 h-5 rounded-full object-cover" />
-          <span className="text-xs text-muted-foreground">{booking.provider} · {booking.package} · {booking.reference}</span>
-        </div>
-        {booking.providerNote && <p className="text-xs text-muted-foreground mt-2">“{booking.providerNote}”</p>}
-      </div>
-      <div className="flex flex-col gap-2 self-start sm:self-center sm:items-end">
-        {booking.status === "confirmed" && booking.meetingLink ? (
-          <a href={booking.meetingLink} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" className="gap-2 w-full sm:w-auto"><Video className="w-4 h-4" aria-hidden="true" /> Join</Button>
-          </a>
-        ) : (
-          <span className="text-xs font-medium text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full">{BOOKING_LABELS[booking.status]}</span>
-        )}
-        {open && (
-          <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" disabled={change.isPending} onClick={cancel}>
-            Cancel booking
-          </Button>
-        )}
-      </div>
+    <div className="p-10 text-center">
+      <Calendar className="mx-auto h-10 w-10 text-muted-foreground/40" aria-hidden="true" />
+      <p className="mt-3 font-semibold">No bookings yet</p>
+      <p className="mt-1 text-sm text-muted-foreground">Book a professional and your appointments will appear here.</p>
+      <Link href="/services">
+        <Button className="mt-4" size="sm">Find a professional</Button>
+      </Link>
     </div>
   );
 }
@@ -119,7 +89,7 @@ export default function DashboardBuyer() {
   const { data: orders = [] } = useOrders();
   const { data: wishlist = [] } = useWishlist();
   const { data: bookings = [] } = useBookings();
-  const upcoming = bookings.filter((b) => (b.status === "requested" || b.status === "confirmed") && new Date(b.scheduledFor).getTime() >= Date.now());
+  const { upcoming, past } = splitBookings(bookings);
   const month = new Date().toISOString().slice(0, 7);
   const spentThisMonth = orders
     .filter((o) => o.status !== "cancelled" && o.date.startsWith(month))
@@ -175,7 +145,7 @@ export default function DashboardBuyer() {
                 <Button variant="ghost" size="sm" onClick={() => setSection("bookings")}>View All</Button>
               </div>
               <div className="p-6 space-y-4">
-                {upcoming.length ? [...upcoming].reverse().slice(0, 2).map((b) => <BookingCard key={b.id} booking={b} />) : <Empty label="No upcoming bookings." />}
+                {upcoming.length ? upcoming.slice(0, 2).map((b) => <MyBookingCard key={b.id} booking={b} compact />) : <Empty label="No upcoming bookings." />}
               </div>
             </SurfaceCard>
           </div>
@@ -190,13 +160,33 @@ export default function DashboardBuyer() {
         </SurfaceCard>
       )}
 
-      {section === "bookings" && (
-        <SurfaceCard className="p-6">
-          <div className="space-y-4">
-            {bookings.length ? bookings.map((b) => <BookingCard key={b.id} booking={b} />) : <Empty label="No bookings yet." />}
+      {section === "bookings" &&
+        (bookings.length ? (
+          <div className="space-y-8">
+            <SurfaceCard className="p-6">
+              <h2 className="text-lg font-bold mb-4">
+                Upcoming <span className="font-normal text-muted-foreground">({upcoming.length})</span>
+              </h2>
+              <div className="space-y-4">
+                {upcoming.length ? upcoming.map((b) => <MyBookingCard key={b.id} booking={b} />) : <Empty label="Nothing booked ahead. Your next appointment will show here." />}
+              </div>
+            </SurfaceCard>
+            {past.length > 0 && (
+              <SurfaceCard className="p-6">
+                <h2 className="text-lg font-bold mb-4">
+                  Past &amp; closed <span className="font-normal text-muted-foreground">({past.length})</span>
+                </h2>
+                <div className="space-y-4">
+                  {past.map((b) => <MyBookingCard key={b.id} booking={b} />)}
+                </div>
+              </SurfaceCard>
+            )}
           </div>
-        </SurfaceCard>
-      )}
+        ) : (
+          <SurfaceCard>
+            <BookingsEmpty />
+          </SurfaceCard>
+        ))}
 
       {section === "wishlist" && <WishlistItems />}
     </DashboardLayout>
