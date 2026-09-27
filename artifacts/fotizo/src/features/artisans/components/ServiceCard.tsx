@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { CheckCircle2, Clock, Briefcase } from "lucide-react";
+import { Clock, Briefcase } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Price } from "@/components/common/Price";
@@ -45,7 +45,6 @@ export const ServiceCard = memo(function ServiceCard({ service }: { service: Ser
             <div>
               <div className="flex items-center gap-1.5">
                 <h4 className="font-semibold text-foreground">{service.provider}</h4>
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-primary" />
               </div>
               <p className="text-sm text-muted-foreground">
                 {serviceCategoryLabel(service.category)}

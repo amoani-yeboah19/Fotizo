@@ -99,6 +99,8 @@ export function NavbarMobileMenu({
               Messages {totalUnread > 0 && <span className="bg-accent text-white px-2 py-0.5 rounded-full text-xs">{totalUnread}</span>}
             </span>
           </Link>
+          <Link href="/profile" onClick={onClose}><span className={linkClass}>My professional profile</span></Link>
+          <Link href="/wishlist" onClick={onClose}><span className={linkClass}>Wishlist</span></Link>
           <Link href="/settings" onClick={onClose}><span className={linkClass}>Account settings</span></Link>
           <button onClick={handleLogout} className="text-left px-4 py-3 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg">Sign Out</button>
         </div>

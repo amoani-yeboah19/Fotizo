@@ -1,6 +1,6 @@
 # Fotizo
 
-React/Vite frontend, Express API and PostgreSQL/Drizzle workspace. The current completion roadmap is in COMPLETION_PLAN.md; IMPLEMENTATION_STATUS.md records verified work and remaining gates.
+React/Vite frontend, Express API and PostgreSQL/Drizzle workspace. The current completion roadmap is in COMPLETION_PLAN.md; IMPLEMENTATION_STATUS.md records verified work and remaining gates. 
  
 ## Runtime and installation
 

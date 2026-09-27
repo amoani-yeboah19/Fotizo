@@ -1,34 +1,53 @@
+import { SourcedListings } from "../components/sourcing/SourcedListings";
+import {
+  SourcingDrafts,
+  DraftEditor,
+} from "../components/sourcing/SourcingDrafts";
+import { exportCsv } from "../components/sourcing/utils";
 import { useState } from "react";
 import { Link } from "wouter";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
 } from "recharts";
 import {
-  Factory, Ship, Plane, Boxes, CarFront, Warehouse, TrendingUp, AlertTriangle,
+  Factory,
+  Ship,
+  Boxes,
+  CarFront,
+  Warehouse,
+  AlertTriangle,
 } from "lucide-react";
-import { useDashboardSection, useSellerProducts } from "@/features/profile/hooks";
-import { Loading, ErrorState } from "@/components/common/QueryStates";
+import { useDashboardSection } from "@/features/profile/hooks";
+import { Loading } from "@/components/common/QueryStates";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { StatCard } from "@/components/common/StatCard";
 import { SurfaceCard } from "@/components/common/SurfaceCard";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Price } from "@/components/common/Price";
-import { chartColors, chartAxisTick, chartTooltipStyle } from "@/constants/chart";
+import {
+  chartColors,
+  chartAxisTick,
+  chartTooltipStyle,
+} from "@/constants/chart";
 import { Button } from "@/components/ui/button";
-import { DELIVERY_WINDOWS } from "@/features/support/data/channels";
 import { useChinaSourcing } from "@/features/profile/data/chinaSourcing";
-import { CaseQueue, VehicleCatalogueControls } from "@/features/profile/components/Operations";
+import {
+  CaseQueue,
+  VehicleCatalogueControls,
+} from "@/features/profile/components/Operations";
 
 type Section = "overview" | "shop" | "autos" | "freight" | "suppliers";
 
-const subText = (t: string) => <p className="text-xs text-muted-foreground mt-2">{t}</p>;
-
-const supplierTone = (s: string) =>
-  s === "active" ? "success" : s === "review" ? "warning" : "danger";
-
-const shipmentTone = (s: string) =>
-  s === "arrived" ? "success" : s === "in_transit" ? "info" : s === "customs" ? "warning" : "neutral";
+const subText = (t: string) => (
+  <p className="text-xs text-muted-foreground mt-2">{t}</p>
+);
 
 const FUEL_LABEL: Record<string, string> = {
   petrol: "Petrol",
@@ -37,7 +56,15 @@ const FUEL_LABEL: Record<string, string> = {
 };
 
 /** Horizontal share bar, reused by the department and fuel breakdowns. */
-function ShareBar({ label, value, share }: { label: string; value: string; share: number }) {
+function ShareBar({
+  label,
+  value,
+  share,
+}: {
+  label: string;
+  value: string;
+  share: number;
+}) {
   return (
     <div>
       <div className="flex justify-between text-sm mb-1">
@@ -45,112 +72,24 @@ function ShareBar({ label, value, share }: { label: string; value: string; share
         <span className="text-muted-foreground">{value}</span>
       </div>
       <div className="h-2 rounded-full bg-muted overflow-hidden">
-        <div className="h-full rounded-full bg-primary" style={{ width: `${share}%` }} />
+        <div
+          className="h-full rounded-full bg-primary"
+          style={{ width: `${share}%` }}
+        />
       </div>
     </div>
   );
 }
 
-
-/**
- * The listings this account actually owns in the database, straight from
- * GET /seller/products.
- *
- * Everything else on this tab is derived from the committed catalogue; this is
- * the one panel reading the real thing, which is why it is also the one that
- * can be empty. Seeded imports land as "unpublished" — hidden from shoppers,
- * visible here — so this is where you confirm a seed actually landed.
- */
-const LISTING_PAGE = 100;
-
-function SourcedListings() {
-  const { data, isLoading, isError } = useSellerProducts();
-  const [showAll, setShowAll] = useState(false);
-
-  const listings = data ?? [];
-  const unpublished = listings.filter((l) => l.status === "unpublished").length;
-  const live = listings.length - unpublished;
-  const shown = showAll ? listings : listings.slice(0, LISTING_PAGE);
-
-  return (
-    <SurfaceCard className="overflow-hidden">
-      <div className="p-6 border-b border-border flex justify-between items-center gap-4 flex-wrap">
-        <div>
-          <h3 className="text-lg font-bold">Sourced listings</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {isLoading || isError
-              ? "Owned by this account in the catalogue database"
-              : `${listings.length.toLocaleString()} owned · ${live.toLocaleString()} live · ${unpublished.toLocaleString()} awaiting pricing`}
-          </p>
-        </div>
-      </div>
-
-      {isLoading ? (
-        <Loading label="Loading listings…" />
-      ) : isError ? (
-        <ErrorState label="Could not load listings for this account." />
-      ) : listings.length === 0 ? (
-        <div className="p-10 text-center text-sm text-muted-foreground">
-          <p className="font-medium text-foreground">No listings yet.</p>
-          <p className="mt-1">
-            Run the catalogue seed to list the shop under this account.
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-muted/50 text-muted-foreground uppercase tracking-wider text-xs">
-                <tr>
-                  <th className="px-6 py-4 font-medium">Product</th>
-                  <th className="px-6 py-4 font-medium">Department</th>
-                  <th className="px-6 py-4 font-medium">Price</th>
-                  <th className="px-6 py-4 font-medium">Stock</th>
-                  <th className="px-6 py-4 font-medium text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y border-border">
-                {shown.map((l) => (
-                  <tr key={l.id} className="hover:bg-muted/30">
-                    <td className="px-6 py-3 font-medium max-w-xs truncate" title={l.title}>
-                      {l.title}
-                    </td>
-                    <td className="px-6 py-3 text-muted-foreground">{l.category}</td>
-                    <td className="px-6 py-3"><Price amount={l.price} /></td>
-                    <td className="px-6 py-3">{l.stock}</td>
-                    <td className="px-6 py-3 text-right">
-                      <StatusBadge
-                        tone={l.status === "active" ? "success" : l.status === "unpublished" ? "neutral" : "warning"}
-                      >
-                        {l.status === "unpublished"
-                          ? "Unpublished"
-                          : l.status === "active"
-                            ? "Live"
-                            : "Out of stock"}
-                      </StatusBadge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {listings.length > LISTING_PAGE && (
-            <div className="p-4 border-t border-border text-center">
-              <Button variant="outline" size="sm" onClick={() => setShowAll((v: boolean) => !v)}>
-                {showAll
-                  ? `Show first ${LISTING_PAGE}`
-                  : `Show all ${listings.length.toLocaleString()} (currently ${shown.length})`}
-              </Button>
-            </div>
-          )}
-        </>
-      )}
-    </SurfaceCard>
-  );
-}
-
 function DepartmentsTable() {
-  const { DEPARTMENT_ROWS, SHOP_SKU_TOTAL, SHOP_DEPARTMENT_TOTAL } = useChinaSourcing();
+  const {
+    DEPARTMENT_ROWS,
+    SHOP_SKU_TOTAL,
+    SHOP_DEPARTMENT_TOTAL,
+    listingLoading,
+    listingError,
+  } = useChinaSourcing();
+  if (listingLoading || listingError) return null;
   const topSkus = DEPARTMENT_ROWS[0]?.skus ?? 1;
   return (
     <SurfaceCard className="overflow-hidden">
@@ -158,10 +97,28 @@ function DepartmentsTable() {
         <div>
           <h3 className="text-lg font-bold">Shop departments</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {SHOP_SKU_TOTAL} live SKUs across {SHOP_DEPARTMENT_TOTAL} departments
+            {SHOP_SKU_TOTAL} live SKUs across {SHOP_DEPARTMENT_TOTAL}{" "}
+            departments
           </p>
         </div>
-        <Button variant="outline" size="sm">Export CSV</Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!DEPARTMENT_ROWS.length}
+          onClick={() =>
+            exportCsv("shop-departments.csv", [
+              ["Department", "SKUs", "Average price GBP", "Needs restock"],
+              ...DEPARTMENT_ROWS.map((d) => [
+                d.label,
+                d.skus,
+                d.avgPrice,
+                d.restock,
+              ]),
+            ])
+          }
+        >
+          Export CSV
+        </Button>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
@@ -171,7 +128,9 @@ function DepartmentsTable() {
               <th className="px-6 py-4 font-medium">SKUs</th>
               <th className="px-6 py-4 font-medium">Share</th>
               <th className="px-6 py-4 font-medium">Avg price</th>
-              <th className="px-6 py-4 font-medium text-right">Needs restock</th>
+              <th className="px-6 py-4 font-medium text-right">
+                Needs restock
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y border-border">
@@ -183,11 +142,15 @@ function DepartmentsTable() {
                   <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                     <div
                       className="h-full rounded-full bg-primary"
-                      style={{ width: `${Math.round((d.skus / topSkus) * 100)}%` }}
+                      style={{
+                        width: `${Math.round((d.skus / topSkus) * 100)}%`,
+                      }}
                     />
                   </div>
                 </td>
-                <td className="px-6 py-4"><Price amount={d.avgPrice} /></td>
+                <td className="px-6 py-4">
+                  <Price amount={d.avgPrice} />
+                </td>
                 <td className="px-6 py-4 text-right">
                   {d.restock > 0 ? (
                     <StatusBadge tone="warning">{d.restock}</StatusBadge>
@@ -205,14 +168,16 @@ function DepartmentsTable() {
 }
 
 function MarquesTable() {
-  const { MARQUE_ROWS, AUTOS_TOTAL, CHINA_MARQUE_UNITS, CHINA_MARQUE_COUNT } = useChinaSourcing();
+  const { MARQUE_ROWS, AUTOS_TOTAL, CHINA_MARQUE_UNITS, CHINA_MARQUE_COUNT } =
+    useChinaSourcing();
   return (
     <SurfaceCard className="overflow-hidden">
       <div className="p-6 border-b border-border">
         <h3 className="text-lg font-bold">Marques in the range</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {CHINA_MARQUE_UNITS} of {AUTOS_TOTAL} models come from the {CHINA_MARQUE_COUNT} Chinese
-          marques you handle — the rest are sourced through other markets.
+          {CHINA_MARQUE_UNITS} of {AUTOS_TOTAL} models come from the{" "}
+          {CHINA_MARQUE_COUNT} Chinese marques you handle — the rest are sourced
+          through other markets.
         </p>
       </div>
       <div className="overflow-x-auto">
@@ -236,7 +201,9 @@ function MarquesTable() {
                     {m.chineseMarque ? "China desk" : "Other market"}
                   </StatusBadge>
                 </td>
-                <td className="px-6 py-4"><Price amount={m.avgLandedPrice} /></td>
+                <td className="px-6 py-4">
+                  <Price amount={m.avgLandedPrice} />
+                </td>
                 <td className="px-6 py-4 text-right text-muted-foreground">
                   {m.leadTimeWeeks[0]}–{m.leadTimeWeeks[1]} wks
                 </td>
@@ -249,125 +216,14 @@ function MarquesTable() {
   );
 }
 
-function ShipmentsTable() {
-  const { SHIPMENTS } = useChinaSourcing();
-  return (
-    <SurfaceCard className="overflow-hidden">
-      <div className="p-6 border-b border-border flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-bold">Outbound shipments</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Air {DELIVERY_WINDOWS.air} · Sea {DELIVERY_WINDOWS.sea} · Vehicles{" "}
-            {DELIVERY_WINDOWS.vehicles}
-          </p>
-        </div>
-        <Button variant="outline" size="sm">New consignment</Button>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-muted/50 text-muted-foreground uppercase tracking-wider text-xs">
-            <tr>
-              <th className="px-6 py-4 font-medium">Ref</th>
-              <th className="px-6 py-4 font-medium">Mode</th>
-              <th className="px-6 py-4 font-medium">Cargo</th>
-              <th className="px-6 py-4 font-medium">Destination</th>
-              <th className="px-6 py-4 font-medium">Units</th>
-              <th className="px-6 py-4 font-medium">Status</th>
-              <th className="px-6 py-4 font-medium text-right">ETA</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y border-border">
-            {SHIPMENTS.length === 0 && (
-              <tr><td colSpan={7} className="px-6 py-4 text-muted-foreground">No shipments are recorded yet.</td></tr>
-            )}
-            {SHIPMENTS.map((s) => (
-              <tr key={s.id} className="hover:bg-muted/30">
-                <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{s.id}</td>
-                <td className="px-6 py-4">
-                  <span className="inline-flex items-center gap-1.5">
-                    {s.mode === "air" ? (
-                      <Plane className="w-3.5 h-3.5" aria-hidden="true" />
-                    ) : (
-                      <Ship className="w-3.5 h-3.5" aria-hidden="true" />
-                    )}
-                    {s.mode === "air" ? "Air" : "Sea"}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-muted-foreground">
-                  {s.scope === "autos" ? "Vehicles" : "Shop stock"}
-                </td>
-                <td className="px-6 py-4">{s.port}</td>
-                <td className="px-6 py-4">{s.units.toLocaleString()}</td>
-                <td className="px-6 py-4">
-                  <StatusBadge tone={shipmentTone(s.status)}>
-                    {s.status.replace("_", " ")}
-                  </StatusBadge>
-                </td>
-                <td className="px-6 py-4 text-right text-muted-foreground">{s.eta}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </SurfaceCard>
-  );
-}
-
-function SuppliersTable() {
-  const { SUPPLIERS } = useChinaSourcing();
-  return (
-    <SurfaceCard className="overflow-hidden">
-      <div className="p-6 border-b border-border flex justify-between items-center">
-        <h3 className="text-lg font-bold">Supplier network</h3>
-        <Button variant="outline" size="sm">Add supplier</Button>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-muted/50 text-muted-foreground uppercase tracking-wider text-xs">
-            <tr>
-              <th className="px-6 py-4 font-medium">Supplier</th>
-              <th className="px-6 py-4 font-medium">Location</th>
-              <th className="px-6 py-4 font-medium">Supplies</th>
-              <th className="px-6 py-4 font-medium">Lines</th>
-              <th className="px-6 py-4 font-medium">On time</th>
-              <th className="px-6 py-4 font-medium">Status</th>
-              <th className="px-6 py-4 font-medium text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y border-border">
-            {SUPPLIERS.length === 0 && (
-              <tr><td colSpan={7} className="px-6 py-4 text-muted-foreground">No suppliers are recorded yet.</td></tr>
-            )}
-            {SUPPLIERS.map((s) => (
-              <tr key={s.id} className="hover:bg-muted/30">
-                <td className="px-6 py-4 font-medium">{s.name}</td>
-                <td className="px-6 py-4 text-muted-foreground">{s.city}</td>
-                <td className="px-6 py-4 text-muted-foreground">
-                  {s.scope === "autos" ? "Autos" : "Shop"}
-                </td>
-                <td className="px-6 py-4">{s.lines}</td>
-                <td className="px-6 py-4">
-                  <span className={s.onTimeRate < 80 ? "text-destructive font-medium" : ""}>
-                    {s.onTimeRate}%
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <StatusBadge tone={supplierTone(s.status)}>{s.status}</StatusBadge>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <Button variant="ghost" size="sm">Manage</Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </SurfaceCard>
-  );
-}
-
 function RestockQueue() {
-  const { SHOP_RESTOCK_TOTAL, RESTOCK_QUEUE } = useChinaSourcing();
+  const { SHOP_RESTOCK_TOTAL, RESTOCK_QUEUE, listingLoading, listingError } =
+    useChinaSourcing();
+  const [reorder, setReorder] = useState<(typeof RESTOCK_QUEUE)[number] | null>(
+    null,
+  );
+  const [saved, setSaved] = useState(false);
+  if (listingLoading || listingError) return null;
   return (
     <SurfaceCard className="p-6">
       <div className="flex items-center gap-2 mb-6">
@@ -378,12 +234,15 @@ function RestockQueue() {
       </div>
       {RESTOCK_QUEUE.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Nothing is running low — every listing has stock behind it.
+          No published products currently meet the low-stock threshold.
         </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {RESTOCK_QUEUE.map((p) => (
-            <div key={p.id} className="border border-border rounded-xl p-4 flex gap-3">
+            <div
+              key={p.id}
+              className="border border-border rounded-xl p-4 flex gap-3"
+            >
               <img
                 loading="lazy"
                 decoding="async"
@@ -396,11 +255,34 @@ function RestockQueue() {
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {p.sold.toLocaleString()} sold · <Price amount={p.price} />
                 </p>
-                <Button size="sm" className="h-7 text-xs mt-2 w-full">Reorder</Button>
+                <Button
+                  size="sm"
+                  className="h-7 text-xs mt-2 w-full"
+                  onClick={() => {
+                    setSaved(false);
+                    setReorder(p);
+                  }}
+                >
+                  Prepare reorder
+                </Button>
               </div>
             </div>
           ))}
         </div>
+      )}
+      {saved && (
+        <p role="status" className="mt-4 text-sm text-primary">
+          Reorder draft saved on this browser. It has not been sent to a
+          supplier.
+        </p>
+      )}
+      {reorder && (
+        <DraftEditor
+          kind="reorder"
+          initial={{ product: reorder.title, productId: reorder.id }}
+          close={() => setReorder(null)}
+          onSaved={() => setSaved(true)}
+        />
       )}
     </SurfaceCard>
   );
@@ -412,19 +294,56 @@ export default function ChinaRepresentativeDashboard() {
     "overview",
   );
   const {
-    AUTOS_TOTAL, CHINA_MARQUE_UNITS, FUEL_MIX, DEPARTMENT_ROWS, SHOP_SKU_TOTAL, SHOP_DEPARTMENT_TOTAL,
-    SHOP_RESTOCK_TOTAL, SUPPLIER_ACTIVE, SUPPLIER_FLAGGED, UNITS_IN_TRANSIT, OUTBOUND_TREND,
+    AUTOS_TOTAL,
+    CHINA_MARQUE_UNITS,
+    FUEL_MIX,
+    DEPARTMENT_ROWS,
+    SHOP_SKU_TOTAL,
+    SHOP_DEPARTMENT_TOTAL,
+    SHOP_RESTOCK_TOTAL,
+    SUPPLIER_FLAGGED,
+    OUTBOUND_TREND,
+    isLoading,
+    isError,
+    retry,
   } = useChinaSourcing();
 
   const sidebar = (
     <DashboardSidebar
       heading="China Desk"
       items={[
-        { icon: <Factory className="w-4 h-4" />, label: "Overview", active: section === "overview", onClick: () => setSection("overview") },
-        { icon: <Boxes className="w-4 h-4" />, label: "Shop Supply", active: section === "shop", onClick: () => setSection("shop"), badge: SHOP_RESTOCK_TOTAL },
-        { icon: <CarFront className="w-4 h-4" />, label: "Autos Pipeline", active: section === "autos", onClick: () => setSection("autos") },
-        { icon: <Ship className="w-4 h-4" />, label: "Freight", active: section === "freight", onClick: () => setSection("freight") },
-        { icon: <Warehouse className="w-4 h-4" />, label: "Suppliers", active: section === "suppliers", onClick: () => setSection("suppliers"), badge: SUPPLIER_FLAGGED },
+        {
+          icon: <Factory className="w-4 h-4" />,
+          label: "Overview",
+          active: section === "overview",
+          onClick: () => setSection("overview"),
+        },
+        {
+          icon: <Boxes className="w-4 h-4" />,
+          label: "Shop Supply",
+          active: section === "shop",
+          onClick: () => setSection("shop"),
+          badge: SHOP_RESTOCK_TOTAL,
+        },
+        {
+          icon: <CarFront className="w-4 h-4" />,
+          label: "Autos Pipeline",
+          active: section === "autos",
+          onClick: () => setSection("autos"),
+        },
+        {
+          icon: <Ship className="w-4 h-4" />,
+          label: "Freight",
+          active: section === "freight",
+          onClick: () => setSection("freight"),
+        },
+        {
+          icon: <Warehouse className="w-4 h-4" />,
+          label: "Suppliers",
+          active: section === "suppliers",
+          onClick: () => setSection("suppliers"),
+          badge: SUPPLIER_FLAGGED,
+        },
       ]}
     />
   );
@@ -437,9 +356,12 @@ export default function ChinaRepresentativeDashboard() {
             <Factory className="w-5 h-5" aria-hidden="true" />
           </span>
           <div>
-            <h1 className="heading-page text-foreground">China Representative</h1>
+            <h1 className="heading-page text-foreground">
+              China Representative
+            </h1>
             <p className="text-muted-foreground mt-0.5">
-              Live shop source of truth for Fotizo Shop and Fotizo Autos · China 🇨🇳
+              Shop catalogue, vehicle enquiries and sourcing preparation · China
+              🇨🇳
             </p>
           </div>
         </div>
@@ -453,10 +375,22 @@ export default function ChinaRepresentativeDashboard() {
       </header>
 
       <div className="mb-6 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
-        This dashboard manages the live Fotizo shop catalogue and is the source-of-truth for products sold on the storefront.
+        Product edits update your catalogue listings. Freight, supplier and
+        reorder records are browser drafts until team syncing is available.
       </div>
 
-      {section === "overview" && (
+      {section === "overview" && isLoading && (
+        <Loading label="Loading sourcing overview…" />
+      )}
+      {section === "overview" && isError && (
+        <div role="alert" className="p-6">
+          Some overview records could not be loaded.{" "}
+          <Button variant="outline" onClick={retry}>
+            Retry
+          </Button>
+        </div>
+      )}
+      {section === "overview" && !isLoading && !isError && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <StatCard
@@ -471,17 +405,17 @@ export default function ChinaRepresentativeDashboard() {
               sub={subText(`${CHINA_MARQUE_UNITS} on the China desk`)}
             />
             <StatCard
-              label="Units in transit"
-              value={UNITS_IN_TRANSIT.toLocaleString()}
+              label="Freight tracking"
+              value="Not connected"
               sub={
                 <p className="text-xs text-green-600 mt-2 flex items-center font-medium">
-                  <TrendingUp className="w-3 h-3 mr-1" /> 6 consignments moving
+                  Prepare consignment drafts in Freight
                 </p>
               }
             />
             <StatCard
-              label="Active suppliers"
-              value={String(SUPPLIER_ACTIVE)}
+              label="Supplier records"
+              value="Drafts only"
               icon={<Factory className="w-6 h-6" />}
               iconClassName="bg-blue-50 text-blue-600"
             />
@@ -489,13 +423,17 @@ export default function ChinaRepresentativeDashboard() {
 
           {SUPPLIER_FLAGGED > 0 && (
             <SurfaceCard className="p-4 mb-8 border-l-4 border-l-amber-500 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
+              <AlertTriangle
+                className="w-5 h-5 text-amber-600 shrink-0 mt-0.5"
+                aria-hidden="true"
+              />
               <div>
                 <p className="text-sm font-semibold">
-                  {SUPPLIER_FLAGGED} supplier{SUPPLIER_FLAGGED === 1 ? "" : "s"} need attention
+                  {SUPPLIER_FLAGGED} supplier{SUPPLIER_FLAGGED === 1 ? "" : "s"}{" "}
+                  need attention
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  One is under review and one is suspended for on-time delivery below target.{" "}
+                  Review supplier records that require attention.{" "}
                   <button
                     type="button"
                     onClick={() => setSection("suppliers")}
@@ -510,21 +448,61 @@ export default function ChinaRepresentativeDashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
             <SurfaceCard className="lg:col-span-2 p-6">
-              <h3 className="text-lg font-bold mb-6">Outbound units</h3>
+              <h3 className="text-lg font-bold mb-6">Units sold by month</h3>
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={OUTBOUND_TREND}>
                     <defs>
-                      <linearGradient id="cnOutbound" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={chartColors.primary} stopOpacity={0.3} />
-                        <stop offset="95%" stopColor={chartColors.primary} stopOpacity={0} />
+                      <linearGradient
+                        id="cnOutbound"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor={chartColors.primary}
+                          stopOpacity={0.3}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor={chartColors.primary}
+                          stopOpacity={0}
+                        />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartColors.grid} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={chartAxisTick} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={chartAxisTick} dx={-10} tickFormatter={(v) => `${v / 1000}k`} />
-                    <RechartsTooltip cursor={{ stroke: chartColors.grid }} contentStyle={chartTooltipStyle} />
-                    <Area type="monotone" dataKey="units" stroke={chartColors.primary} strokeWidth={2} fillOpacity={1} fill="url(#cnOutbound)" />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke={chartColors.grid}
+                    />
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={chartAxisTick}
+                      dy={10}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={chartAxisTick}
+                      dx={-10}
+                      tickFormatter={(v) => `${v / 1000}k`}
+                    />
+                    <RechartsTooltip
+                      cursor={{ stroke: chartColors.grid }}
+                      contentStyle={chartTooltipStyle}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="units"
+                      stroke={chartColors.primary}
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#cnOutbound)"
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -538,14 +516,16 @@ export default function ChinaRepresentativeDashboard() {
                     key={d.id}
                     label={d.label}
                     value={`${d.skus} SKUs`}
-                    share={Math.round((d.skus / (DEPARTMENT_ROWS[0]?.skus || 1)) * 100)}
+                    share={Math.round(
+                      (d.skus / (DEPARTMENT_ROWS[0]?.skus || 1)) * 100,
+                    )}
                   />
                 ))}
               </div>
             </SurfaceCard>
           </div>
 
-          <ShipmentsTable />
+          <SourcingDrafts kind="shipment" />
         </>
       )}
 
@@ -554,6 +534,7 @@ export default function ChinaRepresentativeDashboard() {
           <SourcedListings />
           <DepartmentsTable />
           <RestockQueue />
+          <SourcingDrafts kind="reorder" />
         </div>
       )}
 
@@ -578,9 +559,9 @@ export default function ChinaRepresentativeDashboard() {
         </div>
       )}
 
-      {section === "freight" && <ShipmentsTable />}
+      {section === "freight" && <SourcingDrafts kind="shipment" />}
 
-      {section === "suppliers" && <SuppliersTable />}
+      {section === "suppliers" && <SourcingDrafts kind="supplier" />}
     </DashboardLayout>
   );
 }
