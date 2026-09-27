@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRoute, Link, useLocation } from "wouter";
 import { useAuthModal } from "@/contexts/AuthModalContext";
 import { useWishlistToggle } from "@/features/wishlist/hooks";
@@ -25,6 +25,9 @@ export default function ProductDetail() {
   const { data: related = [] } = useRelatedProducts(id);
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("description");
+  // The photo shown large; back to the cover when moving to another product.
+  const [activeImage, setActiveImage] = useState(0);
+  useEffect(() => setActiveImage(0), [id]);
 
   const { addItem } = useCart();
   const { startConversation } = useMessages();
@@ -105,7 +108,7 @@ export default function ProductDetail() {
           {/* Images */}
           <div className="space-y-4">
             <div className="aspect-square bg-white border border-border rounded-2xl p-8 flex items-center justify-center relative overflow-hidden">
-              <img loading="lazy" decoding="async" src={product.image} alt={product.title} className="w-full h-full object-contain" />
+              <img decoding="async" src={product.images?.[activeImage] ?? product.image} alt={product.title} className="w-full h-full object-contain" />
               {product.originalPrice && (
                 <div className="absolute top-6 left-6 px-3 py-1.5 bg-accent text-white text-sm font-bold rounded-full">
                   Sale
@@ -115,7 +118,14 @@ export default function ProductDetail() {
             {product.images && product.images.length > 1 && (
               <div className="flex gap-4 overflow-x-auto pb-2">
                 {product.images.map((img, i) => (
-                  <button key={i} aria-label={`View image ${i + 1}`} className="w-24 h-24 shrink-0 bg-white border border-border rounded-xl p-2 hover:border-primary transition-colors">
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setActiveImage(i)}
+                    aria-label={`View image ${i + 1}`}
+                    aria-pressed={i === activeImage}
+                    className={`w-24 h-24 shrink-0 bg-white rounded-xl p-2 transition-colors ${i === activeImage ? "border-2 border-primary" : "border border-border hover:border-primary"}`}
+                  >
                     <img loading="lazy" decoding="async" src={img} alt={`${product.title} view ${i + 1}`} className="w-full h-full object-contain" />
                   </button>
                 ))}
