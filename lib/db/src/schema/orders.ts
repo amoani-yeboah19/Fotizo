@@ -40,6 +40,11 @@ export const ordersTable = pgTable("orders", {
 });
 
 export const PAYMENT_METHODS = ["pay_on_delivery", "mobile_money", "bank_transfer", "paystack", "stripe"] as const;
+/**
+ * What checkout offers today: pay on delivery, Paystack for Ghana, Stripe
+ * internationally. Mobile money and bank transfer remain valid on older orders.
+ */
+export const CHECKOUT_PAYMENT_METHODS = ["pay_on_delivery", "paystack", "stripe"] as const;
 /** Methods settled online through a payment provider before the order is paid. */
 export const ONLINE_PAYMENT_METHODS = ["paystack", "stripe"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];

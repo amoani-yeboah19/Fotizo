@@ -7,7 +7,7 @@ import {
   orderItemsTable,
   productsTable,
   usersTable,
-  PAYMENT_METHODS,
+  CHECKOUT_PAYMENT_METHODS,
   cartItemsTable,
   type OrderItemRow,
   type OrderRow,
@@ -111,7 +111,7 @@ const placeOrderSchema = z
         country: z.enum(["GH", "GB", "US"]),
       })
       .strict(),
-    paymentMethod: z.enum(PAYMENT_METHODS),
+    paymentMethod: z.enum(CHECKOUT_PAYMENT_METHODS),
     idempotencyKey: z.string().uuid(),
   })
   .strict();

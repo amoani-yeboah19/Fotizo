@@ -48,7 +48,7 @@ function fillDelivery() {
 }
 function toReview() {
   fireEvent.click(screen.getByRole("button", { name: "Continue to Payment" }));
-  fireEvent.click(screen.getByLabelText(/Mobile money/));
+  fireEvent.click(screen.getByLabelText(/Pay on delivery/));
   fireEvent.click(screen.getByRole("button", { name: "Review Order" }));
 }
 
@@ -77,7 +77,7 @@ it("places the order with delivery, payment method and a reused retry key", asyn
       subtotal: 40,
       shipping: 5.99,
       total: 45.99,
-      paymentMethod: "mobile_money",
+      paymentMethod: "pay_on_delivery",
       paymentStatus: "unpaid",
     });
   mount();
@@ -93,7 +93,7 @@ it("places the order with delivery, payment method and a reused retry key", asyn
   const [first, second] = vi.mocked(ordersService.placeOrder).mock.calls.map((c) => c[0]);
   expect(first).toMatchObject({
     items: [{ productId: "p1", quantity: 2 }],
-    paymentMethod: "mobile_money",
+    paymentMethod: "pay_on_delivery",
     delivery: { name: "Kofi Boateng", email: "kofi@example.com", city: "Accra", country: "GH" },
   });
   expect(second.idempotencyKey).toBe(first.idempotencyKey);
@@ -136,15 +136,18 @@ it("offers Paystack for Ghana, Stripe elsewhere, and sends the buyer to the paym
   fillDelivery();
   fireEvent.click(screen.getByRole("button", { name: "Continue to Payment" }));
   // Online payment is preselected once the providers are known.
-  await waitFor(() => expect((screen.getByLabelText(/Pay online with Paystack/) as HTMLInputElement).checked).toBe(true));
-  expect(screen.queryByLabelText(/Pay online by card/)).toBeNull();
+  await waitFor(() => expect((screen.getByLabelText(/Paystack/) as HTMLInputElement).checked).toBe(true));
+  // All three methods are listed; the one that doesn't apply says why.
+  expect((screen.getByLabelText(/Stripe/) as HTMLInputElement).disabled).toBe(true);
+  expect(screen.getByText("For deliveries outside Ghana")).toBeTruthy();
 
   // Delivering to the UK switches the online option to Stripe.
   fireEvent.click(screen.getByRole("button", { name: "Back" }));
   fireEvent.change(screen.getByLabelText("Country"), { target: { value: "GB" } });
   fireEvent.click(screen.getByRole("button", { name: "Continue to Payment" }));
-  expect((screen.getByLabelText(/Pay online by card/) as HTMLInputElement).checked).toBe(true);
-  expect(screen.queryByLabelText(/Paystack/)).toBeNull();
+  expect((screen.getByLabelText(/Stripe/) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByLabelText(/Paystack/) as HTMLInputElement).disabled).toBe(true);
+  expect(screen.getByText("For deliveries in Ghana")).toBeTruthy();
 
   fireEvent.click(screen.getByRole("button", { name: "Review Order" }));
   fireEvent.click(screen.getByRole("button", { name: /Place Order & Pay/ }));
@@ -164,8 +167,11 @@ it("hides online payment when it isn't configured", async () => {
   fillDelivery();
   fireEvent.click(screen.getByRole("button", { name: "Continue to Payment" }));
   await waitFor(() => expect(ordersService.paymentConfig).toHaveBeenCalled());
-  expect(screen.queryByLabelText(/Pay online/)).toBeNull();
+  expect((screen.getByLabelText(/Paystack/) as HTMLInputElement).disabled).toBe(true);
+  expect(screen.getByText("Not available right now")).toBeTruthy();
   expect((screen.getByLabelText(/Pay on delivery/) as HTMLInputElement).checked).toBe(true);
+  // Only the three current methods are offered.
+  expect(screen.queryByLabelText(/Mobile money|Bank transfer/)).toBeNull();
 });
 
 it("keeps the order and explains when the payment page couldn't be opened", async () => {
@@ -179,7 +185,7 @@ it("keeps the order and explains when the payment page couldn't be opened", asyn
   mount();
   fillDelivery();
   fireEvent.click(screen.getByRole("button", { name: "Continue to Payment" }));
-  await screen.findByLabelText(/Pay online with Paystack/);
+  await screen.findByLabelText(/Paystack/);
   fireEvent.click(screen.getByRole("button", { name: "Review Order" }));
   fireEvent.click(screen.getByRole("button", { name: /Place Order & Pay/ }));
   await waitFor(() => expect(navigate).toHaveBeenCalledWith("/order-confirmation?order=o2"));

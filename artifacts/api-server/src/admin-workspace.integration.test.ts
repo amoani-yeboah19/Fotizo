@@ -340,3 +340,28 @@ describe("global search", () => {
     expect((await get("/search?q=drill&limit=50")).status).toBe(400);
   });
 });
+
+describe("checkout payment methods", () => {
+  it("accepts pay on delivery, Paystack and Stripe, and no longer takes mobile money or bank transfer", async () => {
+    const seller = await account("seller");
+    const buyer = await account();
+    const created = await json<{ id: string }>(await post("/products", product, seller.cookie));
+    const place = (paymentMethod: string) =>
+      post(
+        "/orders",
+        {
+          items: [{ productId: created.id, quantity: 1 }],
+          delivery: {
+            name: "Kwame", email: "kwame@example.com", phone: "0244000000", addressLine1: "1 Road",
+            addressLine2: "", city: "Accra", postalCode: "", country: "GH",
+          },
+          paymentMethod,
+          idempotencyKey: crypto.randomUUID(),
+        },
+        buyer.cookie,
+      );
+    expect((await place("mobile_money")).status).toBe(400);
+    expect((await place("bank_transfer")).status).toBe(400);
+    expect((await place("pay_on_delivery")).status).toBe(201);
+  });
+});
