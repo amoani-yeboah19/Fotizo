@@ -14,7 +14,7 @@ import { ordersService } from "@/features/payments/services/orders.service";
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage } from "@/api";
 import type { DeliveryDetails, OnlinePaymentMethod, PaymentMethod } from "@/types";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2, Truck, Smartphone, Globe, Lock } from "lucide-react";
 
 // Same rule the server applies when it prices the order.
 const FREE_DELIVERY_OVER = 50;
@@ -26,21 +26,22 @@ const COUNTRIES: { value: DeliveryDetails["country"]; label: string }[] = [
   { value: "US", label: "United States" },
 ];
 
+/** How every payment method is described, including older orders' methods. */
 export const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; detail: string }[] = [
-  {
-    value: "paystack",
-    label: "Pay online with Paystack",
-    detail: "Card or mobile money on Paystack's secure page, charged in Ghana cedis at today's rate.",
-  },
-  {
-    value: "stripe",
-    label: "Pay online by card",
-    detail: "Visa, Mastercard or Amex on Stripe's secure page, charged in British pounds.",
-  },
   {
     value: "pay_on_delivery",
     label: "Pay on delivery",
     detail: "Pay in cash or by mobile money when your order arrives.",
+  },
+  {
+    value: "paystack",
+    label: "Paystack",
+    detail: "Card or mobile money on Paystack's secure page, charged in Ghana cedis at today's rate.",
+  },
+  {
+    value: "stripe",
+    label: "Stripe",
+    detail: "Visa, Mastercard or Amex on Stripe's secure page, charged in British pounds.",
   },
   {
     value: "mobile_money",
@@ -54,12 +55,57 @@ export const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; detail: str
   },
 ];
 
+type CheckoutMethod = "pay_on_delivery" | "paystack" | "stripe";
+
+/** The three ways to pay at checkout, in the order they're shown. */
+const CHECKOUT_METHODS: {
+  value: CheckoutMethod;
+  label: string;
+  tag?: string;
+  detail: string;
+  icon: typeof Truck;
+}[] = [
+  {
+    value: "pay_on_delivery",
+    label: "Pay on delivery",
+    detail: "Pay in cash or by mobile money when your order arrives. Nothing is charged now.",
+    icon: Truck,
+  },
+  {
+    value: "paystack",
+    label: "Paystack",
+    tag: "Local · Ghana",
+    detail: "Pay now by card or mobile money (MTN, Telecel, AirtelTigo), charged in Ghana cedis.",
+    icon: Smartphone,
+  },
+  {
+    value: "stripe",
+    label: "Stripe",
+    tag: "International",
+    detail: "Pay now by Visa, Mastercard or Amex, charged in British pounds (GBP).",
+    icon: Globe,
+  },
+];
+
 export const isOnlinePayment = (method: PaymentMethod | null | undefined): method is OnlinePaymentMethod =>
   method === "paystack" || method === "stripe";
 
 // Same rule the server applies: Ghana pays through Paystack, everyone else Stripe.
 const onlineProviderFor = (country: DeliveryDetails["country"]): OnlinePaymentMethod =>
   country === "GH" ? "paystack" : "stripe";
+
+/** Whether a method can be chosen for this delivery, and why not when it can't. */
+function availability(
+  method: CheckoutMethod,
+  country: DeliveryDetails["country"],
+  providers: Partial<Record<OnlinePaymentMethod, boolean>> | undefined,
+): { enabled: boolean; reason?: string } {
+  if (method === "pay_on_delivery") return { enabled: true };
+  if (method !== onlineProviderFor(country))
+    return { enabled: false, reason: method === "paystack" ? "For deliveries in Ghana" : "For deliveries outside Ghana" };
+  if (!providers?.[method]) return { enabled: false, reason: "Not available right now" };
+  return { enabled: true };
+}
 
 type Field = keyof DeliveryDetails;
 const REQUIRED: Field[] = ["name", "email", "phone", "addressLine1", "city"];
@@ -85,22 +131,22 @@ export default function CheckoutPage() {
     country: "GH",
   });
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
-  const [chosenMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [chosenMethod, setPaymentMethod] = useState<CheckoutMethod | null>(null);
   // One key per checkout: a retried or double-clicked submission returns the
   // order already created instead of placing a second one.
   const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   const shipping = total > FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE;
   const grandTotal = total + (items.length > 0 ? shipping : 0);
-  // Offer only the online provider for the delivery country, when configured.
-  const paymentOptions = PAYMENT_OPTIONS.filter(
-    (p) => !isOnlinePayment(p.value) || (p.value === onlineProviderFor(delivery.country) && providers?.[p.value]),
-  );
-  // Online payment is preselected when offered; a choice that no longer applies
-  // (for example after changing country) falls back to the first option.
-  const paymentMethod =
-    chosenMethod && paymentOptions.some((p) => p.value === chosenMethod) ? chosenMethod : paymentOptions[0].value;
-  const payment = paymentOptions.find((p) => p.value === paymentMethod)!;
+  // All three methods are always listed; ones that don't apply to this
+  // delivery are shown disabled with the reason.
+  const methods = CHECKOUT_METHODS.map((m) => ({ ...m, ...availability(m.value, delivery.country, providers) }));
+  // Paying online is preselected when it's available; a choice that no longer
+  // applies (for example after changing country) falls back to that default.
+  const preferred = methods.find((m) => m.value === onlineProviderFor(delivery.country) && m.enabled)?.value ?? "pay_on_delivery";
+  const paymentMethod: CheckoutMethod =
+    chosenMethod && methods.some((m) => m.value === chosenMethod && m.enabled) ? chosenMethod : preferred;
+  const payment = methods.find((m) => m.value === paymentMethod)!;
   const paysOnline = isOnlinePayment(paymentMethod);
 
   // An empty cart has nothing to check out. Redirect after render (never
@@ -257,31 +303,58 @@ export default function CheckoutPage() {
 
               {step === 2 && (
                 <div className="space-y-4 animate-in fade-in">
+                  <p className="text-sm text-muted-foreground">
+                    Delivering to <span className="font-medium text-foreground">{COUNTRIES.find((c) => c.value === delivery.country)?.label}</span>.
+                    {" "}Paystack is for orders delivered in Ghana; Stripe is for international orders.
+                  </p>
                   <fieldset className="space-y-3">
                     <legend className="sr-only">Payment method</legend>
-                    {paymentOptions.map((option) => (
-                      <label
-                        key={option.value}
-                        className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ${paymentMethod === option.value ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}
-                      >
-                        <input
-                          type="radio"
-                          name="payment-method"
-                          value={option.value}
-                          checked={paymentMethod === option.value}
-                          onChange={() => setPaymentMethod(option.value)}
-                          className="mt-1 border-border text-primary focus:ring-primary"
-                        />
-                        <span>
-                          <span className="block font-semibold text-sm">{option.label}</span>
-                          <span className="block text-sm text-muted-foreground">{option.detail}</span>
-                        </span>
-                      </label>
-                    ))}
+                    {methods.map((option) => {
+                      const Icon = option.icon;
+                      const selected = paymentMethod === option.value;
+                      return (
+                        <label
+                          key={option.value}
+                          className={`flex items-start gap-3 rounded-xl border p-4 transition-colors ${
+                            !option.enabled
+                              ? "cursor-not-allowed border-border bg-muted/40 opacity-60"
+                              : selected
+                                ? "cursor-pointer border-primary bg-primary/5"
+                                : "cursor-pointer border-border hover:border-primary/40"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="payment-method"
+                            value={option.value}
+                            checked={selected}
+                            disabled={!option.enabled}
+                            onChange={() => setPaymentMethod(option.value)}
+                            className="mt-1 border-border text-primary focus:ring-primary"
+                          />
+                          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${selected ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
+                            <Icon className="h-4 w-4" aria-hidden="true" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-2">
+                              <span className="font-semibold text-sm">{option.label}</span>
+                              {option.tag && (
+                                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{option.tag}</span>
+                              )}
+                            </span>
+                            <span className="block text-sm text-muted-foreground">{option.detail}</span>
+                            {!option.enabled && option.reason && (
+                              <span className="mt-1 block text-xs font-medium text-muted-foreground">{option.reason}</span>
+                            )}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </fieldset>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                    {paysOnline && <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />}
                     {paysOnline
-                      ? "You'll be taken to a secure payment page after placing your order. Fotizo never sees your card details."
+                      ? `After you place your order you'll pay on ${payment.label}'s secure page. Fotizo never sees your card details.`
                       : "No card details are needed. Nothing is charged online."}
                   </p>
                   <div className="pt-4 flex gap-4">
@@ -326,7 +399,10 @@ export default function CheckoutPage() {
                     </div>
                     <div>
                       <p className="font-semibold mb-1">Payment</p>
-                      <p className="text-muted-foreground">{payment.label}</p>
+                      <p className="text-muted-foreground">
+                        {payment.label}
+                        {payment.tag ? ` (${payment.tag})` : ""}
+                      </p>
                     </div>
                   </div>
 
