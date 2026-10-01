@@ -156,20 +156,26 @@ beforeEach(() => {
   vi.mocked(messagesService.listConversations).mockResolvedValue([]);
   orderFetch.mockResolvedValue([]);
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe("session lifecycle and private state", () => {
   it("signs out locally when the server rejects the session instead of polling forever", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
     vi.mocked(authService.getSession).mockResolvedValue(alice);
     render(<Harness />);
     await waitFor(() => expect(screen.getByTestId("identity").textContent).toBe("alice"));
+    // Rendering the identity can precede the initial message-loading effect.
+    await waitFor(() => expect(messagesService.listConversations).toHaveBeenCalledTimes(1));
     const polls = vi.mocked(messagesService.listConversations).mock.calls.length;
     vi.mocked(authService.getSession).mockResolvedValue(null);
     await act(async () => reportSessionRejected());
     await waitFor(() => expect(screen.getByTestId("identity").textContent).toBe("anonymous"));
     expect(screen.getByTestId("status").textContent).toBe("anonymous");
-    // No further conversation polling for the ended session.
-    await new Promise((r) => setTimeout(r, 50));
+    // Advance through two six-second polling periods after logout.
+    await act(async () => { await vi.advanceTimersByTimeAsync(12_000); });
     expect(vi.mocked(messagesService.listConversations).mock.calls.length).toBe(polls);
   });
   it("waits for session restoration instead of redirecting a valid user", async () => {
@@ -187,7 +193,7 @@ describe("session lifecycle and private state", () => {
     render(<Harness guarded />);
     await screen.findByText("redirect:/");
     expect(screen.queryByText("private-page")).toBeNull();
-    expect(openAuth).toHaveBeenCalledWith("signin", "/dashboard/manager");
+    await waitFor(() => expect(openAuth).toHaveBeenCalledWith("signin", "/dashboard/manager"));
   });
   it("never mounts staff content for a buyer", async () => {
     vi.mocked(authService.getSession).mockResolvedValue(alice);

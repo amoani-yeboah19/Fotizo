@@ -41,3 +41,13 @@ it("permits a separately requested demo build", () => {
     assertSafeBuild("demo", { VITE_USE_MOCKS: "true", VITE_DEMO_MODE: "true" }),
   ).not.toThrow();
 });
+
+it("allows only the local shop catalogue in an explicit shop preview", () => {
+  const preview = { ...real, VITE_USE_MOCK_SHOP: "true" };
+  expect(() => assertSafeBuild("shop-preview", preview)).not.toThrow();
+  expect(() => assertSafeBuild("production", preview)).toThrow();
+  for (const name of ["AUTH", "CATALOG", "ORDERS", "SELLER_CATALOG", "MESSAGES"]) {
+    expect(() => assertSafeBuild("shop-preview", { ...preview, [`VITE_USE_MOCK_${name}`]: "true" })).toThrow();
+  }
+  expect(() => assertSafeBuild("shop-preview", { ...preview, VITE_DEMO_MODE: "true" })).toThrow();
+});

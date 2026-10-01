@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm run typecheck && pnpm run test && VITE_USE_MOCK_SHOP=true pnpm --filter @workspace/fotizo run build",
+  "buildCommand": "pnpm run typecheck && pnpm run test && VITE_USE_MOCK_SHOP=true pnpm --filter @workspace/fotizo run build --mode shop-preview",
   "installCommand": "pnpm install --frozen-lockfile",
   "outputDirectory": "artifacts/fotizo/dist/public",
   "framework": null,
