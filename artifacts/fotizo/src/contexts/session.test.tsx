@@ -104,6 +104,7 @@ function Probe() {
         {conversations.map((c) => c.subject).join(",")}
       </span>
       <span data-testid="cart">{cart.count}</span>
+      <span data-testid="cart-loaded">{String(cart.isLoaded)}</span>
       <button
         onClick={() =>
           cart.addItem({
@@ -243,6 +244,7 @@ describe("session lifecycle and private state", () => {
     await waitFor(() =>
       expect(screen.getByTestId("messages").textContent).toBe("alice-secret"),
     );
+    await waitFor(() => expect(screen.getByTestId("cart-loaded").textContent).toBe("true"));
     fireEvent.click(screen.getByText("Add item"));
     expect(screen.getByTestId("cart").textContent).toBe("1");
     await act(async () => {
@@ -346,6 +348,7 @@ describe("account mutation session state", () => {
     });
     render(<Harness />);
     await waitFor(() => expect(session.user?.id).toBe("alice"));
+    await waitFor(() => expect(screen.getByTestId("cart-loaded").textContent).toBe("true"));
     fireEvent.click(screen.getByText("Add item"));
     const scope = session.sessionKey;
     await act(async () => {
@@ -360,6 +363,7 @@ describe("account mutation session state", () => {
     vi.mocked(authService.changePassword).mockResolvedValue(undefined);
     render(<Harness guarded />);
     await screen.findByText("private-page");
+    await waitFor(() => expect(screen.getByTestId("cart-loaded").textContent).toBe("true"));
     fireEvent.click(screen.getByText("Add item"));
     await act(async () => {
       expect((await session.changePassword("old", "new")).success).toBe(true);
@@ -395,6 +399,7 @@ describe("cross-tab session changes", () => {
     vi.mocked(authService.getSession).mockResolvedValueOnce(alice);
     render(<Harness guarded />);
     await screen.findByText("private-page");
+    await waitFor(() => expect(screen.getByTestId("cart-loaded").textContent).toBe("true"));
     fireEvent.click(screen.getByText("Add item"));
     const pending = deferred<User | null>();
     vi.mocked(authService.getSession).mockReturnValue(pending.promise);
