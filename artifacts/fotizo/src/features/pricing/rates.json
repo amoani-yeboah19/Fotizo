@@ -1,0 +1,14 @@
+{
+  "artisan": {
+    "basis": "paid-booking",
+    "amounts": { "GHS": 1, "USD": 1, "GBP": 1, "EUR": 1 }
+  },
+  "seller": {
+    "basis": "unit-sold",
+    "amounts": { "GHS": 1, "USD": 1, "GBP": 1, "EUR": 1 }
+  },
+  "chineseGoods": {
+    "platforms": ["alibaba", "taobao", "pinduoduo"],
+    "markupPercent": 30
+  }
+}

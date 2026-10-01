@@ -1,3 +1,4 @@
+import { FotizoRates } from "@/features/pricing/FotizoRates";
 import { PurchaseDetailsDialog } from "@/features/orders/components/PurchaseDetailsDialog";
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
@@ -252,6 +253,7 @@ export default function DashboardSeller() {
 
   return (
     <DashboardLayout sidebar={sidebar}>
+      <FotizoRates />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <h1 className="heading-page text-foreground">

@@ -1,6 +1,6 @@
 # Alibaba frontend catalogue
 
-The Alibaba homepage supplied for this task is a marketplace entry point, not a single seller's shop. This batch contains 479 selected listings across all 21 active Fotizo departments: 476 new listings and 3 refreshed listings whose existing Fotizo IDs are preserved. This is a category-covering selection, not an exhaustive Alibaba mirror.
+The Alibaba homepage supplied for this task is a marketplace entry point, not a single seller's shop. This batch contains 1,967 selected listings across all 21 active Fotizo departments. The expansion adds 1,488 listings while retaining all 479 previously sourced listings and their IDs. This is a category-covering selection, not an exhaustive Alibaba mirror.
 
 - `alibaba-products.json` contains English supplier titles, image galleries, source product links and supplier metadata. Original image content is retained, including any Chinese writing. `sourcing.originalImage` retains the full-size source; gallery URLs request Alibaba's 720px rendition.
 - `products.ts` merges these records with the existing local catalogue and removes matching old source listings. `VITE_USE_MOCK_SHOP` defaults to `true`; setting it to `false` selects the backend catalogue instead. The Vercel build uses the explicit `shop-preview` mode (allowing the local shop only, with live authentication and other backend services) and sets `VITE_USE_MOCK_SHOP=true` for this frontend review phase, overriding the backend setting in `.env.production`. Remove that build override and use production mode when switching to the backend catalogue. No database or backend endpoint was changed or populated.
@@ -9,7 +9,7 @@ The Alibaba homepage supplied for this task is a marketplace entry point, not a 
 
 ## Prices and ordering
 
-Display prices retain the existing importer calculation: lowest quoted USD price divided by the app's fixed 1.27 USD/GBP rate, multiplied by its existing 2.2 preview markup, rounded to two decimals. This is a frontend estimate, not a current exchange-rate quote or approved landed selling price. Cards and detail pages label it accordingly. Supplier minimum orders, quoted ranges and units are shown on detail pages. These records do not claim Fotizo can fulfil single units below supplier minimums.
+Display prices use: lowest quoted USD price divided by the app's fixed 1.27 USD/GBP rate, multiplied by the approved 1.30 markup (30% on supplier cost), rounded to two decimals. This is a frontend estimate, not a current exchange-rate quote or approved landed selling price. Cards and detail pages label it accordingly. Supplier minimum orders, quoted ranges and units are shown on detail pages. These records do not claim Fotizo can fulfil single units below supplier minimums.
 
 Do not add or display available-stock quantities for these imported listings. Supplier minimum order quantities describe purchasing requirements, not available inventory.
 
@@ -27,6 +27,8 @@ From the repository root:
 node artifacts/fotizo/tools/source-alibaba-catalogue.mjs
 ```
 
-The tool reads current department IDs from `categories.ts`, fetches public Alibaba category pages with bounded concurrency, applies category relevance filters, and keeps up to 24 unique supplier products per department. It preserves existing matching IDs. It writes frontend JSON only and refuses to replace the catalogue if any department has no usable listings. It does not bypass login or CAPTCHA challenges. Review the resulting products and report before accepting a refresh; supplier search results change.
+The tool reads current department IDs from `categories.ts`, fetches public Alibaba category pages with bounded concurrency, applies category relevance filters, and keeps up to 100 unique supplier products per department, preserving previously imported listings. It preserves existing matching IDs. It writes frontend JSON only and refuses to replace the catalogue if any department has no usable listings. It does not bypass login or CAPTCHA challenges. Review the resulting products and report before accepting a refresh; supplier search results change.
 
-The current batch has 24 listings per department except Beauty (23), Computers (23), Home Appliances (21), and Phones (4). A manual final relevance review removed four additional unrelated listings from the automated selection. Image checks sample one listing per category, not every image in every gallery.
+Current department counts are recorded in `alibaba-sourcing-report.json`. Each department has more listings than before the expansion. A final relevance review removed phone spare parts and electronic control components. Image checks sample source images; they do not verify every image in every gallery.
+
+Older inline Alibaba entries without stored supplier quotes were repriced by removing their previous 2.2 multiplier and applying 1.3; their base costs are approximate because the old display prices were already rounded.

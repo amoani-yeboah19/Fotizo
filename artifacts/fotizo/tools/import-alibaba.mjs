@@ -10,6 +10,7 @@
 // CAPTCHA — /trade/search and /product-detail both challenge. See
 // tools/parse-alibaba-page.mjs for the parser.
 
+import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import { parseProducts } from "./parse-alibaba-page.mjs";
 
@@ -25,15 +26,9 @@ const UA =
  */
 const USD_TO_GBP = 1 / 1.27;
 
-/**
- * Alibaba quotes WHOLESALE, and the low end of a band is the 1000-unit price.
- * Selling at that number would mean shipping goods at cost. This multiplier is
- * the retail markup covering freight, duty and margin.
- *
- * 2.2x is a placeholder standing in for a real landed-cost model — CONFIRM IT
- * before these prices go anywhere near a customer.
- */
-const RETAIL_MARKUP = 2.2;
+// Approved markup is applied to supplier cost, not to an existing retail price.
+const rates = JSON.parse(fs.readFileSync(new URL('../src/features/pricing/rates.json', import.meta.url), 'utf8'));
+const RETAIL_MARKUP = 1 + rates.chineseGoods.markupPercent / 100;
 
 /** Products to take per category, after the retail-viability filter. */
 const PER_CATEGORY = 40;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import rates from "@/features/pricing/rates.json";
 import alibabaProducts from "./alibaba-products.json";
 import { SHOP_CATEGORIES, SHOP_PRODUCTS } from "./products";
 import { parseProducts } from "../../../../tools/parse-alibaba-page.mjs";
@@ -17,6 +18,11 @@ describe("Alibaba frontend catalogue", () => {
       expect(p.images.every((url) => new URL(url).hostname.endsWith(".alicdn.com"))).toBe(true);
       expect(Number.isFinite(p.price) && p.price > 0).toBe(true);
       expect(p.originalPrice).toBe(p.price);
+      const supplierUsd = Number(p.sourcing.priceRange.replace(/,/g, "").match(/[\d.]+/)?.[0]);
+      const multiplier = 1 + rates.chineseGoods.markupPercent / 100;
+      expect(p.sourcing.previewMarkup).toBe(multiplier);
+      expect(p.price).toBe(Math.round((supplierUsd / p.sourcing.usdPerGbp * multiplier + Number.EPSILON) * 100) / 100);
+      expect("stockCount" in p).toBe(false);
       expect(p.sourcing.priceStatus).toBe("estimate");
       expect(p.sourcing.currency).toBe("USD");
       expect(p.sourcing.priceRange).toMatch(/^US \$/);
