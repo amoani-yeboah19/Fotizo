@@ -1,6 +1,6 @@
 {
   "artisan": {
-    "basis": "first-paying-customer-per-provider",
+    "basis": "paid-booking",
     "amounts": { "GHS": 1, "USD": 1, "GBP": 1, "EUR": 1 }
   },
   "seller": {
