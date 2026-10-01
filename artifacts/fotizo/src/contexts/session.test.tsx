@@ -104,6 +104,7 @@ function Probe() {
         {conversations.map((c) => c.subject).join(",")}
       </span>
       <span data-testid="cart">{cart.count}</span>
+      <span data-testid="cart-loaded">{String(cart.isLoaded)}</span>
       <button
         onClick={() =>
           cart.addItem({
@@ -156,20 +157,26 @@ beforeEach(() => {
   vi.mocked(messagesService.listConversations).mockResolvedValue([]);
   orderFetch.mockResolvedValue([]);
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe("session lifecycle and private state", () => {
   it("signs out locally when the server rejects the session instead of polling forever", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
     vi.mocked(authService.getSession).mockResolvedValue(alice);
     render(<Harness />);
     await waitFor(() => expect(screen.getByTestId("identity").textContent).toBe("alice"));
+    // Rendering the identity can precede the initial message-loading effect.
+    await waitFor(() => expect(messagesService.listConversations).toHaveBeenCalledTimes(1));
     const polls = vi.mocked(messagesService.listConversations).mock.calls.length;
     vi.mocked(authService.getSession).mockResolvedValue(null);
     await act(async () => reportSessionRejected());
     await waitFor(() => expect(screen.getByTestId("identity").textContent).toBe("anonymous"));
     expect(screen.getByTestId("status").textContent).toBe("anonymous");
-    // No further conversation polling for the ended session.
-    await new Promise((r) => setTimeout(r, 50));
+    // Advance through two six-second polling periods after logout.
+    await act(async () => { await vi.advanceTimersByTimeAsync(12_000); });
     expect(vi.mocked(messagesService.listConversations).mock.calls.length).toBe(polls);
   });
   it("waits for session restoration instead of redirecting a valid user", async () => {
@@ -187,7 +194,7 @@ describe("session lifecycle and private state", () => {
     render(<Harness guarded />);
     await screen.findByText("redirect:/");
     expect(screen.queryByText("private-page")).toBeNull();
-    expect(openAuth).toHaveBeenCalledWith("signin", "/dashboard/manager");
+    await waitFor(() => expect(openAuth).toHaveBeenCalledWith("signin", "/dashboard/manager"));
   });
   it("never mounts staff content for a buyer", async () => {
     vi.mocked(authService.getSession).mockResolvedValue(alice);
@@ -237,6 +244,7 @@ describe("session lifecycle and private state", () => {
     await waitFor(() =>
       expect(screen.getByTestId("messages").textContent).toBe("alice-secret"),
     );
+    await waitFor(() => expect(screen.getByTestId("cart-loaded").textContent).toBe("true"));
     fireEvent.click(screen.getByText("Add item"));
     expect(screen.getByTestId("cart").textContent).toBe("1");
     await act(async () => {
@@ -340,6 +348,7 @@ describe("account mutation session state", () => {
     });
     render(<Harness />);
     await waitFor(() => expect(session.user?.id).toBe("alice"));
+    await waitFor(() => expect(screen.getByTestId("cart-loaded").textContent).toBe("true"));
     fireEvent.click(screen.getByText("Add item"));
     const scope = session.sessionKey;
     await act(async () => {
@@ -354,6 +363,7 @@ describe("account mutation session state", () => {
     vi.mocked(authService.changePassword).mockResolvedValue(undefined);
     render(<Harness guarded />);
     await screen.findByText("private-page");
+    await waitFor(() => expect(screen.getByTestId("cart-loaded").textContent).toBe("true"));
     fireEvent.click(screen.getByText("Add item"));
     await act(async () => {
       expect((await session.changePassword("old", "new")).success).toBe(true);
@@ -389,6 +399,7 @@ describe("cross-tab session changes", () => {
     vi.mocked(authService.getSession).mockResolvedValueOnce(alice);
     render(<Harness guarded />);
     await screen.findByText("private-page");
+    await waitFor(() => expect(screen.getByTestId("cart-loaded").textContent).toBe("true"));
     fireEvent.click(screen.getByText("Add item"));
     const pending = deferred<User | null>();
     vi.mocked(authService.getSession).mockReturnValue(pending.promise);
