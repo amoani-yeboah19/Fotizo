@@ -10,6 +10,7 @@
 // CAPTCHA — /trade/search and /product-detail both challenge. See
 // tools/parse-alibaba-page.mjs for the parser.
 
+import { pathToFileURL } from "node:url";
 import { parseProducts } from "./parse-alibaba-page.mjs";
 
 const UA =
@@ -154,7 +155,7 @@ const CATEGORY_RULES = {
   },
 };
 
-function isRetailViable(mapped, parsed, category) {
+export function isRetailViable(mapped, parsed, category) {
   if (mapped.price < MIN_RETAIL_PRICE || mapped.price > MAX_RETAIL_PRICE) return false;
   const moq = Number((parsed.minOrder || "").replace(/,/g, "").match(/\d+/)?.[0] ?? 1);
   if (Number.isFinite(moq) && moq > MAX_MOQ_UNITS) return false;
@@ -443,7 +444,7 @@ const slug = (s) =>
 
 const money = (n) => Math.round(n * 100) / 100;
 
-function toShopProduct(p, category, index) {
+export function toShopProduct(p, category, index) {
   const usdLow = Number((p.priceMini || p.price || "").match(/[\d.]+/)?.[0]);
   if (!Number.isFinite(usdLow) || usdLow <= 0) return null;
 
@@ -581,6 +582,7 @@ async function importCategory(category, source) {
   return { items: out, rejected, available: parsed.length };
 }
 
+if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
 const wanted = process.argv.slice(2);
 const targets = wanted.length ? wanted : Object.keys(SOURCES);
 const all = {};
@@ -610,3 +612,5 @@ console.error(
     `(USD->GBP ${USD_TO_GBP.toFixed(4)}, markup ${RETAIL_MARKUP}x)`,
 );
 console.log(JSON.stringify(all, null, 2));
+
+}

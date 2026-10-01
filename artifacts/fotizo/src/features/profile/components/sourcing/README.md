@@ -24,3 +24,7 @@ Drafts are stored at `fotizo_sourcing_drafts_v1:<userId>`, validated on read/wri
 7. For large shop catalogues, provide server-side query/filter/pagination/export parameters; the current seller-product API returns the entire owned list. Search/export currently cover that returned list only.
 
 Verification covers product filtering/pagination/details/edit destinations, supplier draft creation/editing, account isolation, failed storage, invalid quantities/dates and CSV escaping, alongside existing staff mutation tests. Hosted end-to-end verification requires a real staff session; the public dashboard URL could not be inspected by the browsing tool.
+
+## Alibaba frontend catalogue
+
+A local Alibaba selection now covers all 21 shop departments, retaining supplier images and English product text. Source IDs, links, quoted price ranges and minimum orders are saved for the backend handoff. No database import is performed. See [catalogue sourcing notes](../../../shop/data/ALIBABA.md) for data files, preview pricing, refresh instructions and integration requirements.

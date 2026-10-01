@@ -72,6 +72,10 @@ export const ShopProductCard = memo(function ShopProductCard({ product }: { prod
             )}
           </div>
 
+          {product.sourcing?.priceStatus === "estimate" && (
+            <p className="mt-1 text-[11px] text-muted-foreground">Estimated price · delivery extra</p>
+          )}
+
           {/* Supplier-imported listings carry no rating or units-sold yet. Showing
               "0.0 · 0 sold" reads as a bad product rather than missing data, so the
               row only renders once there is something real to report. */}

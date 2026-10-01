@@ -167,6 +167,19 @@ export default function ShopProductPage() {
             )}
           </div>
 
+          {product.sourcing && (
+            <div className="mt-3 rounded-lg border border-border p-3 text-sm text-muted-foreground">
+              <p>Estimated price. Final price, availability and delivery costs require confirmation.</p>
+              {product.sourcing.minimumOrder && (
+                <p className="mt-1">Supplier minimum order: {product.sourcing.minimumOrder}.</p>
+              )}
+              <p className="mt-1">Supplier price: {product.sourcing.priceRange} per {product.sourcing.unit || "unit"}.</p>
+              <a href={product.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-primary underline">
+                View original Alibaba listing
+              </a>
+            </div>
+          )}
+
           <div className="mt-4 flex flex-wrap gap-2">
             {product.freeShipping && (
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
