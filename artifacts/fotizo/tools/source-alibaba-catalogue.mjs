@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { SOURCES, toShopProduct, isRetailViable } from './import-alibaba.mjs';
 import { parseProducts } from './parse-alibaba-page.mjs';
 
+const rates = JSON.parse(await fs.readFile(new URL("../src/features/pricing/rates.json", import.meta.url), "utf8"));
+const markup = 1 + rates.chineseGoods.markupPercent / 100;
 const dataDir = new URL('../src/features/shop/data/', import.meta.url);
 const categoryText = await fs.readFile(new URL('categories.ts', dataDir), 'utf8');
 const categories = [...categoryText.matchAll(/\{ id: "([^"]+)", label: "([^"]+)"/g)].map((m) => ({ id: m[1], label: m[2] }));
@@ -227,7 +229,7 @@ async function worker() {
           sourceUrl: raw.url.split('?')[0],
           sourcing: { platform: 'alibaba', productId: id, originalTitle: raw.title, sourcePage: page.url, capturedAt,
             currency: 'USD', priceRange: raw.price, minimumOrder: raw.minOrder || null, unit: raw.unit || null,
-            originalImage: raw.imageOriginal, priceStatus: 'estimate', usdPerGbp: 1.27, previewMarkup: 2.2 },
+            originalImage: raw.imageOriginal, priceStatus: 'estimate', usdPerGbp: 1.27, previewMarkup: markup },
         };
         delete product.supplierPriceUsd;
         delete product.minOrder;
