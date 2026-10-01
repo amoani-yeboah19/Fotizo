@@ -1,11 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm run typecheck && pnpm run test && pnpm --filter @workspace/fotizo run build",
+  "buildCommand": "pnpm run typecheck && pnpm run test && VITE_USE_MOCK_SHOP=true pnpm --filter @workspace/fotizo run build",
   "installCommand": "pnpm install --frozen-lockfile",
   "outputDirectory": "artifacts/fotizo/dist/public",
   "framework": null,
   "redirects": [
-    { "source": "/dashboards", "destination": "https://fotizo-dashboards-demo.vercel.app/dashboards", "permanent": false }
+    {
+      "source": "/dashboards",
+      "destination": "https://fotizo-dashboards-demo.vercel.app/dashboards",
+      "permanent": false
+    }
   ],
   "rewrites": [
     {

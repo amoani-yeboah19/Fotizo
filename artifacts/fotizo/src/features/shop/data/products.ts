@@ -1,3 +1,4 @@
+import alibabaProducts from "./alibaba-products.json";
 import { SHOP_CATEGORIES } from "@/features/shop/data/categories";
 
 // Re-exported so the shop pages can keep importing departments and listings
@@ -12,6 +13,21 @@ export type { ShopCategory } from "@/features/shop/data/categories";
 // GHS rate). Images are hosted by the supplier and load over HTTPS.
 
 export interface ShopProduct {
+  sourcing?: {
+    platform: string;
+    productId: string;
+    originalTitle: string;
+    sourcePage: string;
+    capturedAt: string;
+    currency: string;
+    priceRange: string;
+    minimumOrder: string | null;
+    unit: string | null;
+    originalImage: string;
+    priceStatus: string;
+    usdPerGbp: number;
+    previewMarkup: number;
+  };
   stockCount?: number;
   id: string;
   title: string;
@@ -32,7 +48,7 @@ export interface ShopProduct {
   sourceUrl?: string;
 }
 
-export const SHOP_PRODUCTS: ShopProduct[] = [
+const EXISTING_SHOP_PRODUCTS: ShopProduct[] = [
   // ── Supplier listings (tuwa.com.gh) ─────────────────────────────────────
   {id:"t-161",title:"Korean Style Mesh Mary Jane Flats for Women — Soft-Soled Hollowed Fishnet Round Toe Shoes",category:"shoes-bags",price:9.42,originalPrice:14.53,rating:4.4,sold:760,image:"https://tuwa.com.gh/cache//catalog/Product/Fashion/Women/Korean-Style-Mesh-Mary-Jane-Flats-for-Women---Summer-New-Soft-Soled,-Hollowed-Fishnet-Weaving-Round-Toe-Shoes-1-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Fashion/Women/Korean-Style-Mesh-Mary-Jane-Flats-for-Women---Summer-New-Soft-Soled,-Hollowed-Fishnet-Weaving-Round-Toe-Shoes-1-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Fashion/Women/Korean-Style-Mesh-Mary-Jane-Flats-for-Women---Summer-New-Soft-Soled,-Hollowed-Fishnet-Weaving-Round-Toe-Shoes-560x560.jpg"],freeShipping:false,almostGone:false,description:"Korean Style Mesh Mary Jane Flats for Women — Soft-Soled Hollowed Fishnet Round Toe Shoes — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
   {id:"t-169",title:"Women Vintage Mary Jane Flats — Round Toe Women's Casual Shoes",category:"shoes-bags",price:9.12,originalPrice:14.53,rating:4.5,sold:1800,image:"https://tuwa.com.gh/cache//catalog/Product/Shoes/Women-Vintage-Mary-Jane-Flats-Toe-Women's-Flats-Casual-Shoes-2-560x560.jpg",images:["https://tuwa.com.gh/cache//catalog/Product/Shoes/Women-Vintage-Mary-Jane-Flats-Toe-Women's-Flats-Casual-Shoes-2-560x560.jpg","https://tuwa.com.gh/cache//catalog/Product/Shoes/Women-Vintage-Mary-Jane-Flats-Toe-Women's-Flats-Casual-Shoes-3-560x560.jpg"],freeShipping:true,almostGone:true,description:"Women Vintage Mary Jane Flats — Round Toe Women's Casual Shoes — imported through Fotizo's global sourcing network. Quality-checked before dispatch, with tracked shipping and buyer protection on every order."},
@@ -748,6 +764,19 @@ export const SHOP_PRODUCTS: ShopProduct[] = [
   {id:"ali-general-20000ltrs-square-collapsible-29",title:"20000ltrs Square Collapsible GRP FRP Panel Cube Storage Clean Pure Water",category:"general",price:69.29,originalPrice:69.29,rating:0,sold:0,image:"https://s.alicdn.com/@sc04/kf/H243771ad46c742fe918c9d13a3bbc972x.png_720x720.jpg",images:["https://s.alicdn.com/@sc04/kf/H243771ad46c742fe918c9d13a3bbc972x.png_720x720.jpg","https://s.alicdn.com/@sc04/kf/H9ca35e8fa92d4f128d4a4a7f724dfa370.png_720x720.jpg","https://s.alicdn.com/@sc04/kf/H66f87c37e56f4fbda4af9e63b5e52cc46.png_720x720.jpg","https://s.alicdn.com/@sc04/kf/H4983ec8ca91647f2ab0d8e150282dbe2h.png_720x720.jpg","https://s.alicdn.com/@sc04/kf/Hcefbeab8ee474b6282ac6399bdd2edb9T.png_720x720.jpg","https://s.alicdn.com/@sc04/kf/H1db36da4ad224a51b9b94692c414b398J.png_720x720.jpg"],freeShipping:false,almostGone:false,description:"20000ltrs Square Collapsible GRP FRP Panel Cube Storage Clean Pure Water, stocked for item buyers. Imported through Fotizo's sourcing network so you get the supplier product without arranging the import yourself. Quality-checked before dispatch, with tracked shipping and buyer protection.",sourceUrl:"https://www.alibaba.com/product-detail/20000Ltrs-Square-Collapsible-GRP-FRP-Panel_1601426185970.html?s=p"},
   {id:"ali-general-food-grade-stainless-steel-l-30",title:"Food Grade Stainless Steel Large Capacity Vertical Liquid Storage Tank With",category:"general",price:311.81,originalPrice:311.81,rating:0,sold:0,image:"https://s.alicdn.com/@sc04/kf/H563d1af3e1dd49e6a3f5ec5b48e05ae6X.jpg_720x720.jpg",images:["https://s.alicdn.com/@sc04/kf/H563d1af3e1dd49e6a3f5ec5b48e05ae6X.jpg_720x720.jpg","https://s.alicdn.com/@sc04/kf/H5a4c24663cf9478687d2252d9d08da74f.jpg_720x720.jpg","https://s.alicdn.com/@sc04/kf/Hc3eec2684e4e4b3e8390647c1bfae07aK.jpg_720x720.jpg","https://s.alicdn.com/@sc04/kf/H318740f0942a4499993552efbf12d0afS.jpg_720x720.jpg","https://s.alicdn.com/@sc04/kf/H88db25294f054e978e16678d204d903fx.jpg_720x720.jpg","https://s.alicdn.com/@sc04/kf/Hb5891fb902bb476ebc89853042b0c07ev.jpg_720x720.jpg"],freeShipping:false,almostGone:false,description:"Food Grade Stainless Steel Large Capacity Vertical Liquid Storage Tank With — stainless steel. Imported through Fotizo's sourcing network so you get the supplier product without arranging the import yourself. Quality-checked before dispatch, with tracked shipping and buyer protection.",sourceUrl:"https://www.alibaba.com/product-detail/Food-Grade-Stainless-Steel-Large-Capacity_1601867706678.html?s=p"},
 ];
+
+// Refresh matching source listings while preserving their public IDs. Newly
+// sourced listings stay frontend-only until the backend catalogue is ready.
+const importedSourceIds = new Set(alibabaProducts.map((p) => p.sourcing.productId));
+const importedIds = new Set(alibabaProducts.map((p) => p.id));
+export const SHOP_PRODUCTS: ShopProduct[] = [
+  ...alibabaProducts,
+  ...EXISTING_SHOP_PRODUCTS.filter((p) =>
+    !importedIds.has(p.id) &&
+    !importedSourceIds.has(p.sourceUrl?.match(/_(\d+)\.html/)?.[1] ?? ""),
+  ),
+];
+
 
 export function discountPct(p: Pick<ShopProduct, "price" | "originalPrice">): number {
   if (p.originalPrice <= p.price) return 0;

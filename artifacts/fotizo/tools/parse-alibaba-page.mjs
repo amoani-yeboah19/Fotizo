@@ -67,7 +67,7 @@ export function parseProducts(html) {
     const imgs = bases.map(displayImage);
 
     const title = unesc(
-      (window.match(/"puretitle":"([^"]{5,300})"/) || window.match(/"title":"([^"]{5,300})"/) || [])[1],
+      (window.match(/"puretitle":"((?:\\.|[^"\\]){5,600})"/) || window.match(/"title":"((?:\\.|[^"\\]){5,600})"/) || [])[1],
     );
     if (!title) continue;
 
@@ -76,7 +76,7 @@ export function parseProducts(html) {
     const minOrder = unesc((window.match(/"minOrder":"([^"]{1,40})"/) || [])[1]);
     const unit = unesc((window.match(/"unit":"([^"]{1,24})"/) || [])[1]);
     const localPrice = unesc((window.match(/"localOriginalPriceRangeStr":"([^"]{1,60})"/) || [])[1]);
-    const url = abs(unesc((window.match(/"productUrl":"([^"]{5,300})"/) || [])[1]));
+    const url = abs(unesc((window.match(/"productUrl":"((?:\\.|[^"\\]){5,600})"/) || [])[1]));
 
     const key = bases[0];
     if (seen.has(key)) continue;

@@ -1,0 +1,261 @@
+{
+  "capturedAt": "2026-10-01T08:45:05.246Z",
+  "source": "Alibaba",
+  "maxProductsPerCategory": 24,
+  "categories": [
+    {
+      "id": "general",
+      "label": "General Merchandise",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_storage.html",
+        "https://www.alibaba.com/premium/best_selling_cleaning_products.html"
+      ]
+    },
+    {
+      "id": "wigs",
+      "label": "Wigs & Hair",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/full_lace_wig_vendors.html",
+        "https://www.alibaba.com/premium/best_selling_hair_extensions.html",
+        "https://www.alibaba.com/premium/best_selling_human_hair.html",
+        "https://www.alibaba.com/premium/best_selling_wigs.html"
+      ]
+    },
+    {
+      "id": "pets",
+      "label": "Pet Supplies",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_pet_supplies.html",
+        "https://www.alibaba.com/premium/best_selling_dog_products.html"
+      ]
+    },
+    {
+      "id": "jackets",
+      "label": "Winter Jackets",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_winter_jackets.html",
+        "https://www.alibaba.com/premium/best_selling_coats.html",
+        "https://www.alibaba.com/premium/best_selling_down_jacket.html",
+        "https://www.alibaba.com/premium/best_selling_winter_coats.html"
+      ]
+    },
+    {
+      "id": "sports",
+      "label": "Sports Furniture",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_fitness_equipment.html",
+        "https://www.alibaba.com/premium/best_selling_yoga_mat.html",
+        "https://www.alibaba.com/premium/best_selling_sports_equipment.html",
+        "https://www.alibaba.com/premium/best_selling_outdoor.html"
+      ]
+    },
+    {
+      "id": "shoes-bags",
+      "label": "Shoes & Bags",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_women_shoes.html",
+        "https://www.alibaba.com/premium/best_selling_men_shoes.html",
+        "https://www.alibaba.com/premium/best_selling_casual_shoes.html",
+        "https://www.alibaba.com/premium/best_selling_leather_shoes.html",
+        "https://www.alibaba.com/premium/best_selling_sneakers.html",
+        "https://www.alibaba.com/premium/best_selling_women_sandals.html",
+        "https://www.alibaba.com/premium/best_selling_high_heels.html",
+        "https://www.alibaba.com/premium/best_selling_handbags.html",
+        "https://www.alibaba.com/premium/best_selling_women_bags.html",
+        "https://www.alibaba.com/premium/best_selling_tote_bags.html",
+        "https://www.alibaba.com/premium/best_selling_crossbody_bags.html",
+        "https://www.alibaba.com/premium/best_selling_backpacks.html",
+        "https://www.alibaba.com/premium/best_selling_wallets.html",
+        "https://www.alibaba.com/premium/best_selling_luggage.html"
+      ]
+    },
+    {
+      "id": "mens",
+      "label": "Men's Clothing",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_polo_shirts.html",
+        "https://www.alibaba.com/premium/best_selling_men_shirts.html",
+        "https://www.alibaba.com/premium/best_selling_casual_shirts.html",
+        "https://www.alibaba.com/premium/best_selling_linen_pants.html",
+        "https://www.alibaba.com/premium/best_selling_men_trousers.html",
+        "https://www.alibaba.com/premium/best_selling_chinos.html",
+        "https://www.alibaba.com/premium/best_selling_knitwear.html",
+        "https://www.alibaba.com/premium/best_selling_men_sweater.html",
+        "https://www.alibaba.com/premium/best_selling_men_shorts.html"
+      ]
+    },
+    {
+      "id": "gymwear",
+      "label": "Gym Wear",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_activewear.html",
+        "https://www.alibaba.com/premium/best_selling_sportswear.html",
+        "https://www.alibaba.com/premium/best_selling_gym_wear.html",
+        "https://www.alibaba.com/premium/best_selling_leggings.html",
+        "https://www.alibaba.com/premium/best_selling_yoga_wear.html"
+      ]
+    },
+    {
+      "id": "beauty",
+      "label": "Beauty",
+      "count": 23,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_beauty_products.html",
+        "https://www.alibaba.com/premium/best_selling_skin_care.html",
+        "https://www.alibaba.com/premium/best_selling_makeup.html",
+        "https://www.alibaba.com/premium/best_selling_perfume.html"
+      ]
+    },
+    {
+      "id": "accessories",
+      "label": "Accessories",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_jewelry.html",
+        "https://www.alibaba.com/premium/best_selling_watches.html",
+        "https://www.alibaba.com/premium/best_selling_sunglasses.html"
+      ]
+    },
+    {
+      "id": "phones",
+      "label": "Phones",
+      "count": 4,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_mobile_phones.html",
+        "https://www.alibaba.com/premium/android_smartphone.html",
+        "https://www.alibaba.com/premium/unlocked_mobile_phone.html",
+        "https://www.alibaba.com/premium/smartphone.html"
+      ]
+    },
+    {
+      "id": "appliances",
+      "label": "Home Appliances",
+      "count": 21,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_home_appliances.html",
+        "https://www.alibaba.com/premium/electric_kettle.html"
+      ]
+    },
+    {
+      "id": "womens",
+      "label": "Women's Clothing",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_dresses.html",
+        "https://www.alibaba.com/premium/best_selling_women_tops.html",
+        "https://www.alibaba.com/premium/best_selling_blouses.html",
+        "https://www.alibaba.com/premium/best_selling_skirts.html",
+        "https://www.alibaba.com/premium/best_selling_jumpsuits.html",
+        "https://www.alibaba.com/premium/best_selling_two_piece_set.html",
+        "https://www.alibaba.com/premium/best_selling_women_pants.html",
+        "https://www.alibaba.com/premium/best_selling_women_jeans.html",
+        "https://www.alibaba.com/premium/best_selling_cardigans.html",
+        "https://www.alibaba.com/premium/best_selling_women_knitwear.html"
+      ]
+    },
+    {
+      "id": "textiles",
+      "label": "Home Textiles",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_bedding.html",
+        "https://www.alibaba.com/premium/best_selling_towels.html",
+        "https://www.alibaba.com/premium/best_selling_curtains.html"
+      ]
+    },
+    {
+      "id": "global",
+      "label": "Global",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_products.html",
+        "https://www.alibaba.com/premium/best_selling_gadgets.html",
+        "https://www.alibaba.com/premium/best_selling_household_items.html",
+        "https://www.alibaba.com/premium/best_selling_kitchen.html"
+      ]
+    },
+    {
+      "id": "entertainment",
+      "label": "Entertainment",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_speakers.html",
+        "https://www.alibaba.com/premium/best_selling_headphones.html",
+        "https://www.alibaba.com/premium/best_selling_smart_tv.html"
+      ]
+    },
+    {
+      "id": "underwear",
+      "label": "Underwear",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_underwear.html",
+        "https://www.alibaba.com/premium/best_selling_socks.html",
+        "https://www.alibaba.com/premium/best_selling_lingerie.html"
+      ]
+    },
+    {
+      "id": "computers",
+      "label": "Computers",
+      "count": 23,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_laptops.html",
+        "https://www.alibaba.com/premium/best_selling_computer_accessories.html",
+        "https://www.alibaba.com/premium/best_selling_keyboards.html",
+        "https://www.alibaba.com/premium/best_selling_monitors.html"
+      ]
+    },
+    {
+      "id": "improvement",
+      "label": "Home Improvement",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_hand_tools.html",
+        "https://www.alibaba.com/premium/best_selling_power_tools.html",
+        "https://www.alibaba.com/premium/best_selling_hardware.html",
+        "https://www.alibaba.com/premium/best_selling_led_lights.html"
+      ]
+    },
+    {
+      "id": "baby",
+      "label": "Mum & Baby",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_baby_clothes.html",
+        "https://www.alibaba.com/premium/best_selling_kids_clothes.html",
+        "https://www.alibaba.com/premium/best_selling_baby_shoes.html",
+        "https://www.alibaba.com/premium/best_selling_baby_products.html",
+        "https://www.alibaba.com/premium/best_selling_baby_toys.html",
+        "https://www.alibaba.com/premium/best_selling_baby_stroller.html",
+        "https://www.alibaba.com/premium/best_selling_diapers.html",
+        "https://www.alibaba.com/premium/best_selling_baby_accessories.html"
+      ]
+    },
+    {
+      "id": "car",
+      "label": "Car Accessories",
+      "count": 24,
+      "pages": [
+        "https://www.alibaba.com/premium/best_selling_car_accessories.html",
+        "https://www.alibaba.com/premium/best_selling_car_parts.html",
+        "https://www.alibaba.com/premium/best_selling_auto_parts.html",
+        "https://www.alibaba.com/premium/best_selling_car_interior_accessories.html",
+        "https://www.alibaba.com/premium/best_selling_car_seat_covers.html",
+        "https://www.alibaba.com/premium/best_selling_car_lights.html",
+        "https://www.alibaba.com/premium/best_selling_car_electronics.html",
+        "https://www.alibaba.com/premium/best_selling_car_care.html",
+        "https://www.alibaba.com/premium/best_selling_car_tires.html",
+        "https://www.alibaba.com/premium/best_selling_car_wheels.html"
+      ]
+    }
+  ],
+  "failures": []
+}
