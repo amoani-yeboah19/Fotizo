@@ -12,6 +12,160 @@ const sources = { ...SOURCES,
   phones: ['https://www.alibaba.com/premium/best_selling_mobile_phones.html', 'https://www.alibaba.com/premium/android_smartphone.html', 'https://www.alibaba.com/premium/unlocked_mobile_phone.html', 'https://www.alibaba.com/premium/smartphone.html'],
   appliances: ['https://www.alibaba.com/premium/best_selling_home_appliances.html', 'https://www.alibaba.com/premium/electric_kettle.html'],
 };
+const EXTRA_SOURCES = {
+  "shoes-bags": [
+    "women_sneakers",
+    "leather_handbag",
+    "travel_backpack",
+    "women_sandals"
+  ],
+  "general": [
+    "kitchen_organizer",
+    "storage_basket",
+    "cleaning_brush",
+    "storage_container",
+    "mop"
+  ],
+  "wigs": [
+    "human_hair_wig",
+    "lace_front_wig",
+    "glueless_wig",
+    "human_hair_bundles"
+  ],
+  "jackets": [
+    "winter_jacket",
+    "puffer_jacket",
+    "down_jacket",
+    "women_winter_coat"
+  ],
+  "pets": [
+    "dog_bed",
+    "cat_tree",
+    "dog_leash",
+    "pet_carrier",
+    "pet_toys",
+    "cat_litter_box"
+  ],
+  "mens": [
+    "men_polo_shirt",
+    "men_linen_pants",
+    "men_sweater",
+    "men_casual_shirt"
+  ],
+  "sports": [
+    "adjustable_dumbbell",
+    "weight_bench",
+    "resistance_band",
+    "exercise_bike",
+    "kettlebell"
+  ],
+  "gymwear": [
+    "yoga_leggings",
+    "sports_bra",
+    "gym_shorts",
+    "women_yoga_set"
+  ],
+  "beauty": [
+    "makeup_brush_set",
+    "lip_gloss",
+    "eyeshadow_palette",
+    "mascara",
+    "facial_cleanser",
+    "perfume"
+  ],
+  "womens": [
+    "women_dress",
+    "women_blouse",
+    "women_jeans",
+    "women_skirt"
+  ],
+  "accessories": [
+    "bracelet",
+    "necklace",
+    "sunglasses",
+    "earrings",
+    "wrist_watch"
+  ],
+  "phones": [
+    "unlocked_smartphone",
+    "android_cell_phone",
+    "rugged_smartphone",
+    "4g_smartphone",
+    "5g_smartphone",
+    "oukitel_phone",
+    "doogee_phone",
+    "hotwav_phone"
+  ],
+  "appliances": [
+    "air_fryer",
+    "rice_cooker",
+    "blender",
+    "vacuum_cleaner",
+    "coffee_maker",
+    "toaster",
+    "electric_fan"
+  ],
+  "textiles": [
+    "cotton_bedding_set",
+    "bath_towel",
+    "duvet_cover",
+    "throw_blanket",
+    "pillow_cover"
+  ],
+  "global": [
+    "kitchen_gadgets",
+    "travel_accessories",
+    "household_products",
+    "reusable_water_bottle"
+  ],
+  "entertainment": [
+    "bluetooth_speaker",
+    "wireless_headphones",
+    "wireless_earbuds",
+    "mini_projector",
+    "soundbar"
+  ],
+  "underwear": [
+    "men_underwear",
+    "women_underwear",
+    "cotton_socks",
+    "seamless_bra"
+  ],
+  "baby": [
+    "baby_romper",
+    "baby_stroller",
+    "baby_bib",
+    "baby_blanket",
+    "baby_carrier"
+  ],
+  "improvement": [
+    "hand_tool_set",
+    "cordless_drill",
+    "led_ceiling_light",
+    "door_handle",
+    "bathroom_faucet"
+  ],
+  "computers": [
+    "laptop_computer",
+    "wireless_mouse",
+    "mechanical_keyboard",
+    "computer_monitor",
+    "usb_hub",
+    "mini_pc",
+    "webcam"
+  ],
+  "car": [
+    "car_seat_cover",
+    "car_floor_mat",
+    "car_phone_holder",
+    "car_vacuum_cleaner",
+    "car_led_headlight"
+  ]
+};
+for (const [category, terms] of Object.entries(EXTRA_SOURCES)) {
+  sources[category] = [...(sources[category] ?? []), ...terms.map((term) => `https://www.alibaba.com/premium/${term}.html`)];
+}
+const PER_CATEGORY = 100;
 // Source pages mix unrelated goods into their grids; require department fit.
 const rules = {
   wigs: /wig|hair extension|hair bundle|lace frontal|lace closure/i,
@@ -29,12 +183,14 @@ const rules = {
 const unrelated = /veterinary|syringe|vaccine|livestock|hearing aid|deafness|medical|herbal.*tea|glow tea|lose weight|fat burning|hair growth|shop fittings|display furniture|prefab|pda\b|pos terminal|biometric|data collector|barcode|industrial|microscope|pcb|circuit|piano|musical|digital signage|advertising|video wall|injection mold|reborn|lifelike.*doll|sex doll|logistics agent|air freight|shipping agent|freight forward|kojic acid|rubber keypad|video rig|filmmaking/i;
 const fitsCategory = (raw, category) => !unrelated.test(raw.title) &&
   (!rules[category] || rules[category].test(raw.title)) &&
-  !(category === 'phones' && /holder|case\b|screen protector|charger|mini pc/i.test(raw.title)) &&
+  !(category === 'phones' && /holder|case\b|screen protector|charger|mini pc|motherboard|replacement|battery for|battery.*voltage|lcd.*assembly|repair|spare part/i.test(raw.title)) &&
+  !(category === 'computers' && /control panel|control button|membrane switch|epoxy|rubber keyboard|keypad switch/i.test(raw.title)) &&
   !(category === 'beauty' && /tea\b|empty|packaging|bottle.*container/i.test(raw.title));
 const capturedAt = new Date().toISOString();
-const report = { capturedAt, source: 'Alibaba', maxProductsPerCategory: 24, categories: [], failures: [] };
+const report = { capturedAt, source: 'Alibaba', maxProductsPerCategory: PER_CATEGORY, categories: [], failures: [] };
+const previous = JSON.parse(await fs.readFile(new URL("alibaba-products.json", dataDir), "utf8"));
 const products = [];
-const seen = new Set();
+const seen = new Set(previous.map((p) => p.sourcing.productId));
 const existingText = await fs.readFile(new URL('products.ts', dataDir), 'utf8');
 const existing = [...existingText.matchAll(/^\s*(\{id:.*\}),?$/gm)].flatMap((m) => {
   try { return [Function(`return (${m[1]})`)()]; } catch { return []; }
@@ -55,10 +211,10 @@ async function worker() {
         pages.push({ url, parsed });
       } catch (error) { report.failures.push({ category: category.id, url, error: error.message }); }
     }
-    const selected = [];
-    for (let i = 0; pages.some((p) => i < p.parsed.length) && selected.length < 24; i++) {
+    const selected = previous.filter((p) => p.category === category.id);
+    for (let i = 0; pages.some((p) => i < p.parsed.length) && selected.length < PER_CATEGORY; i++) {
       for (const page of pages) {
-        if (selected.length >= 24) break;
+        if (selected.length >= PER_CATEGORY) break;
         const raw = page.parsed[i];
         if (!raw || !/^US \$/.test(raw.priceMini || raw.price) || !fitsCategory(raw, category.id)) continue;
         const id = sourceId(raw.url);
