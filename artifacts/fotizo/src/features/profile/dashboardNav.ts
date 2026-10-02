@@ -19,6 +19,7 @@ export const DASHBOARD_NAV: Record<string, DashboardNavItem[]> = {
     { label: "Dashboard", tab: "overview" },
     { label: "My Products", tab: "products" },
     { label: "Orders", tab: "orders" },
+    { label: "Earnings", tab: "earnings" },
     { label: "My Purchases", tab: "purchases" },
   ],
   manager: DEMO_MODE ? [

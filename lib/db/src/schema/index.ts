@@ -13,3 +13,5 @@ export * from "./payments";
 export * from "./profiles";
 export * from "./admin";
 export * from "./media";
+export * from "./fees";
+export * from "./pricing";

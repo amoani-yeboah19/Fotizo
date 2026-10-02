@@ -14,6 +14,7 @@ import {
 import { caseReference } from "./cases";
 import { logger } from "./logger";
 import { currentRates } from "../routes/currency";
+import { recordUnitSaleFees } from "./fees";
 import { configuredOrigins } from "../middlewares/security";
 
 // Online payment: Paystack for Ghana (charged in GHS), Stripe for other
@@ -216,6 +217,8 @@ export async function recordOutcome(attemptId: string, observed: Observation) {
         .set({ paymentStatus: "paid", paidAt: now })
         .where(and(eq(ordersTable.id, attempt.orderId), eq(ordersTable.paymentStatus, "unpaid")))
         .returning({ id: ordersTable.id });
+      // Seller fees in the currency actually charged, once per order line.
+      if (order) await recordUnitSaleFees(tx, attempt.orderId, { currency: attempt.currency, exchangeRate: attempt.exchangeRate });
       const [cancelled] = await tx
         .select({ id: orderItemsTable.id })
         .from(orderItemsTable)
