@@ -9,7 +9,7 @@ const rates = JSON.parse(await fs.readFile(new URL("../src/features/pricing/rate
 const markup = 1 + rates.chineseGoods.markupPercent / 100;
 const dataDir = new URL('../src/features/shop/data/', import.meta.url);
 const categoryText = await fs.readFile(new URL('categories.ts', dataDir), 'utf8');
-const categories = [...categoryText.matchAll(/\{ id: "([^"]+)", label: "([^"]+)"/g)].map((m) => ({ id: m[1], label: m[2] }));
+const allCategories = [...categoryText.matchAll(/\{ id: "([^"]+)", label: "([^"]+)"/g)].map((m) => ({ id: m[1], label: m[2] }));
 const sources = { ...SOURCES,
   phones: ['https://www.alibaba.com/premium/best_selling_mobile_phones.html', 'https://www.alibaba.com/premium/android_smartphone.html', 'https://www.alibaba.com/premium/unlocked_mobile_phone.html', 'https://www.alibaba.com/premium/smartphone.html'],
   appliances: ['https://www.alibaba.com/premium/best_selling_home_appliances.html', 'https://www.alibaba.com/premium/electric_kettle.html'],
@@ -167,6 +167,7 @@ const EXTRA_SOURCES = {
 for (const [category, terms] of Object.entries(EXTRA_SOURCES)) {
   sources[category] = [...(sources[category] ?? []), ...terms.map((term) => `https://www.alibaba.com/premium/${term}.html`)];
 }
+const categories = allCategories.filter((category) => sources[category.id]);
 const PER_CATEGORY = 100;
 // Source pages mix unrelated goods into their grids; require department fit.
 const rules = {

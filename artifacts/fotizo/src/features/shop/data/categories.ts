@@ -33,6 +33,8 @@ import {
   PawPrint,
   Scissors,
   Activity,
+  Sofa,
+  Cog,
 } from "lucide-react";
 
 export interface ShopCategory {
@@ -55,6 +57,8 @@ export const SHOP_CATEGORIES: ShopCategory[] = [
   { id: "accessories", label: "Accessories", icon: Watch },
   { id: "phones", label: "Phones", icon: Smartphone },
   { id: "appliances", label: "Home Appliances", icon: Zap },
+  { id: "furniture", label: "Furniture", icon: Sofa },
+  { id: "industrial", label: "Industrial Parts & Supplies", icon: Cog },
   { id: "textiles", label: "Home Textiles", icon: BedDouble },
   { id: "global", label: "Global", icon: Globe },
   { id: "entertainment", label: "Entertainment", icon: Tv },

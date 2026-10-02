@@ -3,12 +3,16 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import products from "./taobao-products.json";
 import manifest from "./taobao-import-manifest.json";
-import { SHOP_PRODUCTS } from "./products";
+import { SHOP_PRODUCTS, SHOP_CATEGORIES } from "./products";
 
 it("accounts for all saved listings and publishes the physical products", () => {
-  expect(manifest).toHaveLength(47);
-  expect(products).toHaveLength(44);
+  expect(manifest).toHaveLength(190);
+  expect(products).toHaveLength(184);
   expect(manifest.filter((p) => p.kind === "consultation")).toHaveLength(3);
+  expect(manifest.filter((p) => p.kind === "machining-service")).toHaveLength(3);
+  for (const category of SHOP_CATEGORIES) {
+    expect(SHOP_PRODUCTS.some((p) => p.category === category.id), category.id).toBe(true);
+  }
   expect(new Set(SHOP_PRODUCTS.map((p) => p.id)).size).toBe(SHOP_PRODUCTS.length);
   for (const p of products) {
     const source = manifest.find((m) => m.productId === p.sourcing.productId)!;

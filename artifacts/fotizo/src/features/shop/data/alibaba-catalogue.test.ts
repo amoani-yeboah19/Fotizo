@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
+import report from "./alibaba-sourcing-report.json";
 import rates from "@/features/pricing/rates.json";
 import alibabaProducts from "./alibaba-products.json";
 import { SHOP_CATEGORIES, SHOP_PRODUCTS } from "./products";
 import { parseProducts } from "../../../../tools/parse-alibaba-page.mjs";
 
 describe("Alibaba frontend catalogue", () => {
-  it("covers every active department with traceable listings", () => {
-    for (const category of SHOP_CATEGORIES) {
+  it("covers every sourced Alibaba department with traceable listings", () => {
+    for (const category of report.categories) {
       expect(alibabaProducts.some((p) => p.category === category.id), category.id).toBe(true);
     }
     const categories = new Set(SHOP_CATEGORIES.map((c) => c.id));
