@@ -313,14 +313,17 @@ router.get(
         id: row.id,
         title: row.title,
         price: row.price,
-        stock: row.stockCount,
+        // Fotizo Shop goods are sourced to order: there is no stock to count
+        // or run out of, so no quantity is reported for them.
+        stock: row.channel === "shop" ? null : row.stockCount,
+        sourcedToOrder: row.channel === "shop",
         sales: unitsSold.get(row.id) ?? 0,
         rating: row.rating,
         reviewCount: row.reviewCount,
         status:
           row.status === "unpublished"
             ? "unpublished"
-            : row.stockCount > 0
+            : row.channel === "shop" || row.stockCount > 0
               ? "active"
               : "out_of_stock",
         image: row.images[0] ?? "",

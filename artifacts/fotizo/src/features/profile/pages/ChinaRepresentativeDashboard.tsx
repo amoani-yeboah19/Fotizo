@@ -234,7 +234,8 @@ function RestockQueue() {
       </div>
       {RESTOCK_QUEUE.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No published products currently meet the low-stock threshold.
+          Nothing needs reordering. Fotizo Shop goods are sourced to order,
+          so they don't run out of stock.
         </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
