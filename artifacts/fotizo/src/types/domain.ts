@@ -191,7 +191,9 @@ export interface SellerProduct {
   id: string;
   title: string;
   price: number;
-  stock: number;
+  /** Null for Fotizo Shop goods, which are sourced to order and hold no stock. */
+  stock: number | null;
+  sourcedToOrder?: boolean;
   /** Units sold, excluding cancelled order lines. */
   sales: number;
   rating: number;

@@ -148,7 +148,7 @@ export default function DashboardSeller() {
                   </div>
                 </td>
                 <td className="px-6 py-4 font-medium"><Price amount={product.price} /></td>
-                <td className="px-6 py-4">{product.stock}</td>
+                <td className="px-6 py-4">{product.stock ?? "Sourced to order"}</td>
                 <td className="px-6 py-4">{product.sales}</td>
                 <td className="px-6 py-4">
                   <StatusBadge tone={product.status === "active" ? "success" : product.status === "unpublished" ? "warning" : "danger"}>

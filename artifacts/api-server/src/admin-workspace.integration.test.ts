@@ -480,3 +480,17 @@ describe("Fotizo fees and imported-goods pricing", () => {
     expect(report.items[0].title).toBe("Website build");
   });
 });
+
+describe("sourced-to-order shop listings", () => {
+  it("reports no stock for Fotizo Shop goods instead of showing them out of stock", async () => {
+    const rep = await account("china_representative");
+    const seller = await account("seller");
+    await post("/products", { ...product, stockCount: 0 }, rep.cookie);
+    await post("/products", { ...product, stockCount: 0 }, seller.cookie);
+    const [shop] = await json<{ stock: number | null; status: string; sourcedToOrder: boolean }[]>(await get("/seller/products", rep.cookie));
+    expect(shop).toMatchObject({ stock: null, status: "active", sourcedToOrder: true });
+    // Marketplace sellers hold their own stock, so zero still means sold out.
+    const [own] = await json<{ stock: number | null; status: string }[]>(await get("/seller/products", seller.cookie));
+    expect(own).toMatchObject({ stock: 0, status: "out_of_stock" });
+  });
+});
