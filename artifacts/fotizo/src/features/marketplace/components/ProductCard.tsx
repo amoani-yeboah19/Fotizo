@@ -21,7 +21,11 @@ interface Product {
   inStock?: boolean;
 }
 
-export const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
+export const ProductCard = memo(function ProductCard({
+  product,
+}: {
+  product: Product;
+}) {
   const wishlist = useWishlistToggle();
   const saved = wishlist.isSaved(product.id);
   const { addItem } = useCart();
@@ -29,7 +33,11 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
   // Marketplace sellers hold their own stock, so sold-out listings cannot be added.
   const addToCart = () => {
     if (product.inStock === false) {
-      toast({ variant: "destructive", title: "Out of stock", description: product.title });
+      toast({
+        variant: "destructive",
+        title: "Out of stock",
+        description: product.title,
+      });
       return;
     }
     addItem({
@@ -43,67 +51,86 @@ export const ProductCard = memo(function ProductCard({ product }: { product: Pro
     toast({ title: "Added to cart", description: product.title });
   };
   return (
-    <Link href={`/products/${product.id}`}>
-      <div className="group flex flex-col bg-white rounded-2xl border border-border overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer h-full">
-        <div className="relative aspect-square overflow-hidden bg-muted p-6 flex items-center justify-center">
-          <img loading="lazy" decoding="async" 
-            src={product.image} 
-            alt={product.title} 
+    <article className="group flex flex-col bg-white rounded-2xl border border-border overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer h-full">
+      <div className="relative aspect-square overflow-hidden bg-muted p-6 flex items-center justify-center">
+        <Link
+          href={`/products/${product.id}`}
+          className="h-full w-full"
+          tabIndex={-1}
+          aria-hidden="true"
+        >
+          <img
+            loading="lazy"
+            decoding="async"
+            src={product.image}
+            alt={product.title}
             className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
           />
-          <button
-            aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
-            aria-pressed={saved}
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/80 backdrop-blur-sm text-muted-foreground hover:text-accent hover:bg-white transition-colors"
-            onClick={(e) => { e.preventDefault(); wishlist.toggle(product); }}
-          >
-            <Heart className={`w-5 h-5 ${saved ? "fill-accent text-accent" : ""}`} />
-          </button>
-          {product.originalPrice && (
+        </Link>
+        <button
+          aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
+          aria-pressed={saved}
+          className="absolute top-4 right-4 p-2 rounded-full bg-white/80 backdrop-blur-sm text-muted-foreground hover:text-accent hover:bg-white transition-colors"
+          onClick={(e) => {
+            e.preventDefault();
+            wishlist.toggle(product);
+          }}
+        >
+          <Heart
+            className={`w-5 h-5 ${saved ? "fill-accent text-accent" : ""}`}
+          />
+        </button>
+        {product.originalPrice != null &&
+          product.originalPrice > product.price && (
             <div className="absolute top-4 left-4 px-2.5 py-1 bg-accent text-white text-xs font-bold rounded-full">
               Sale
             </div>
           )}
+      </div>
+      <div className="p-5 flex flex-col flex-1">
+        <div className="text-xs text-muted-foreground mb-2 flex items-center justify-between">
+          <span>{product.category}</span>
+          <RatingStars
+            value={product.rating}
+            reviewCount={product.reviewCount}
+            starClassName="w-3 h-3 mr-1"
+            className="text-foreground"
+          />
         </div>
-        <div className="p-5 flex flex-col flex-1">
-          <div className="text-xs text-muted-foreground mb-2 flex items-center justify-between">
-            <span>{product.category}</span>
-            <RatingStars
-              value={product.rating}
-              reviewCount={product.reviewCount}
-              starClassName="w-3 h-3 mr-1"
-              className="text-foreground"
+        <h3 className="font-semibold text-foreground leading-tight mb-1 group-hover:text-primary transition-colors line-clamp-2">
+          <Link href={`/products/${product.id}`}>{product.title}</Link>
+        </h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          by {product.seller}
+        </p>
+
+        <div className="mt-auto flex items-center justify-between">
+          <div className="flex flex-col">
+            <Price
+              amount={product.price}
+              className="text-lg font-bold text-foreground"
             />
-          </div>
-          <h3 className="font-semibold text-foreground leading-tight mb-1 group-hover:text-primary transition-colors line-clamp-2">
-            {product.title}
-          </h3>
-          <p className="text-sm text-muted-foreground mb-4">by {product.seller}</p>
-          
-          <div className="mt-auto flex items-center justify-between">
-            <div className="flex flex-col">
-              <Price amount={product.price} className="text-lg font-bold text-foreground" />
-              {product.originalPrice && (
+            {product.originalPrice != null &&
+              product.originalPrice > product.price && (
                 <Price
                   amount={product.originalPrice}
                   className="text-sm text-muted-foreground line-through"
                 />
               )}
-            </div>
-            <Button
-              aria-label="Add to cart"
-              size="icon"
-              className="rounded-full bg-primary hover:bg-primary/90 text-white w-10 h-10 shadow-sm"
-              onClick={(e) => {
-                e.preventDefault();
-                addToCart();
-              }}
-            >
-              <ShoppingCart className="w-4 h-4" />
-            </Button>
           </div>
+          <Button
+            aria-label="Add to cart"
+            size="icon"
+            className="rounded-full bg-primary hover:bg-primary/90 text-white w-10 h-10 shadow-sm"
+            onClick={(e) => {
+              e.preventDefault();
+              addToCart();
+            }}
+          >
+            <ShoppingCart className="w-4 h-4" />
+          </Button>
         </div>
       </div>
-    </Link>
+    </article>
   );
 });
