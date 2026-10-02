@@ -1,0 +1,86 @@
+{
+  "sourceFiles": [
+    "Bags - Taobao Search.html",
+    "Building materials - Taobao search.html",
+    "Business Office Supplies - Taobao Search.html",
+    "Clocks - Taobao Search.html",
+    "Home decoration - Taobao search.html",
+    "Industrial parts and consumables - Taobao search.html",
+    "Men's shoes - Taobao search.html",
+    "Mobile Taobao Search.html",
+    "Smart devices - Taobao search.html",
+    "Trendy Women's Clothing - Taobao Search.html",
+    "家具_淘宝搜索.html",
+    "流行男装_淘宝搜索.html",
+    "男装_淘宝搜索.html",
+    "箱包_淘宝搜索.html",
+    "运动服饰_淘宝搜索.html"
+  ],
+  "newSourceListings": 566,
+  "newProducts": 547,
+  "heldNewListings": 19,
+  "batches": {
+    "0": {
+      "captured": 47,
+      "published": 47,
+      "held": 0
+    },
+    "1": {
+      "captured": 49,
+      "published": 48,
+      "held": 1
+    },
+    "2": {
+      "captured": 49,
+      "published": 48,
+      "held": 1
+    },
+    "3": {
+      "captured": 47,
+      "published": 47,
+      "held": 0
+    },
+    "4": {
+      "captured": 42,
+      "published": 42,
+      "held": 0
+    },
+    "6": {
+      "captured": 47,
+      "published": 47,
+      "held": 0
+    },
+    "7": {
+      "captured": 46,
+      "published": 46,
+      "held": 0
+    },
+    "8": {
+      "captured": 49,
+      "published": 33,
+      "held": 16
+    },
+    "9": {
+      "captured": 47,
+      "published": 46,
+      "held": 1
+    },
+    "11": {
+      "captured": 48,
+      "published": 48,
+      "held": 0
+    },
+    "13": {
+      "captured": 46,
+      "published": 46,
+      "held": 0
+    },
+    "14": {
+      "captured": 49,
+      "published": 49,
+      "held": 0
+    }
+  },
+  "totalSourceListings": 756,
+  "totalPublishedProducts": 731
+}

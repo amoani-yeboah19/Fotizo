@@ -11,3 +11,13 @@ Prices use the displayed supplier CNY price × 0.1130 GBP/CNY × 1.30, rounded o
 Backend handoff: use platform + product ID for deduplication, keep Fotizo IDs stable, confirm supplier prices, eligibility, chosen variants and compatibility, then calculate final shipping and currency conversion server-side. No database changes or Taobao purchasing occurred.
 
 Industrial prices are starting estimates and may represent a length, component, custom variant or other unit not specified on the search card. Those units, dimensions and machining requirements must be confirmed. Furniture pricing excludes confirmed freight/assembly quotes. English titles omit unsupported authenticity and promotional claims; original seller titles remain available in the manifest. The Alibaba sourcing tool targets its configured Alibaba categories; the two new Taobao departments are not treated as missing Alibaba imports.
+
+## Expanded saved-page batch
+
+A further 15 supplied files produced 566 new unique source listings, after deduplication against previous imports and within the batch. The repeated industrial, furniture and menswear files add no duplicate products. The full source-file list and per-file import totals are in `taobao-batch-report.json`.
+
+547 additional physical-product listings are published, bringing Taobao to 731 products. All 756 unique source records are retained. Nineteen new deposit-only, digital-document, software/account, tutorial, design and toll-registration service offers are retained in the manifest without appearing as physical goods (25 held listings including the earlier batches).
+
+New Office Supplies, Clocks and Smart Devices departments accompany the existing categories. Cross-category results are assigned by product type where identifiable. Supplier prices with translated number words (for example “twenty three”) are normalized numerically before applying the existing recorded GBP conversion and 30% markup. Forty-one remotely referenced images missing locally were retrieved from their original supplier image URLs and stored without editing; image extensions match their encoded format.
+
+Mobile-phone model, storage and condition claims remain supplier descriptions, not verified authenticity guarantees. Smart-device connectivity, data plans and regional services need confirmation. Building-material prices may represent samples or selected dimensions; unit of sale must be confirmed. Saved brand-authenticity and promotional language is not treated as a Fotizo guarantee. Scripts and account details from the source documents are not imported.
