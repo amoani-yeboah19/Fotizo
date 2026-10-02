@@ -14,6 +14,8 @@ import { SHOP_PRODUCTS, type ShopProduct } from "@/features/shop/data/products";
  * into specs.department, so this is only the fallback for rows created some
  * other way — a listing posted from the dashboard, say.
  */
+const LOCAL_PRODUCTS_BY_ID = new Map(SHOP_PRODUCTS.map((p) => [p.id, p]));
+
 const ID_BY_LABEL = new Map(
   SHOP_CATEGORIES.map((c) => [c.label.toLowerCase(), c.id]),
 );
@@ -29,6 +31,11 @@ const flag = (specs: Record<string, string>, key: string) =>
  * rather than widening the schema for one storefront. This unpacks them again.
  */
 export function toShopProduct(p: Product): ShopProduct {
+  // Keep source metadata and estimated-price labels on local catalogue cards.
+  if (SHOP_USE_MOCKS) {
+    const local = LOCAL_PRODUCTS_BY_ID.get(p.id);
+    if (local) return local;
+  }
   const specs = (p.specs ?? {}) as Record<string, string>;
   const sold = Number(specs.unitsSold);
 

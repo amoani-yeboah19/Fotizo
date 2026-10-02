@@ -1,3 +1,4 @@
+import taobaoProducts from "./taobao-products.json";
 import alibabaProducts from "./alibaba-products.json";
 import { SHOP_CATEGORIES } from "@/features/shop/data/categories";
 
@@ -25,7 +26,10 @@ export interface ShopProduct {
     unit: string | null;
     originalImage: string;
     priceStatus: string;
-    usdPerGbp: number;
+    usdPerGbp?: number;
+    sourceToGbp?: number;
+    exchangeRateDate?: string;
+    exchangeRateSource?: string;
     previewMarkup: number;
   };
   stockCount?: number;
@@ -770,6 +774,7 @@ const EXISTING_SHOP_PRODUCTS: ShopProduct[] = [
 const importedSourceIds = new Set(alibabaProducts.map((p) => p.sourcing.productId));
 const importedIds = new Set(alibabaProducts.map((p) => p.id));
 export const SHOP_PRODUCTS: ShopProduct[] = [
+  ...taobaoProducts,
   ...alibabaProducts,
   ...EXISTING_SHOP_PRODUCTS.filter((p) =>
     !importedIds.has(p.id) &&
