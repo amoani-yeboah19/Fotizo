@@ -1034,6 +1034,29 @@ describe("bounded public catalogue", () => {
     });
     expect((await get("pageSize=48")).items).toHaveLength(48);
   });
+  it("filters seller shops by ID even when sellers have the same name", async () => {
+    const [other] = await db
+      .insert(usersTable)
+      .values({
+        name: "Catalogue seller",
+        email: "other-shop@example.com",
+        role: "seller",
+      })
+      .returning();
+    const rows = await seed([
+      { title: "Seller deal", price: 10, originalPrice: 20 },
+      { title: "Hidden", status: "unpublished" },
+      { title: "Other seller", sellerId: other.id },
+      { title: "Imported", channel: "shop" },
+    ]);
+    const result = await get(
+      `sellerId=${rows[0].sellerId}&discounted=true&inStock=true`,
+    );
+    expect(result.total).toBe(1);
+    expect(result.items.map((p) => p.id)).toEqual([rows[0].id]);
+    const otherShop = await get(`sellerId=${other.id}`);
+    expect(otherShop.items.map((p) => p.id)).toEqual([rows[2].id]);
+  });
   it("filters and sorts the whole catalogue before paging, including stock=false", async () => {
     await seed(
       Array.from({ length: 30 }, (_, i) => ({

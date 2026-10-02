@@ -52,6 +52,7 @@ export const cataloguePages = {
             v.toLowerCase().includes(q),
           )) &&
         (!filters.category || p.category === filters.category) &&
+        (!filters.sellerId || p.sellerId === filters.sellerId) &&
         (!filters.inStock || p.inStock) &&
         (filters.minPrice === undefined || p.price >= filters.minPrice) &&
         (filters.maxPrice === undefined || p.price <= filters.maxPrice) &&
