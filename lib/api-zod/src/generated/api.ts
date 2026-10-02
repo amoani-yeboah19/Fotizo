@@ -227,6 +227,7 @@ export const ListCatalogueProductsQueryParams = zod.object({
     .optional(),
   inStock: zod.coerce.boolean().optional(),
   discounted: zod.coerce.boolean().optional(),
+  sellerId: zod.coerce.string().uuid().optional(),
 });
 
 export const listCatalogueProductsResponseTotalMin = 0;

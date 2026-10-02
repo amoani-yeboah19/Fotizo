@@ -239,6 +239,7 @@ export type ListCatalogueProductsParams = {
   minRating?: number;
   inStock?: boolean;
   discounted?: boolean;
+  sellerId?: string;
 };
 
 export type ListCatalogueProductsChannel =

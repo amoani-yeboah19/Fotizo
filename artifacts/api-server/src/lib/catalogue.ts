@@ -71,6 +71,7 @@ export function catalogueWhere(filter: z.infer<typeof catalogueQuery>) {
     eq(p.status, "active"),
     eq(p.channel, filter.channel),
     filter.category ? eq(categoryKey, filter.category) : undefined,
+    filter.sellerId ? eq(p.sellerId, filter.sellerId) : undefined,
     filter.q
       ? or(
           ilike(p.title, search),

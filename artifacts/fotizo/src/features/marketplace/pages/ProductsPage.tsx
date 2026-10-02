@@ -1,3 +1,4 @@
+import { SellerSpotlight } from "../components/SellerSpotlight";
 import {
   ShoppingBag,
   Headphones,
@@ -42,12 +43,16 @@ export default function ProductsPage() {
   // Category links (e.g. from the home page) arrive as ?category=<id>; the
   // global search's "See all" link arrives as ?q=<text>.
   const query = useSearch();
+  const sellerId = new URLSearchParams(query).get("sellerId") || undefined;
+  const sellerDeals = Boolean(
+    sellerId && new URLSearchParams(query).get("deals") === "true",
+  );
   const [search, setSearch] = useState(
     () => new URLSearchParams(query).get("q") ?? "",
   );
   useEffect(() => {
     const q = new URLSearchParams(query).get("q");
-    if (q !== null) setSearch(q);
+    setSearch(q ?? "");
   }, [query]);
   const [category, setCategory] = useState<string | null>(() =>
     new URLSearchParams(query).get("category"),
@@ -59,17 +64,25 @@ export default function ProductsPage() {
   const [minRating, setMinRating] = useState<number | null>(null);
   const [inStock, setInStock] = useState(false);
   const [sort, setSort] = useState<Sort>("Relevance");
+  useEffect(() => {
+    setPrice(null);
+    setMinRating(null);
+    setInStock(false);
+    setSort("Relevance");
+  }, [sellerId, sellerDeals]);
   const q = useDebouncedValue(search.trim());
 
   // Search, filters and sort run on the server across all marketplace
   // listings; Fotizo Shop stock is a separate channel and never appears here.
   const grid = useCatalogueInfinite("marketplace", {
     q: q || undefined,
+    sellerId,
+    discounted: sellerDeals || undefined,
     category: category ?? undefined,
     minPrice: price && price[0] > 0 ? price[0] : undefined,
     maxPrice: price && price[1] < PRICE_MAX ? price[1] : undefined,
     minRating: minRating ?? undefined,
-    inStock: inStock || undefined,
+    inStock: inStock || sellerDeals || undefined,
     sort: SERVER_SORT[sort],
   });
   const { isLoading, isError } = grid;
@@ -156,6 +169,7 @@ export default function ProductsPage() {
               </span>
             </div>
           </div>
+          {!sellerId && <SellerSpotlight />}
           <section
             id="local-listings"
             className="catalogue-results"
@@ -164,7 +178,27 @@ export default function ProductsPage() {
             <p className="catalogue-eyebrow">
               Find something that feels like you
             </p>
-            <h2>Explore the local marketplace</h2>
+            <h2>
+              {sellerId
+                ? displayedProducts[0]?.seller
+                  ? `${displayedProducts[0].seller}’s ${sellerDeals ? "deals" : "shop"}`
+                  : sellerDeals
+                    ? "Seller deals"
+                    : "Seller shop"
+                : "Explore the local marketplace"}
+            </h2>
+            {sellerId && (
+              <div className="mb-5 flex flex-wrap gap-4 text-sm font-semibold text-primary">
+                <Link href="/products#local-listings">← All sellers</Link>
+                {sellerDeals && (
+                  <Link
+                    href={`/products?sellerId=${encodeURIComponent(sellerId)}#local-listings`}
+                  >
+                    See this seller’s full shop
+                  </Link>
+                )}
+              </div>
+            )}
             <div
               className="catalogue-departments"
               aria-label="Browse departments"
@@ -187,6 +221,7 @@ export default function ProductsPage() {
             </div>
             <div className="flex flex-col md:flex-row gap-8">
               <FilterSidebar
+                key={`${sellerId ?? "all"}-${sellerDeals}`}
                 categories={categories}
                 showCount
                 rangeLabel="Price Range"
@@ -239,7 +274,12 @@ export default function ProductsPage() {
                 ) : displayedProducts.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-border py-20 text-center">
                     <p className="font-medium text-foreground">
-                      {search || category || price || minRating || inStock
+                      {search ||
+                      category ||
+                      price ||
+                      minRating ||
+                      inStock ||
+                      sellerId
                         ? "Nothing matches that search"
                         : "No seller listings yet"}
                     </p>

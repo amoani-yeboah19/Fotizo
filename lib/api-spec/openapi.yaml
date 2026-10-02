@@ -206,6 +206,7 @@ paths:
           }
         - { in: query, name: inStock, schema: { type: boolean } }
         - { in: query, name: discounted, schema: { type: boolean } }
+        - { in: query, name: sellerId, schema: { type: string, format: uuid } }
       responses:
         "200":
           description: Page and matching total from the same database snapshot

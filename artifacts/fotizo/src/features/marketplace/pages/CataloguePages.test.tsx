@@ -241,3 +241,56 @@ it("switches featured collections without applying a catalogue filter", async ()
   expect(screen.getByRole("heading", { name: /All products/ })).toBeTruthy();
   expect(screen.queryByText("Ends soon")).toBeNull();
 });
+
+it("opens an exact seller shop with discounted, in-stock listings", async () => {
+  location.search = "?sellerId=bright-id&deals=true";
+  mount(<ProductsPage />);
+  await screen.findByText("Showing 3 products");
+  expect(cataloguePages.list).toHaveBeenCalledWith(
+    "marketplace",
+    expect.objectContaining({
+      sellerId: "bright-id",
+      discounted: true,
+      inStock: true,
+      page: 0,
+    }),
+  );
+  expect(
+    screen
+      .getByRole("link", { name: "See this seller’s full shop" })
+      .getAttribute("href"),
+  ).toContain("sellerId=bright-id");
+});
+
+it("links real seller cards to their own shop and discounted listings", async () => {
+  mount(<ProductsPage />);
+  await screen.findByRole("link", { name: "Visit Seller’s shop" });
+  expect(
+    screen
+      .getByRole("link", { name: "Visit Seller’s shop" })
+      .getAttribute("href"),
+  ).toBe("/products?sellerId=seller#local-listings");
+  expect(
+    screen
+      .getByRole("link", { name: "See deals from Seller" })
+      .getAttribute("href"),
+  ).toBe("/products?sellerId=seller&deals=true#local-listings");
+});
+
+it("does not advertise seller deals without a real reduction", async () => {
+  vi.mocked(cataloguePages.list).mockImplementation(
+    async (channel, filters) => {
+      const result = page(channel, filters?.page ?? 0, 3);
+      result.items = result.items.map((p) => ({
+        ...p,
+        originalPrice: p.price,
+      }));
+      return result;
+    },
+  );
+  mount(<ProductsPage />);
+  await screen.findByRole("link", { name: "Visit Seller’s shop" });
+  expect(
+    screen.queryByRole("heading", { name: "Deals from local sellers" }),
+  ).toBeNull();
+});
