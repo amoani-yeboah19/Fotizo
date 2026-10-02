@@ -174,9 +174,11 @@ export default function ShopProductPage() {
                 <p className="mt-1">Supplier minimum order: {product.sourcing.minimumOrder}.</p>
               )}
               <p className="mt-1">Supplier price: {product.sourcing.priceRange} per {product.sourcing.unit || "unit"}.</p>
-              <a href={product.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-primary underline">
-                View original {product.sourcing.platform === "taobao" ? "Taobao" : "Alibaba"} listing
-              </a>
+              {product.sourcing.platform !== "taobao" && product.sourceUrl && (
+                <a href={product.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-primary underline">
+                  View original Alibaba listing
+                </a>
+              )}
             </div>
           )}
 
