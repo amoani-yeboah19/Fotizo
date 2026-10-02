@@ -33,6 +33,11 @@ import {
   PawPrint,
   Scissors,
   Activity,
+  Sofa,
+  Cog,
+  BriefcaseBusiness,
+  Clock,
+  Cpu,
 } from "lucide-react";
 
 export interface ShopCategory {
@@ -55,6 +60,11 @@ export const SHOP_CATEGORIES: ShopCategory[] = [
   { id: "accessories", label: "Accessories", icon: Watch },
   { id: "phones", label: "Phones", icon: Smartphone },
   { id: "appliances", label: "Home Appliances", icon: Zap },
+  { id: "furniture", label: "Furniture", icon: Sofa },
+  { id: "office", label: "Office Supplies", icon: BriefcaseBusiness },
+  { id: "clocks", label: "Clocks", icon: Clock },
+  { id: "smart-devices", label: "Smart Devices", icon: Cpu },
+  { id: "industrial", label: "Industrial Parts & Supplies", icon: Cog },
   { id: "textiles", label: "Home Textiles", icon: BedDouble },
   { id: "global", label: "Global", icon: Globe },
   { id: "entertainment", label: "Entertainment", icon: Tv },
