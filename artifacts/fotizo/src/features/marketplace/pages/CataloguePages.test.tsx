@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import ShopPage from "@/features/shop/pages/ShopPage";
@@ -10,24 +16,37 @@ import type { CatalogueProduct } from "@workspace/api-client-react";
 
 const location = vi.hoisted(() => ({ search: "" }));
 vi.mock("wouter", () => ({
-  Link: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a>,
+  Link: ({ href, children }: { href: string; children: ReactNode }) => (
+    <a href={href}>{children}</a>
+  ),
   useSearch: () => location.search,
 }));
 vi.mock("../services/catalogue-page", () => ({
   cataloguePages: { list: vi.fn(), categories: vi.fn() },
 }));
 vi.mock("@/components/layout/PageLayout", () => ({
-  PageLayout: ({ children }: { children: ReactNode }) => <main>{children}</main>,
+  PageLayout: ({ children }: { children: ReactNode }) => (
+    <main>{children}</main>
+  ),
 }));
-vi.mock("@/features/shop/components/ChinaMarketDialog", () => ({ ChinaMarketDialog: () => null }));
+vi.mock("@/features/shop/components/ChinaMarketDialog", () => ({
+  ChinaMarketDialog: () => null,
+}));
 vi.mock("@/features/shop/components/ShopProductCard", () => ({
-  ShopProductCard: ({ product }: { product: { title: string } }) => <p>{product.title}</p>,
+  ShopProductCard: ({ product }: { product: { title: string } }) => (
+    <p>{product.title}</p>
+  ),
 }));
 vi.mock("../components/ProductCard", () => ({
-  ProductCard: ({ product }: { product: { title: string } }) => <p>{product.title}</p>,
+  ProductCard: ({ product }: { product: { title: string } }) => (
+    <p>{product.title}</p>
+  ),
 }));
 
-const product = (i: number, channel: "shop" | "marketplace"): CatalogueProduct => ({
+const product = (
+  i: number,
+  channel: "shop" | "marketplace",
+): CatalogueProduct => ({
   id: `${channel}-${i}`,
   title: `${channel} item ${i}`,
   description: "",
@@ -47,10 +66,16 @@ const product = (i: number, channel: "shop" | "marketplace"): CatalogueProduct =
   tags: [],
   specs: { department: "phones", unitsSold: "12" },
 });
-const page = (channel: "shop" | "marketplace", pageNo: number, total: number): CataloguePage => {
+const page = (
+  channel: "shop" | "marketplace",
+  pageNo: number,
+  total: number,
+): CataloguePage => {
   const count = Math.max(0, Math.min(48, total - pageNo * 48));
   return {
-    items: Array.from({ length: count }, (_, i) => product(pageNo * 48 + i, channel)),
+    items: Array.from({ length: count }, (_, i) =>
+      product(pageNo * 48 + i, channel),
+    ),
     page: pageNo,
     pageSize: 48,
     total,
@@ -59,8 +84,12 @@ const page = (channel: "shop" | "marketplace", pageNo: number, total: number): C
 };
 
 function mount(node: ReactNode) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
-  return render(<QueryClientProvider client={client}>{node}</QueryClientProvider>);
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+  return render(
+    <QueryClientProvider client={client}>{node}</QueryClientProvider>,
+  );
 }
 
 beforeEach(() => {
@@ -94,26 +123,39 @@ it("loads the shop department from the link and shows the server total", async (
   await screen.findByText("(60)");
   expect(cataloguePages.list).toHaveBeenCalledWith(
     "shop",
-    expect.objectContaining({ category: "phones", sort: "newest", page: 0, pageSize: 48 }),
+    expect.objectContaining({
+      category: "phones",
+      sort: "newest",
+      page: 0,
+      pageSize: 48,
+    }),
   );
 });
 
 it("maps shop sorting and debounced search to server queries", async () => {
   mount(<ShopPage />);
   await screen.findByText("(60)");
-  // Lightning deals come from the most-discounted published items.
+  // Featured collections use real department listings.
   expect(cataloguePages.list).toHaveBeenCalledWith(
     "shop",
-    expect.objectContaining({ discounted: true, sort: "discount", pageSize: 12 }),
+    expect.objectContaining({
+      category: "furniture",
+      sort: "newest",
+      pageSize: 8,
+    }),
   );
-  fireEvent.change(screen.getByLabelText("Sort products"), { target: { value: "best-selling" } });
+  fireEvent.change(screen.getByLabelText("Sort products"), {
+    target: { value: "best-selling" },
+  });
   await waitFor(() =>
     expect(cataloguePages.list).toHaveBeenLastCalledWith(
       "shop",
       expect.objectContaining({ sort: "best-selling", page: 0 }),
     ),
   );
-  fireEvent.change(screen.getByLabelText("Search the shop"), { target: { value: " kettle " } });
+  fireEvent.change(screen.getByLabelText("Search the shop"), {
+    target: { value: " kettle " },
+  });
   await waitFor(() =>
     expect(cataloguePages.list).toHaveBeenLastCalledWith(
       "shop",
@@ -137,14 +179,19 @@ it("appends the next shop page when the end of the grid scrolls into view", asyn
   await screen.findByText("shop item 59");
   // Items 3-47 appear only in the first grid page (deals show items 0-2).
   expect(screen.getByText("shop item 47")).toBeTruthy();
-  expect(cataloguePages.list).toHaveBeenCalledWith("shop", expect.objectContaining({ page: 1 }));
+  expect(cataloguePages.list).toHaveBeenCalledWith(
+    "shop",
+    expect.objectContaining({ page: 1 }),
+  );
 });
 
 it("drives marketplace filters, sort and counts from the server", async () => {
   mount(<ProductsPage />);
   await screen.findByText("Showing 60 products");
   // Sidebar categories are the real marketplace counts, largest first.
-  const labels = screen.getAllByRole("checkbox").map((c) => c.parentElement?.textContent);
+  const labels = screen
+    .getAllByRole("checkbox")
+    .map((c) => c.parentElement?.textContent);
   expect(labels).toEqual(["Home Appliances(30)", "Phones(17)"]);
   fireEvent.click(screen.getAllByRole("checkbox")[1]);
   await waitFor(() =>
@@ -153,12 +200,18 @@ it("drives marketplace filters, sort and counts from the server", async () => {
       expect.objectContaining({ category: "phones", page: 0 }),
     ),
   );
-  fireEvent.change(screen.getByLabelText("Sort products"), { target: { value: "Price: Low to High" } });
+  fireEvent.change(screen.getByLabelText("Sort products"), {
+    target: { value: "Price: Low to High" },
+  });
   fireEvent.click(screen.getByRole("switch"));
   await waitFor(() =>
     expect(cataloguePages.list).toHaveBeenLastCalledWith(
       "marketplace",
-      expect.objectContaining({ category: "phones", sort: "price-asc", inStock: true }),
+      expect.objectContaining({
+        category: "phones",
+        sort: "price-asc",
+        inStock: true,
+      }),
     ),
   );
 });
@@ -168,4 +221,23 @@ it("shows the marketplace error state instead of an empty catalogue", async () =
   mount(<ProductsPage />);
   await screen.findByText("Something went wrong. Please try again.");
   expect(screen.queryByText("No seller listings yet")).toBeNull();
+});
+
+it("switches featured collections without applying a catalogue filter", async () => {
+  mount(<ShopPage />);
+  await screen.findByText("(60)");
+  fireEvent.click(screen.getByRole("button", { name: "Smart upgrades" }));
+  await waitFor(() =>
+    expect(cataloguePages.list).toHaveBeenCalledWith(
+      "shop",
+      expect.objectContaining({ category: "computers", pageSize: 8 }),
+    ),
+  );
+  expect(
+    screen
+      .getByRole("button", { name: "Smart upgrades" })
+      .getAttribute("aria-pressed"),
+  ).toBe("true");
+  expect(screen.getByRole("heading", { name: /All products/ })).toBeTruthy();
+  expect(screen.queryByText("Ends soon")).toBeNull();
 });
