@@ -14,6 +14,7 @@ import {
 } from "@workspace/db";
 import { requireAuth, requireRole, type AuthenticatedRequest } from "../middlewares/requireAuth";
 import { caseReference } from "../lib/cases";
+import { recordUnitSaleFees } from "../lib/fees";
 import {
   PaymentError,
   isOnlineMethod,
@@ -376,11 +377,15 @@ router.post(
       res.status(400).json({ error: "Only an unpaid order can be marked paid." });
       return;
     }
-    const [updated] = await db
-      .update(ordersTable)
-      .set({ paymentStatus: "paid", paidAt: new Date(), paidBy: req.auth!.userId })
-      .where(and(eq(ordersTable.id, id.data), eq(ordersTable.paymentStatus, "unpaid")))
-      .returning();
+    const updated = await db.transaction(async (tx) => {
+      const [paid] = await tx
+        .update(ordersTable)
+        .set({ paymentStatus: "paid", paidAt: new Date(), paidBy: req.auth!.userId })
+        .where(and(eq(ordersTable.id, id.data), eq(ordersTable.paymentStatus, "unpaid")))
+        .returning();
+      if (paid) await recordUnitSaleFees(tx, paid.id);
+      return paid;
+    });
     if (!updated) {
       res.status(409).json({ error: "This order is already paid or does not exist. Refresh and try again." });
       return;

@@ -22,6 +22,7 @@ import adminWorkspaceRouter from "./admin-workspace";
 import disputesRouter from "./disputes";
 import uploadsRouter from "./uploads";
 import searchRouter from "./search";
+import earningsRouter from "./earnings";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use(profileRouter);
 router.use(disputesRouter);
 router.use(uploadsRouter);
 router.use(searchRouter);
+router.use(earningsRouter);
 
 export default router;
