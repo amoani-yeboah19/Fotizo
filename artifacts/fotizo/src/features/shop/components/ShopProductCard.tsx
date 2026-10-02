@@ -5,11 +5,19 @@ import { Star, Plus, Truck, Flame } from "lucide-react";
 import { Price } from "@/components/common/Price";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
-import { discountPct, soldLabel, type ShopProduct } from "@/features/shop/data/products";
+import {
+  discountPct,
+  soldLabel,
+  type ShopProduct,
+} from "@/features/shop/data/products";
 
 export const SHOP_SELLER = "Fotizo Import";
 
-export const ShopProductCard = memo(function ShopProductCard({ product }: { product: ShopProduct }) {
+export const ShopProductCard = memo(function ShopProductCard({
+  product,
+}: {
+  product: ShopProduct;
+}) {
   const { addItem } = useCart();
   const { toast } = useToast();
   const off = discountPct(product);
@@ -29,9 +37,9 @@ export const ShopProductCard = memo(function ShopProductCard({ product }: { prod
   };
 
   return (
-    <Link href={`/shop/${product.id}`}>
-      <div className="group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-white transition-shadow hover:shadow-lg cursor-pointer">
-        <div className="relative aspect-square overflow-hidden bg-muted">
+    <article className="shop-product group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-white transition-shadow hover:shadow-lg">
+      <div className="relative aspect-square overflow-hidden bg-muted">
+        <Link href={`/shop/${product.id}`} tabIndex={-1} aria-hidden="true">
           <img
             loading="lazy"
             decoding="async"
@@ -39,66 +47,88 @@ export const ShopProductCard = memo(function ShopProductCard({ product }: { prod
             alt={product.title}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
-          <WishlistButton item={{ id: product.id, source: "shop", title: product.title, image: product.image, price: product.price, seller: SHOP_SELLER }} className="absolute top-2 right-2" />
-          {off > 0 && (
-            <span className="absolute left-0 top-2 rounded-r-full bg-[#FF6A00] px-2 py-0.5 text-xs font-extrabold text-white shadow">
-              -{off}%
-            </span>
+        </Link>
+        <WishlistButton
+          item={{
+            id: product.id,
+            source: "shop",
+            title: product.title,
+            image: product.image,
+            price: product.price,
+            seller: SHOP_SELLER,
+          }}
+          className="absolute top-2 right-2"
+        />
+        {off > 0 && (
+          <span className="absolute left-0 top-2 rounded-r-full bg-[#FF6A00] px-2 py-0.5 text-xs font-extrabold text-white shadow">
+            -{off}%
+          </span>
+        )}
+        {product.almostGone && (
+          <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white">
+            <Flame className="h-3 w-3 text-[#FF6A00]" aria-hidden="true" />{" "}
+            Almost gone
+          </span>
+        )}
+        <button
+          type="button"
+          aria-label={`Add ${product.title} to cart`}
+          onClick={quickAdd}
+          className="absolute bottom-2 right-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-md transition-transform hover:scale-110 active:scale-95"
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+
+      <div className="flex flex-1 flex-col p-3 sm:p-4">
+        <h3 className="line-clamp-2 text-sm leading-snug text-foreground group-hover:text-primary">
+          <Link href={`/shop/${product.id}`}>{product.title}</Link>
+        </h3>
+
+        <div className="mt-1.5 flex items-baseline gap-1.5">
+          <Price
+            amount={product.price}
+            className="text-base font-extrabold text-[#FF6A00]"
+          />
+          {product.originalPrice > product.price && (
+            <Price
+              amount={product.originalPrice}
+              className="text-xs text-muted-foreground line-through"
+            />
           )}
-          {product.almostGone && (
-            <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white">
-              <Flame className="h-3 w-3 text-[#FF6A00]" aria-hidden="true" /> Almost gone
-            </span>
-          )}
-          <button
-            type="button"
-            aria-label={`Add ${product.title} to cart`}
-            onClick={quickAdd}
-            className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white shadow-md transition-transform hover:scale-110 active:scale-95"
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-          </button>
         </div>
 
-        <div className="flex flex-1 flex-col p-2.5">
-          <h3 className="line-clamp-2 text-sm leading-snug text-foreground group-hover:text-primary">
-            {product.title}
-          </h3>
+        {product.sourcing?.priceStatus === "estimate" && (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Estimated price · delivery extra
+          </p>
+        )}
 
-          <div className="mt-1.5 flex items-baseline gap-1.5">
-            <Price amount={product.price} className="text-base font-extrabold text-[#FF6A00]" />
-            {product.originalPrice > product.price && (
-              <Price amount={product.originalPrice} className="text-xs text-muted-foreground line-through" />
-            )}
-          </div>
-
-          {product.sourcing?.priceStatus === "estimate" && (
-            <p className="mt-1 text-[11px] text-muted-foreground">Estimated price · delivery extra</p>
-          )}
-
-          {/* Supplier-imported listings carry no rating or units-sold yet. Showing
+        {/* Supplier-imported listings carry no rating or units-sold yet. Showing
               "0.0 · 0 sold" reads as a bad product rather than missing data, so the
               row only renders once there is something real to report. */}
-          {(product.rating > 0 || product.sold > 0) && (
-            <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-              {product.rating > 0 && (
-                <span className="inline-flex items-center gap-0.5">
-                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden="true" />
-                  {product.rating.toFixed(1)}
-                </span>
-              )}
-              {product.rating > 0 && product.sold > 0 && <span>·</span>}
-              {product.sold > 0 && <span>{soldLabel(product.sold)}</span>}
-            </div>
-          )}
+        {(product.rating > 0 || product.sold > 0) && (
+          <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+            {product.rating > 0 && (
+              <span className="inline-flex items-center gap-0.5">
+                <Star
+                  className="h-3 w-3 fill-amber-400 text-amber-400"
+                  aria-hidden="true"
+                />
+                {product.rating.toFixed(1)}
+              </span>
+            )}
+            {product.rating > 0 && product.sold > 0 && <span>·</span>}
+            {product.sold > 0 && <span>{soldLabel(product.sold)}</span>}
+          </div>
+        )}
 
-          {product.freeShipping && (
-            <span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
-              <Truck className="h-3 w-3" aria-hidden="true" /> Free shipping
-            </span>
-          )}
-        </div>
+        {product.freeShipping && (
+          <span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
+            <Truck className="h-3 w-3" aria-hidden="true" /> Free shipping
+          </span>
+        )}
       </div>
-    </Link>
+    </article>
   );
 });
