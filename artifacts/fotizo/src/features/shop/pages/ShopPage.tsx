@@ -14,6 +14,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { Loading, ErrorState } from "@/components/common/QueryStates";
 import { LoadMoreSentinel } from "@/components/common/LoadMoreSentinel";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useFeedScrollRestore } from "@/hooks/useFeedScrollRestore";
 import {
   useCatalogueInfinite,
   useCataloguePage,
@@ -22,7 +23,7 @@ import type { CatalogueFilters } from "@/features/marketplace/services/catalogue
 import { toShopProduct } from "@/features/shop/services/shop.service";
 import { ShopProductCard } from "@/features/shop/components/ShopProductCard";
 import "./shop.css";
-import { SHOP_CATEGORIES, categoryLabel } from "@/features/shop/data/products";
+import { SHOP_CATEGORIES, categoryLabel } from "@/features/shop/data/categories";
 import type { Product } from "@/types";
 
 type Sort =
@@ -92,6 +93,7 @@ export default function ShopPage() {
     [grid.data],
   );
   const total = grid.data?.pages[0]?.total ?? 0;
+  useFeedScrollRestore(products.length > 0);
 
   const [edit, setEdit] = useState("furniture");
   const featuredQuery = useCataloguePage("shop", {
@@ -402,7 +404,9 @@ export default function ShopPage() {
                 <LoadMoreSentinel
                   hasMore={Boolean(grid.hasNextPage)}
                   loading={grid.isFetchingNextPage}
+                  error={grid.isFetchNextPageError}
                   onLoadMore={() => void grid.fetchNextPage()}
+                  endLabel={total > 48 ? "You've seen everything here." : undefined}
                 />
               </>
             )}

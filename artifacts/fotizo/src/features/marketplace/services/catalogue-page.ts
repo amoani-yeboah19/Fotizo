@@ -16,8 +16,8 @@ async function demoProducts(channel: CatalogueChannel): Promise<Product[]> {
       (p) => p.channel !== "shop" && p.status !== "unpublished",
     );
   }
-  const { SHOP_PRODUCTS } = await import("@/features/shop/data/products");
-  return SHOP_PRODUCTS.map((p) => ({
+  const { loadLocalCatalogue } = await import("@/features/shop/data/local-catalogue");
+  return (await loadLocalCatalogue()).map((p) => ({
     ...p,
     channel: "shop",
     status: "active",

@@ -2,7 +2,11 @@ import { api, ApiError, SHOP_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import type { Product } from "@/types";
 import { SHOP_CATEGORIES } from "@/features/shop/data/categories";
-import { SHOP_PRODUCTS, type ShopProduct } from "@/features/shop/data/products";
+import type { ShopProduct } from "@/features/shop/data/shop-product";
+import {
+  loadLocalCatalogue,
+  localShopProduct,
+} from "@/features/shop/data/local-catalogue";
 
 // The shop storefront's data access. Mirrors marketplace/services/catalog for
 // the seller side, but the shop has its own shape (departments, units sold,
@@ -14,8 +18,6 @@ import { SHOP_PRODUCTS, type ShopProduct } from "@/features/shop/data/products";
  * into specs.department, so this is only the fallback for rows created some
  * other way — a listing posted from the dashboard, say.
  */
-const LOCAL_PRODUCTS_BY_ID = new Map(SHOP_PRODUCTS.map((p) => [p.id, p]));
-
 const ID_BY_LABEL = new Map(
   SHOP_CATEGORIES.map((c) => [c.label.toLowerCase(), c.id]),
 );
@@ -33,7 +35,7 @@ const flag = (specs: Record<string, string>, key: string) =>
 export function toShopProduct(p: Product): ShopProduct {
   // Keep source metadata and estimated-price labels on local catalogue cards.
   if (SHOP_USE_MOCKS) {
-    const local = LOCAL_PRODUCTS_BY_ID.get(p.id);
+    const local = localShopProduct(p.id);
     if (local) return local;
   }
   const specs = (p.specs ?? {}) as Record<string, string>;
@@ -84,9 +86,10 @@ export function toShopProduct(p: Product): ShopProduct {
 export const shopService = {
   async relatedProducts(id: string): Promise<ShopProduct[]> {
     if (SHOP_USE_MOCKS) {
-      const product = SHOP_PRODUCTS.find((p) => p.id === id);
+      const products = await loadLocalCatalogue();
+      const product = products.find((p) => p.id === id);
       return product
-        ? SHOP_PRODUCTS.filter(
+        ? products.filter(
             (p) => p.category === product.category && p.id !== id,
           ).slice(0, 6)
         : [];
@@ -99,7 +102,7 @@ export const shopService = {
   async getProduct(id: string): Promise<ShopProduct | null> {
     if (SHOP_USE_MOCKS) {
       await delay();
-      return SHOP_PRODUCTS.find((p) => p.id === id) ?? null;
+      return (await loadLocalCatalogue()).find((p) => p.id === id) ?? null;
     }
     try {
       const product = await api.get<Product>(`/products/${id}`);
