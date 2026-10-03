@@ -76,7 +76,8 @@ export const cataloguePages = {
     return {
       items: all
         .slice(page * pageSize, (page + 1) * pageSize)
-        .map((p) => ({ ...p, channel, status: "active" })),
+        // Preview records keep their own supplier details locally (see toShopProduct).
+        .map(({ sourcing: _sourcing, ...p }) => ({ ...p, channel, status: "active" })),
       total: all.length,
       page,
       pageSize,

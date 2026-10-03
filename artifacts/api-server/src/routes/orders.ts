@@ -15,6 +15,7 @@ import {
 import { requireAuth, requireRole, type AuthenticatedRequest } from "../middlewares/requireAuth";
 import { caseReference } from "../lib/cases";
 import { recordUnitSaleFees } from "../lib/fees";
+import { productIdSchema } from "../lib/product-ids";
 import {
   PaymentError,
   isOnlineMethod,
@@ -90,7 +91,7 @@ const placeOrderSchema = z
       .array(
         z
           .object({
-            productId: z.string().uuid(),
+            productId: productIdSchema,
             quantity: z.number().int().min(1).max(99),
           })
           .strict(),

@@ -388,6 +388,25 @@ components:
         stockCount: { type: integer }
         tags: { type: array, items: { type: string } }
         specs: { type: object, additionalProperties: { type: string } }
+        sourcing:
+          description: Supplier details for imported Fotizo Shop goods; absent for other listings.
+          $ref: "#/components/schemas/ProductSourcing"
+    ProductSourcing:
+      type: object
+      required: [platform, productId, priceStatus]
+      properties:
+        platform: { type: string, enum: [alibaba, taobao, pinduoduo, tuwa] }
+        productId: { type: string }
+        sourceUrl: { type: [string, "null"] }
+        currency: { type: [string, "null"] }
+        priceRange: { type: [string, "null"] }
+        minimumOrder: { type: [string, "null"] }
+        unit: { type: [string, "null"] }
+        capturedAt: { type: [string, "null"] }
+        priceStatus:
+          description: Supplier prices, variants, minimums and delivery still need confirming before purchase.
+          type: string
+          enum: [estimate, confirmed]
     CataloguePage:
       type: object
       required: [items, total, page, pageSize, hasMore]

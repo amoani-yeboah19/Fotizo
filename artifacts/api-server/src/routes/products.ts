@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { listingImagesProblem } from "../lib/storage";
+import { productIdSchema } from "../lib/product-ids";
 import {
   HOLD_MESSAGE,
   REVIEWED_ROLES,
@@ -85,10 +86,28 @@ export function toPublicProduct(
     status: row.status,
     image: row.images[0] ?? "",
     images: row.images,
-    inStock: row.stockCount > 0,
+    // Fotizo Shop goods are sourced to order, so they never run out.
+    inStock: row.channel === "shop" || row.stockCount > 0,
     stockCount: row.stockCount,
     tags: row.tags,
     specs: row.specs,
+    ...(row.sourcePlatform && row.sourceProductId
+      ? {
+          // Supplier prices, variants, minimums and delivery are confirmed
+          // before purchase, so the listed price stays an estimate.
+          sourcing: {
+            platform: row.sourcePlatform as "alibaba" | "taobao" | "pinduoduo" | "tuwa",
+            productId: row.sourceProductId,
+            sourceUrl: row.sourceUrl,
+            currency: row.supplierCurrency,
+            priceRange: row.specs.priceRange ?? null,
+            minimumOrder: row.specs.minimumOrder ?? null,
+            unit: row.specs.unit ?? null,
+            capturedAt: row.specs.capturedAt ?? null,
+            priceStatus: "estimate" as const,
+          },
+        }
+      : {}),
   };
 }
 
@@ -160,7 +179,7 @@ router.get("/products/categories", async (req, res) => {
 });
 
 router.get("/products/:id", async (req, res) => {
-  const parsedId = z.string().uuid().safeParse(req.params.id);
+  const parsedId = productIdSchema.safeParse(req.params.id);
   if (!parsedId.success) {
     res.status(404).json({ error: "Product not found." });
     return;
@@ -184,7 +203,7 @@ router.get("/products/:id", async (req, res) => {
 });
 
 router.get("/products/:id/related", async (req, res) => {
-  const parsedId = z.string().uuid().safeParse(req.params.id);
+  const parsedId = productIdSchema.safeParse(req.params.id);
   if (!parsedId.success) {
     res.json([]);
     return;

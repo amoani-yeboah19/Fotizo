@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
+import { productIdSchema } from "../lib/product-ids";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db, productsTable, usersTable, wishlistItemsTable } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
@@ -30,7 +31,7 @@ router.get("/wishlist", async (req: AuthenticatedRequest, res) => {
   res.json(rows.map((r) => toPublicProduct(r.product, r.sellerName ?? "Unknown seller")));
 });
 
-const productId = z.string().uuid();
+const productId = productIdSchema;
 
 router.put("/wishlist/:productId", async (req: AuthenticatedRequest, res) => {
   const id = productId.safeParse(req.params.productId);

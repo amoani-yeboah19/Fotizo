@@ -79,6 +79,19 @@ export interface Product {
   stockCount: number;
   tags: string[];
   specs: ProductSpec;
+  /** Supplier details for imported Fotizo Shop goods (absent for other listings). */
+  sourcing?: {
+    platform: string;
+    productId: string;
+    sourceUrl?: string | null;
+    currency?: string | null;
+    priceRange?: string | null;
+    minimumOrder?: string | null;
+    unit?: string | null;
+    capturedAt?: string | null;
+    /** Supplier prices, variants, minimums and delivery are confirmed before purchase. */
+    priceStatus: string;
+  };
 }
 
 export interface ServicePackage {

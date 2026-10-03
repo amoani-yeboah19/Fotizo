@@ -58,7 +58,26 @@ export function toShopProduct(p: Product): ShopProduct {
     freeShipping: flag(specs, "freeShipping"),
     almostGone: flag(specs, "almostGone"),
     description: p.description,
-    sourceUrl: specs.supplierListing,
+    sourceUrl: p.sourcing?.sourceUrl ?? specs.supplierListing,
+    // Supplier terms from the server: price range, minimum order and unit.
+    ...(p.sourcing && p.sourcing.priceRange
+      ? {
+          sourcing: {
+            platform: p.sourcing.platform,
+            productId: p.sourcing.productId,
+            originalTitle: p.title,
+            sourcePage: p.sourcing.sourceUrl ?? "",
+            capturedAt: p.sourcing.capturedAt ?? "",
+            currency: p.sourcing.currency ?? "",
+            priceRange: p.sourcing.priceRange,
+            minimumOrder: p.sourcing.minimumOrder ?? null,
+            unit: p.sourcing.unit ?? null,
+            originalImage: p.images?.[0] ?? "",
+            priceStatus: p.sourcing.priceStatus,
+            previewMarkup: 1.3,
+          },
+        }
+      : {}),
   };
 }
 

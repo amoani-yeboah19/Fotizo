@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
+import { productIdSchema } from "../lib/product-ids";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, cartItemsTable, productsTable, usersTable } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
@@ -44,7 +45,7 @@ router.get("/cart", async (req: AuthenticatedRequest, res) => {
   res.json(await readCart(req.auth!.userId));
 });
 
-const productId = z.string().uuid();
+const productId = productIdSchema;
 const quantitySchema = z.object({ quantity: z.number().int().min(1).max(MAX_QUANTITY) }).strict();
 
 async function isActive(id: string) {
@@ -115,7 +116,7 @@ const mergeSchema = z
   .object({
     items: z
       .array(
-        z.object({ productId: z.string().uuid(), quantity: z.number().int().min(1).max(MAX_QUANTITY) }).strict(),
+        z.object({ productId: productIdSchema, quantity: z.number().int().min(1).max(MAX_QUANTITY) }).strict(),
       )
       .max(MAX_LINES),
   })
