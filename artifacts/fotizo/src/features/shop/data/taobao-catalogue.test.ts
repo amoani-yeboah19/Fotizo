@@ -7,13 +7,13 @@ import { SHOP_PRODUCTS, SHOP_CATEGORIES } from "./products";
 
 it("accounts for all saved listings and publishes the physical products", () => {
   expect(manifest).toHaveLength(756);
-  expect(products).toHaveLength(731);
+  expect(products).toHaveLength(730);
   expect(manifest.filter((p) => p.kind === "consultation")).toHaveLength(3);
   expect(manifest.filter((p) => p.kind === "machining-service")).toHaveLength(3);
   for (const category of SHOP_CATEGORIES) {
     expect(SHOP_PRODUCTS.some((p) => p.category === category.id), category.id).toBe(true);
   }
-  expect(manifest.filter((p) => p.kind !== "product")).toHaveLength(25);
+  expect(manifest.filter((p) => p.kind !== "product")).toHaveLength(26);
   expect(new Set(manifest.map((p) => p.productId)).size).toBe(manifest.length);
   const publishedIds = new Set(products.map((p) => p.sourcing.productId));
   for (const source of manifest) {
