@@ -4473,7 +4473,8 @@
     "supplierPriceCny": 1009180.0,
     "priceCondition": "",
     "image": "/images/taobao/992679234810.webp",
-    "kind": "product",
+    "kind": "excluded",
+    "exclusionReason": "Gold bars removed from the shop at the owner’s request.",
     "category": "accessories"
   },
   {
