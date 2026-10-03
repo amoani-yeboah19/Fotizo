@@ -494,3 +494,51 @@ describe("sourced-to-order shop listings", () => {
     expect(own).toMatchObject({ stock: 0, status: "out_of_stock" });
   });
 });
+
+describe("shop catalogue served by the API", () => {
+  it("keeps preview-era product links, carts and orders working and returns supplier terms", async () => {
+    const { catalogueUuid } = await import("@workspace/db");
+    const rep = await account("china_representative");
+    const buyer = await account();
+    const id = catalogueUuid("taobao-861590261376");
+    await database.query(
+      `INSERT INTO products (id, title, description, price, seller_id, category, stock_count, channel, images, specs,
+         source_platform, source_product_id, source_url, supplier_currency, supplier_cost, supplier_rate, markup_percent, price_basis)
+       VALUES ($1, 'Magnetic Screen Protector', 'Fits MacBook M5.', 18.14, $2, 'Computers', 0, 'shop', ARRAY['/images/taobao/861590261376.webp'],
+         '{"department":"computers","priceRange":"CNY 124","shopId":"taobao-861590261376"}',
+         'taobao', '861590261376', 'https://item.taobao.com/item.htm?id=861590261376', 'CNY', 124, 8.888512, 30, 'quoted')`,
+      [id, rep.id],
+    );
+    // The old frontend id resolves to the stored product.
+    const page = await get("/products/taobao-861590261376");
+    expect(page.status).toBe(200);
+    expect(await page.json()).toMatchObject({
+      id,
+      inStock: true,
+      sourcing: { platform: "taobao", productId: "861590261376", currency: "CNY", priceRange: "CNY 124", priceStatus: "estimate" },
+    });
+    expect((await get("/products/not a product!")).status).toBe(404);
+    // A cart or order holding the old id still works.
+    expect((await send("PUT", "/cart/items/taobao-861590261376", { quantity: 2 }, buyer.cookie)).status).toBe(204);
+    const cart = await json<{ productId: string }[]>(await get("/cart", buyer.cookie));
+    expect(cart[0].productId).toBe(id);
+    const order = await post(
+      "/orders",
+      {
+        items: [{ productId: "taobao-861590261376", quantity: 1 }],
+        delivery: {
+          name: "Kwame", email: "kwame@example.com", phone: "0244000000", addressLine1: "1 Road",
+          addressLine2: "", city: "Accra", postalCode: "", country: "GH",
+        },
+        paymentMethod: "pay_on_delivery",
+        idempotencyKey: crypto.randomUUID(),
+      },
+      buyer.cookie,
+    );
+    expect(order.status).toBe(201);
+    // Marketplace listings carry no supplier terms.
+    const seller = await account("seller");
+    const own = await json<{ id: string }>(await post("/products", product, seller.cookie));
+    expect(await json(await get(`/products/${own.id}`))).not.toHaveProperty("sourcing");
+  });
+});

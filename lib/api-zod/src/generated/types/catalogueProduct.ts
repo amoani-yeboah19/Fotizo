@@ -8,6 +8,7 @@
 import type { CatalogueProductChannel } from "./catalogueProductChannel";
 import type { CatalogueProductSpecs } from "./catalogueProductSpecs";
 import type { CatalogueProductStatus } from "./catalogueProductStatus";
+import type { ProductSourcing } from "./productSourcing";
 
 export interface CatalogueProduct {
   id: string;
@@ -29,4 +30,6 @@ export interface CatalogueProduct {
   stockCount: number;
   tags: string[];
   specs: CatalogueProductSpecs;
+  /** Supplier details for imported Fotizo Shop goods; absent for other listings. */
+  sourcing?: ProductSourcing;
 }

@@ -257,6 +257,26 @@ export const ListCatalogueProductsResponse = zod.object({
       stockCount: zod.number(),
       tags: zod.array(zod.string()),
       specs: zod.record(zod.string(), zod.string()),
+      sourcing: zod
+        .object({
+          platform: zod.enum(["alibaba", "taobao", "pinduoduo", "tuwa"]),
+          productId: zod.string(),
+          sourceUrl: zod.string().nullish(),
+          currency: zod.string().nullish(),
+          priceRange: zod.string().nullish(),
+          minimumOrder: zod.string().nullish(),
+          unit: zod.string().nullish(),
+          capturedAt: zod.string().nullish(),
+          priceStatus: zod
+            .enum(["estimate", "confirmed"])
+            .describe(
+              "Supplier prices, variants, minimums and delivery still need confirming before purchase.",
+            ),
+        })
+        .optional()
+        .describe(
+          "Supplier details for imported Fotizo Shop goods; absent for other listings.",
+        ),
     }),
   ),
   total: zod.number().min(listCatalogueProductsResponseTotalMin),
