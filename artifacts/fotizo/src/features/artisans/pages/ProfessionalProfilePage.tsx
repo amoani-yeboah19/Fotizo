@@ -1,6 +1,6 @@
 import { Link, useRoute } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Briefcase, MapPin, Globe, Star, UserRound } from "lucide-react";
+import { CheckCircle2, Briefcase, MapPin, Globe, Star, UserRound, ShieldCheck } from "lucide-react";
 import { serviceCategoryLabel } from "@workspace/service-taxonomy";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Loading } from "@/components/common/QueryStates";
@@ -64,6 +64,11 @@ export default function ProfessionalProfilePage() {
               <h1 className="text-3xl font-bold">{profile.name}</h1>
               {profile.verified && <CheckCircle2 className="w-5 h-5 text-primary" aria-label="Verified by Fotizo" />}
             </div>
+            {profile.identityVerified && (
+              <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+                <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" /> ID verified
+              </span>
+            )}
             {profile.headline && <p className="mt-2 text-lg text-muted-foreground">{profile.headline}</p>}
             <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
               {experience && (

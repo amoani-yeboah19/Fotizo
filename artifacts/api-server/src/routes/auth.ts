@@ -64,6 +64,8 @@ export function toPublicUser(row: UserRow) {
     avatar: row.avatar ?? undefined,
     joinedAt: row.createdAt.toISOString().split("T")[0],
     verified: row.verified,
+    emailVerified: row.emailVerified,
+    identityStatus: row.identityStatus,
     hasPassword: !!row.passwordHash,
     onboardingCompleted: !!row.onboardingCompletedAt,
   };
@@ -201,7 +203,7 @@ router.post("/google", async (req, res) => {
       : (
           await db
             .update(usersTable)
-            .set({ googleId: identity.googleId, verified: true })
+            .set({ googleId: identity.googleId, emailVerified: true })
             .where(eq(usersTable.id, existing.id))
             .returning()
         )[0];
@@ -261,7 +263,7 @@ router.post("/google/complete", async (req, res) => {
       : (
           await db
             .update(usersTable)
-            .set({ googleId: pending.googleId, verified: true })
+            .set({ googleId: pending.googleId, emailVerified: true })
             .where(eq(usersTable.id, existing.id))
             .returning()
         )[0]
@@ -273,7 +275,8 @@ router.post("/google/complete", async (req, res) => {
             email: pending.email,
             googleId: pending.googleId,
             role: parsed.data.role,
-            verified: true,
+            // Google confirmed the email; "verified" is for Fotizo's own checks.
+            emailVerified: true,
           })
           .returning();
         await recordPolicyAcceptance(tx, created.id);

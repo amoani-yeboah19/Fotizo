@@ -1,6 +1,6 @@
 # Seller identity verification with Veriff — plan
 
-Status: proposal, not built. Nothing here is live until the decisions in §2 are made and Veriff keys are added on Render.
+Status: **built** with the recommendations in §2 (migration 0017). Dormant until Veriff keys are added on Render, and not enforced until `IDENTITY_REQUIRED_FROM` is set — see §7.
 
 ## 1. Where we are today
 
@@ -79,10 +79,10 @@ Seller dashboard ──"Verify identity"──► POST /api/identity/session ─
 | `GET /api/identity` | seller | Current status, reason and whether a retry is allowed |
 | `POST /api/identity/refresh` | seller | Fallback: ask Veriff for the decision |
 | `POST /api/identity/webhooks/veriff` | Veriff | Decision (and optional event) webhook; raw body; mounted before `protectBrowserWrites` like the payment webhooks |
-| `GET /api/admin/identity?status=` | manager | Queue of declined, mismatched and review cases |
-| `POST /api/admin/users/:id/identity` | manager | Approve or revoke with a reason; written to `admin_audit` |
+| `GET /api/admin/users?identity=review` | manager | Find declined, mismatched and review cases (users filter) |
+| `POST /api/admin/decisions/:userId` with `kind: "identity"` | manager | Approve, decline or revoke with a reason; checks the expected status and writes `admin_audit` |
 
-**Enforcement** (behind `IDENTITY_REQUIRED`):
+**Enforcement** (from `IDENTITY_REQUIRED_FROM`):
 - Public product and service queries also require the owner to be identity-approved (or exempt staff).
 - Listing creation still works, but the response says the listing is hidden until verification.
 
@@ -105,7 +105,7 @@ Seller dashboard ──"Verify identity"──► POST /api/identity/session ─
 Server only, on Render (never `VITE_` variables):
 - `VERIFF_API_KEY`, `VERIFF_SHARED_SECRET`
 - `VERIFF_API_URL`: the base URL shown in the Veriff Customer Portal for the integration
-- `IDENTITY_REQUIRED` (default `false`)
+- `IDENTITY_REQUIRED_FROM`: the date verification becomes required (ISO, e.g. `2026-11-01`). Unset means not enforced. Sellers who joined before it keep their listings public for 14 more days; sellers who join after it are hidden until verified.
 
 In the Veriff Customer Portal:
 - one **test** integration and one **live** integration;
@@ -121,7 +121,7 @@ In the Veriff Customer Portal:
   - a late `abandoned` after `approved` does not downgrade;
   - the polling fallback;
   - rate limits;
-  - listings are hidden and shown with `IDENTITY_REQUIRED`;
+  - listings are hidden and shown with `IDENTITY_REQUIRED_FROM`, including the grace period;
   - manager overrides are audited.
 - **Component tests** for the seller verification card and the manager queue.
 - **End to end** on the Veriff test integration, choosing each outcome, before switching to live keys.
@@ -129,9 +129,9 @@ In the Veriff Customer Portal:
 ## 9. Rollout
 
 1. **Set up:** Veriff account and contract, data processing agreement, test integration keys. Confirm Ghana Card, passport and driver's licence coverage for our markets (GH, GB, US), and check data-protection obligations (Ghana's Data Protection Act; UK GDPR) with whoever handles legal.
-2. **Build the backend:** migration 0017, the endpoints, the webhook and the manager view, with `IDENTITY_REQUIRED=false`. Split `verified` and fix the Google badge.
-3. **Build the frontend:** the seller card and Veriff modal, badges, the manager queue, and the privacy copy. Test end to end on the test integration.
-4. **Go live:** live keys. New sellers must verify (`IDENTITY_REQUIRED=true`); existing sellers get the 14-day grace period with reminders, then unverified listings are hidden.
+2. **Build the backend:** migration 0017, the endpoints, the webhook and the manager view, with `IDENTITY_REQUIRED_FROM` unset. Split `verified` and fix the Google badge. *(Done.)*
+3. **Build the frontend:** the seller card and Veriff modal, badges, the manager queue, and the privacy copy. *(Done.)* Test end to end on the test integration.
+4. **Go live:** live keys. Set `IDENTITY_REQUIRED_FROM`: new sellers must verify; existing sellers get the 14-day grace period with dashboard reminders, then unverified listings are hidden.
 5. **Later:** require verification for payouts; business verification and AML screening if needed.
 
 Rough size: 3–5 days of development for steps 2–3, plus Veriff account setup time.

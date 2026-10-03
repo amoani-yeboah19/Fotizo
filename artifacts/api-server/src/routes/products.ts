@@ -12,6 +12,7 @@ import {
 import { z } from "zod";
 import type { CatalogueProduct } from "@workspace/api-zod";
 import { eq, and, ne, desc, sql } from "drizzle-orm";
+import { ownerVisible } from "../lib/identity";
 import {
   db,
   productsTable,
@@ -171,6 +172,7 @@ router.get("/products/categories", async (req, res) => {
       and(
         eq(productsTable.status, "active"),
         eq(productsTable.channel, filter.data.channel),
+        ownerVisible(productsTable.sellerId),
       ),
     )
     .groupBy(sql`1`)
@@ -192,6 +194,7 @@ router.get("/products/:id", async (req, res) => {
       and(
         eq(productsTable.id, parsedId.data),
         eq(productsTable.status, "active"),
+        ownerVisible(productsTable.sellerId),
       ),
     )
     .limit(1);
@@ -212,6 +215,7 @@ router.get("/products/:id/related", async (req, res) => {
     where: and(
       eq(productsTable.id, parsedId.data),
       eq(productsTable.status, "active"),
+      ownerVisible(productsTable.sellerId),
     ),
   });
   if (!product) {
@@ -231,6 +235,7 @@ router.get("/products/:id/related", async (req, res) => {
         eq(productsTable.channel, product.channel),
         ne(productsTable.id, product.id),
         eq(productsTable.status, "active"),
+        ownerVisible(productsTable.sellerId),
       ),
     )
     .orderBy(desc(productsTable.createdAt), desc(productsTable.id))

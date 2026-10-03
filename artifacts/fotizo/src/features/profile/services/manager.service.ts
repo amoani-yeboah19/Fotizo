@@ -7,8 +7,24 @@ export interface AdminUser {
   email: string;
   role: UserRole;
   verified: boolean;
+  /** Seller identity verification through Veriff. */
+  identityStatus?: IdentityStatus;
+  identityVerifiedAt?: string | null;
+  emailVerified?: boolean;
   status: "active" | "suspended";
   createdAt: string;
+}
+export type IdentityStatus = "none" | "pending" | "review" | "approved" | "declined" | "resubmission_requested";
+/** One Veriff session: the decision only; documents stay with Veriff. */
+export interface IdentityCheck {
+  sessionId: string;
+  status: string;
+  reason: string | null;
+  documentType: string | null;
+  documentCountry: string | null;
+  nameMatches: boolean | null;
+  createdAt: string;
+  decidedAt: string | null;
 }
 export interface AdminListing {
   id: string;
@@ -50,6 +66,7 @@ export interface AdminPage<T> {
 }
 export type AdminDecision = { id: string; reason: string } & (
   | { kind: "user"; verified: boolean; expected: boolean }
+  | { kind: "identity"; status: "approved" | "declined"; expected: IdentityStatus }
   | {
       kind: "product" | "service";
       status: "active" | "unpublished";
@@ -142,6 +159,7 @@ export interface AdminUserDetails {
   user: AdminUser;
   listings: (AdminListing & { kind: "product" | "service" })[];
   activity: AdminAudit[];
+  identityChecks?: IdentityCheck[];
 }
 export const adminService = {
   async userDetails(id: string): Promise<AdminUserDetails> {
@@ -232,12 +250,15 @@ export const adminService = {
     search: string;
     role: string;
     verification: string;
+    /** Seller identity check state, e.g. "review" for cases needing a manager. */
+    identity?: string;
   }): Promise<AdminPage<AdminUser>> {
     if (!ADMIN_USE_MOCKS)
       return api.get("/admin/users", {
         ...filters,
         role: filters.role || undefined,
         verification: filters.verification || undefined,
+        identity: filters.identity || undefined,
       });
     return paginate(
       demoUsers.filter(
@@ -285,6 +306,7 @@ export const adminService = {
     let before: Record<string, unknown>,
       after: Record<string, unknown>,
       label: string;
+    if (d.kind === "identity") throw new Error("Identity decisions are available for live accounts only.");
     if (d.kind === "user") {
       const u = demoUsers.find((u) => u.id === d.id);
       if (!u || u.verified !== d.expected)

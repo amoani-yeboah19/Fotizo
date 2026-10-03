@@ -24,6 +24,7 @@ import uploadsRouter from "./uploads";
 import searchRouter from "./search";
 import earningsRouter from "./earnings";
 import confirmationsRouter from "./confirmations";
+import identityRouter from "./identity";
 
 const router: IRouter = Router();
 
@@ -52,5 +53,6 @@ router.use(uploadsRouter);
 router.use(searchRouter);
 router.use(earningsRouter);
 router.use(confirmationsRouter);
+router.use(identityRouter);
 
 export default router;

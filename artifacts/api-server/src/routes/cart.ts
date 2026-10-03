@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { productIdSchema } from "../lib/product-ids";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { ownerVisible } from "../lib/identity";
 import { db, cartItemsTable, productsTable, usersTable, needsSupplierConfirmation } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
 
@@ -31,7 +32,7 @@ async function readCart(userId: string) {
     .innerJoin(productsTable, eq(productsTable.id, cartItemsTable.productId))
     .innerJoin(usersTable, eq(usersTable.id, productsTable.sellerId))
     // Unpublished listings drop out of the cart until they return.
-    .where(and(eq(cartItemsTable.userId, userId), eq(productsTable.status, "active")))
+    .where(and(eq(cartItemsTable.userId, userId), eq(productsTable.status, "active"), ownerVisible(productsTable.sellerId)))
     .orderBy(asc(cartItemsTable.addedAt), asc(cartItemsTable.productId));
   return rows.map((r) => ({
     id: r.productId,
@@ -63,7 +64,7 @@ async function isActive(id: string) {
   const [row] = await db
     .select({ id: productsTable.id })
     .from(productsTable)
-    .where(and(eq(productsTable.id, id), eq(productsTable.status, "active")));
+    .where(and(eq(productsTable.id, id), eq(productsTable.status, "active"), ownerVisible(productsTable.sellerId)));
   return Boolean(row);
 }
 
@@ -145,7 +146,7 @@ router.post("/cart/merge", async (req: AuthenticatedRequest, res) => {
     ? await db
         .select({ id: productsTable.id })
         .from(productsTable)
-        .where(and(inArray(productsTable.id, ids), eq(productsTable.status, "active")))
+        .where(and(inArray(productsTable.id, ids), eq(productsTable.status, "active"), ownerVisible(productsTable.sellerId)))
     : [];
   const allowed = new Set(active.map((p) => p.id));
   await db.transaction(async (tx) => {

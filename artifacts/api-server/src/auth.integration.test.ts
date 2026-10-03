@@ -1316,7 +1316,8 @@ describe("account profiles, onboarding and policy acceptance", () => {
       profile: buyerProfile,
     });
     expect(response.status).toBe(201);
-    expect(await response.json()).toMatchObject({ onboardingCompleted: true, verified: true });
+    // Google confirms the email only; "verified" is Fotizo's own check.
+    expect(await response.json()).toMatchObject({ onboardingCompleted: true, emailVerified: true, verified: false });
     const cookie = response.headers.get("set-cookie")!.split(";")[0];
     const own = await read(cookie);
     expect(own.profile).toMatchObject({ purpose: "hiring", version: 1 });

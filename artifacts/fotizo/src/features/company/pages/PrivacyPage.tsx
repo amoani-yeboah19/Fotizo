@@ -48,6 +48,12 @@ export default function PrivacyPage() {
               services you publish and the business details shown with them.
             </>,
             <>
+              <strong className="text-foreground">Identity check</strong> — if you sell, the result
+              of your identity check: whether it passed, the type and issuing country of the document
+              you used, and whether its name matched your account. Your document images, selfie and
+              document number are collected and kept by our identity partner Veriff, not by Fotizo.
+            </>,
+            <>
               <strong className="text-foreground">Technical data</strong> — basic information your
               browser sends, and a session record that keeps you signed in.
             </>,
@@ -65,6 +71,7 @@ export default function PrivacyPage() {
             "To process orders, arrange shipping and clearing, and keep you updated on where things are.",
             "To answer support requests and investigate what happened when an order goes wrong.",
             "To quote vehicle enquiries, which requires knowing the destination country.",
+            "To verify that sellers are who they say they are before their listings are shown to buyers.",
             "To detect fraud and abuse, and to meet legal and customs obligations.",
           ]}
         />
@@ -82,6 +89,7 @@ export default function PrivacyPage() {
             "Sellers and providers you transact with — enough to fulfil your order or booking.",
             "Shipping, freight and customs agents — the details required to move and clear your goods.",
             "Payment processors — to take payment and handle refunds.",
+            "Veriff, our identity verification partner — sellers' ID documents and selfies, to confirm their identity.",
             "Service providers who host and run the platform on our behalf.",
             "Authorities, where we are legally obliged to disclose.",
           ]}

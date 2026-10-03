@@ -4,6 +4,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { db, policyAcceptancesTable, servicesTable, usersTable } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
 import { CURRENT_POLICY_VERSIONS, parseProfile, readProfile, toOwnProfile, writeProfile } from "../lib/profile";
+import { ownerVisible } from "../lib/identity";
 import { listingImagesProblem } from "../lib/storage";
 import { toPublicUser } from "./auth";
 
@@ -129,10 +130,13 @@ router.get("/profiles/:userId", async (req, res) => {
       name: usersTable.name,
       avatar: usersTable.avatar,
       verified: usersTable.verified,
+      identityStatus: usersTable.identityStatus,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)
-    .where(and(eq(usersTable.id, id.data), eq(usersTable.role, "seller"), isNull(usersTable.suspendedAt)));
+    .where(
+      and(eq(usersTable.id, id.data), eq(usersTable.role, "seller"), isNull(usersTable.suspendedAt), ownerVisible(usersTable.id)),
+    );
   const [profile, services] = user
     ? await Promise.all([
         readProfile(user.id),
@@ -161,6 +165,8 @@ router.get("/profiles/:userId", async (req, res) => {
     name: user.name,
     avatar: user.avatar ?? undefined,
     verified: user.verified,
+    // Identity checked through Veriff.
+    identityVerified: user.identityStatus === "approved",
     joinedAt: user.createdAt.toISOString().split("T")[0],
     headline: profile?.headline ?? "",
     about: profile?.about ?? "",

@@ -147,13 +147,14 @@ function ManagerWorkspace() {
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("");
   const [verification, setVerification] = useState("");
+  const [identity, setIdentity] = useState("");
   const [kind, setKind] = useState<"product" | "service">("product");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [review, setReview] = useState<Review | null>(null);
   const [reason, setReason] = useState("");
   const [notice, setNotice] = useState("");
-  const filters = { page, search, role, verification };
+  const filters = { page, search, role, verification, identity };
   const listingFilters = { page, search, kind, status };
   const overview = useQuery({
     queryKey: ["admin", user?.id, "overview"],
@@ -382,6 +383,25 @@ function ManagerWorkspace() {
                 <option value="unverified">Unverified</option>
                 <option value="verified">Verified</option>
               </select>
+              {!ADMIN_USE_MOCKS && (
+                <select
+                  aria-label="Filter identity checks"
+                  className={selectClass}
+                  value={identity}
+                  onChange={(e) => {
+                    setIdentity(e.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="">All identity checks</option>
+                  <option value="review">Needs review</option>
+                  <option value="declined">Declined</option>
+                  <option value="resubmission_requested">Resubmission requested</option>
+                  <option value="pending">In progress</option>
+                  <option value="approved">ID verified</option>
+                  <option value="none">Not started</option>
+                </select>
+              )}
             </>
           ) : (
             <>

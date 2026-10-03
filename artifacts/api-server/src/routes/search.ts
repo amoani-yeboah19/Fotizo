@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { ownerVisible } from "../lib/identity";
 import { db, productsTable, servicesTable, usersTable, vehiclesTable } from "@workspace/db";
 import { SERVICE_CATEGORIES } from "@workspace/service-taxonomy";
 import { catalogueQuery, catalogueWhere } from "../lib/catalogue";
@@ -67,6 +68,7 @@ router.get("/search", async (req, res) => {
     ).map((c) => c.id);
     const where = and(
       eq(servicesTable.status, "active"),
+      ownerVisible(servicesTable.providerId),
       or(
         ilike(servicesTable.title, term),
         ilike(servicesTable.description, term),

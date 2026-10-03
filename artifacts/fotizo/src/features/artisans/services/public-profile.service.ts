@@ -5,7 +5,10 @@ export interface PublicProfile {
   id: string;
   name: string;
   avatar?: string;
+  /** Verified by a Fotizo manager. */
   verified: boolean;
+  /** Identity checked through Veriff. */
+  identityVerified?: boolean;
   joinedAt: string;
   headline: string;
   about: string;

@@ -6,7 +6,8 @@ import { Link } from "wouter";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Package, ShoppingBag, ShoppingCart, Star, Plus, Edit2, Eye, MessageSquare, Trash2, Loader2, Calendar, Briefcase, Wallet } from "lucide-react";
+import { TrendingUp, Package, ShoppingBag, ShoppingCart, Star, Plus, Edit2, Eye, MessageSquare, Trash2, Loader2, Calendar, Briefcase, Wallet, ShieldCheck } from "lucide-react";
+import { IdentityPrompt, IdentityVerification } from "@/features/identity/IdentityVerification";
 import { IncomingBookings } from "@/features/bookings/components/IncomingBookings";
 import { MyServicesTable } from "@/features/artisans/components/MyServicesTable";
 import { useSellerProducts, useOrders, useSales, useDashboardSection } from "@/features/profile/hooks";
@@ -28,7 +29,7 @@ import { SaleStatusControl } from "@/features/payments/components/SaleStatusCont
 const statusTone = (s: string) =>
   s === "delivered" ? "success" : s === "cancelled" ? "danger" : "warning";
 
-type Section = "overview" | "products" | "services" | "orders" | "bookings" | "earnings" | "purchases";
+type Section = "overview" | "products" | "services" | "orders" | "bookings" | "earnings" | "verification" | "purchases";
 
 const lineTotal = (o: Order) => o.price * o.quantity;
 const OPEN_STATUSES = new Set(["pending", "processing"]);
@@ -63,7 +64,7 @@ export default function DashboardSeller() {
   const { data: sales = [] } = useSales();
   const { data: purchases = [] } = useOrders();
   const [section, setSection] = useDashboardSection<Section>(
-    ["overview", "products", "services", "orders", "bookings", "earnings", "purchases"],
+    ["overview", "products", "services", "orders", "bookings", "earnings", "verification", "purchases"],
     "overview",
   );
   const figures = useMemo(() => salesFigures(sales), [sales]);
@@ -99,6 +100,7 @@ export default function DashboardSeller() {
         { icon: <ShoppingBag className="w-4 h-4" />, label: "Orders", active: section === "orders", onClick: () => setSection("orders") },
         { icon: <Calendar className="w-4 h-4" />, label: "Bookings", active: section === "bookings", onClick: () => setSection("bookings") },
         { icon: <Wallet className="w-4 h-4" />, label: "Earnings", active: section === "earnings", onClick: () => setSection("earnings") },
+        { icon: <ShieldCheck className="w-4 h-4" />, label: "Verification", active: section === "verification", onClick: () => setSection("verification") },
         { icon: <ShoppingCart className="w-4 h-4" />, label: "My Purchases", active: section === "purchases", onClick: () => setSection("purchases") },
         { icon: <MessageSquare className="w-4 h-4" />, label: "Messages", href: "/messages" },
       ]}
@@ -271,7 +273,9 @@ export default function DashboardSeller() {
                     ? "Bookings"
                     : section === "earnings"
                       ? "Earnings"
-                      : "My Purchases"}
+                      : section === "verification"
+                        ? "Identity verification"
+                        : "My Purchases"}
           </h1>
           <p className="text-muted-foreground mt-1">
             {section === "purchases"
@@ -291,6 +295,7 @@ export default function DashboardSeller() {
         </div>
       </div>
 
+      {section !== "verification" && <IdentityPrompt onOpen={() => setSection("verification")} />}
       {section === "overview" && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -356,6 +361,7 @@ export default function DashboardSeller() {
       {section === "bookings" && <IncomingBookings />}
 
       {section === "earnings" && <EarningsPanel />}
+      {section === "verification" && <IdentityVerification />}
 
       {section === "purchases" && ordersTableCard(purchases, "purchases")}
 

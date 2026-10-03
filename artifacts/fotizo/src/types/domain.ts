@@ -23,7 +23,12 @@ export interface User {
   role: UserRole;
   avatar?: string;
   joinedAt: string;
+  /** Verified by a Fotizo manager. */
   verified: boolean;
+  /** Google confirmed the email address. */
+  emailVerified?: boolean;
+  /** Seller identity verification through Veriff. */
+  identityStatus?: "none" | "pending" | "review" | "approved" | "declined" | "resubmission_requested";
   hasPassword?: boolean;
   /** True once the account has saved a complete profile. */
   onboardingCompleted?: boolean;

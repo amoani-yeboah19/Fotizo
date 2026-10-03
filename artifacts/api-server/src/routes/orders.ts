@@ -18,6 +18,7 @@ import { requireAuth, requireRole, type AuthenticatedRequest } from "../middlewa
 import { caseReference } from "../lib/cases";
 import { recordUnitSaleFees } from "../lib/fees";
 import { productIdSchema } from "../lib/product-ids";
+import { ownerVisible } from "../lib/identity";
 import {
   PaymentError,
   isOnlineMethod,
@@ -208,7 +209,8 @@ router.post("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
         .select({ product: productsTable, sellerName: usersTable.name })
         .from(productsTable)
         .innerJoin(usersTable, eq(usersTable.id, productsTable.sellerId))
-        .where(inArray(productsTable.id, ids))
+        // Listings hidden until their seller is verified can't be bought either.
+        .where(and(inArray(productsTable.id, ids), ownerVisible(productsTable.sellerId)))
         .orderBy(productsTable.id)
         .for("update", { of: productsTable });
       const byId = new Map(products.map((p) => [p.product.id, p]));
