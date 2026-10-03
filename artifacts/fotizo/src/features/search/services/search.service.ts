@@ -1,7 +1,6 @@
 import { api, CATALOG_USE_MOCKS } from "@/api";
 import type { Product, Service } from "@/types";
-import * as fx from "@/services/mocks/fixtures";
-import { SHOP_PRODUCTS, type ShopProduct } from "@/features/shop/data/products";
+import type { ShopProduct } from "@/features/shop/data/shop-product";
 import { toShopProduct } from "@/features/shop/services";
 import { autosService } from "@/features/autos/services/autos.service";
 import type { Vehicle } from "@/features/autos/data/vehicles";
@@ -31,12 +30,17 @@ export const searchService = {
   /** Marketplace products, Fotizo Shop items, services and vehicles in one call. */
   async global(q: string, limit = 4): Promise<GlobalSearchResults> {
     if (CATALOG_USE_MOCKS) {
-      // Demo builds search their sample data in the browser.
-      const vehicles = await autosService.listVehicles();
+      // Demo builds search their sample data in the browser, loaded on demand.
+      const [fx, { loadLocalCatalogue }, vehicles] = await Promise.all([
+        import("@/services/mocks/fixtures"),
+        import("@/features/shop/data/local-catalogue"),
+        autosService.listVehicles(),
+      ]);
+      const shopProducts = await loadLocalCatalogue();
       return {
         q,
         products: group(fx.products.filter((p) => matches(q, p.title, p.seller, p.category)), limit),
-        shop: group(SHOP_PRODUCTS.filter((p) => matches(q, p.title, p.category)), limit),
+        shop: group(shopProducts.filter((p) => matches(q, p.title, p.category)), limit),
         services: group(fx.services.filter((s) => matches(q, s.title, s.provider, s.category, ...s.skills)), limit),
         vehicles: group(vehicles.filter((v) => matches(q, `${v.make} ${v.model}`, v.bodyType, v.fuel)), limit),
       };

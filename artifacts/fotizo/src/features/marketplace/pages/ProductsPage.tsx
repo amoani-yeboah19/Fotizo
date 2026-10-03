@@ -304,6 +304,7 @@ export default function ProductsPage() {
                     <LoadMoreSentinel
                       hasMore={Boolean(grid.hasNextPage)}
                       loading={grid.isFetchingNextPage}
+                      error={grid.isFetchNextPageError}
                       onLoadMore={() => void grid.fetchNextPage()}
                     />
                   </>

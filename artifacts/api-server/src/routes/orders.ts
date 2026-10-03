@@ -7,8 +7,10 @@ import {
   orderItemsTable,
   productsTable,
   usersTable,
+  readyToFulfil,
   CHECKOUT_PAYMENT_METHODS,
   cartItemsTable,
+  needsSupplierConfirmation,
   type OrderItemRow,
   type OrderRow,
 } from "@workspace/db";
@@ -16,6 +18,7 @@ import { requireAuth, requireRole, type AuthenticatedRequest } from "../middlewa
 import { caseReference } from "../lib/cases";
 import { recordUnitSaleFees } from "../lib/fees";
 import { productIdSchema } from "../lib/product-ids";
+import { ownerVisible } from "../lib/identity";
 import {
   PaymentError,
   isOnlineMethod,
@@ -27,7 +30,10 @@ import {
 
 const router: IRouter = Router();
 
-function toPublicOrder(item: OrderItemRow, order: Pick<OrderRow, "createdAt" | "reference" | "paymentStatus" | "paymentMethod">) {
+export function toPublicOrder(
+  item: OrderItemRow,
+  order: Pick<OrderRow, "createdAt" | "reference" | "paymentStatus" | "paymentMethod" | "confirmationStatus">,
+) {
   return {
     id: item.id,
     orderId: item.orderId,
@@ -43,6 +49,11 @@ function toPublicOrder(item: OrderItemRow, order: Pick<OrderRow, "createdAt" | "
     trackingNumber: item.trackingNumber,
     paymentStatus: order.paymentStatus,
     paymentMethod: order.paymentMethod,
+    confirmationStatus: order.confirmationStatus,
+    needsConfirmation: item.needsConfirmation,
+    requestedOptions: item.requestedOptions,
+    confirmedOptions: item.confirmedOptions,
+    estimatedPrice: item.estimatedPrice,
   };
 }
 
@@ -51,6 +62,7 @@ const orderColumns = {
   reference: ordersTable.reference,
   paymentStatus: ordersTable.paymentStatus,
   paymentMethod: ordersTable.paymentMethod,
+  confirmationStatus: ordersTable.confirmationStatus,
 };
 
 // Purchases — items the caller bought. Anyone can buy on Fotizo (a seller
@@ -93,6 +105,8 @@ const placeOrderSchema = z
           .object({
             productId: productIdSchema,
             quantity: z.number().int().min(1).max(99),
+            // Colour, size, model and so on, for imported goods confirmed with the supplier.
+            options: z.string().trim().max(300).optional(),
           })
           .strict(),
       )
@@ -118,7 +132,7 @@ const placeOrderSchema = z
   })
   .strict();
 
-class CheckoutError extends Error {
+export class CheckoutError extends Error {
   constructor(
     readonly status: number,
     message: string,
@@ -135,7 +149,7 @@ async function findByKey(buyerId: string, key: string) {
   return existing;
 }
 
-const confirmation = (order: OrderRow, checkout?: { checkoutUrl: string | null; paymentError?: string }) => ({
+export const confirmation = (order: OrderRow, checkout?: { checkoutUrl: string | null; paymentError?: string }) => ({
   ...checkout,
   orderId: order.id,
   reference: order.reference,
@@ -144,11 +158,19 @@ const confirmation = (order: OrderRow, checkout?: { checkoutUrl: string | null; 
   total: order.total,
   paymentMethod: order.paymentMethod,
   paymentStatus: order.paymentStatus,
+  // Imported goods: Fotizo confirms them with the supplier before payment.
+  confirmationStatus: order.confirmationStatus,
+  confirmationNote: order.confirmationNote,
+  deliveryDaysMin: order.deliveryDaysMin,
+  deliveryDaysMax: order.deliveryDaysMax,
+  quoteExpiresAt: order.quoteExpiresAt?.toISOString() ?? null,
 });
 
-// Places an order for offline payment. Prices, availability and delivery are
-// decided here, never by the browser. Marketplace sellers hold stock, which is
-// reserved in the same transaction; Fotizo Shop goods are sourced to order.
+// Places an order. Prices, availability and delivery are decided here, never
+// by the browser. Marketplace sellers hold stock, which is reserved in the same
+// transaction; Fotizo Shop goods are sourced to order. An order with imported
+// goods waits for Fotizo to confirm options, price, minimum order and delivery
+// with the supplier, and is only paid once the buyer accepts that quote.
 router.post("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
   const parsed = placeOrderSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -187,7 +209,8 @@ router.post("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
         .select({ product: productsTable, sellerName: usersTable.name })
         .from(productsTable)
         .innerJoin(usersTable, eq(usersTable.id, productsTable.sellerId))
-        .where(inArray(productsTable.id, ids))
+        // Listings hidden until their seller is verified can't be bought either.
+        .where(and(inArray(productsTable.id, ids), ownerVisible(productsTable.sellerId)))
         .orderBy(productsTable.id)
         .for("update", { of: productsTable });
       const byId = new Map(products.map((p) => [p.product.id, p]));
@@ -202,8 +225,10 @@ router.post("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
             409,
             `Only ${found.product.stockCount} of "${found.product.title}" left. Update your cart and try again.`,
           );
-        return { ...found, quantity: item.quantity };
+        const sourced = needsSupplierConfirmation(found.product);
+        return { ...found, quantity: item.quantity, sourced, options: sourced ? item.options || null : null };
       });
+      const confirmationStatus = lines.some((l) => l.sourced) ? ("awaiting" as const) : null;
       const subtotal = round2(lines.reduce((sum, l) => sum + l.product.price * l.quantity, 0));
       const shipping = subtotal > FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE;
       const [created] = await tx
@@ -224,6 +249,7 @@ router.post("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
           country: input.delivery.country,
           paymentMethod: input.paymentMethod,
           idempotencyKey: input.idempotencyKey,
+          confirmationStatus,
         })
         .returning();
       await tx.insert(orderItemsTable).values(
@@ -236,6 +262,9 @@ router.post("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
           seller: l.sellerName,
           price: l.product.price,
           quantity: l.quantity,
+          needsConfirmation: l.sourced,
+          requestedOptions: l.options,
+          estimatedPrice: l.sourced ? l.product.price : null,
         })),
       );
       // Ordered products leave the saved cart with the order.
@@ -250,7 +279,8 @@ router.post("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
             .where(eq(productsTable.id, l.product.id));
       return created;
     });
-    if (!isOnlineMethod(order.paymentMethod)) {
+    // Payment waits for the buyer to accept the confirmed quote.
+    if (!isOnlineMethod(order.paymentMethod) || order.confirmationStatus === "awaiting") {
       res.status(201).json(confirmation(order));
       return;
     }
@@ -332,12 +362,20 @@ router.post("/sales/:id/status", requireAuth, async (req: AuthenticatedRequest, 
     return;
   }
   const outcome = await db.transaction(async (tx) => {
-    const [line] = await tx
-      .select()
+    const [found] = await tx
+      .select({ line: orderItemsTable, confirmationStatus: ordersTable.confirmationStatus })
       .from(orderItemsTable)
+      .innerJoin(ordersTable, eq(ordersTable.id, orderItemsTable.orderId))
       .where(and(eq(orderItemsTable.id, id.data), eq(orderItemsTable.sellerId, req.auth!.userId)))
-      .for("update");
-    if (!line) return { status: 404 as const, error: "Order line not found." };
+      .for("update", { of: orderItemsTable });
+    if (!found) return { status: 404 as const, error: "Order line not found." };
+    const line = found.line;
+    // Nothing ships until the buyer has accepted the confirmed items and total.
+    if (!readyToFulfil(found))
+      return {
+        status: 409 as const,
+        error: "This order is waiting for supplier confirmation and the buyer's acceptance. Use Order confirmations instead.",
+      };
     if (!LINE_TRANSITIONS[line.status]?.includes(body.data.status))
       return {
         status: 409 as const,
@@ -382,13 +420,22 @@ router.post(
       const [paid] = await tx
         .update(ordersTable)
         .set({ paymentStatus: "paid", paidAt: new Date(), paidBy: req.auth!.userId })
-        .where(and(eq(ordersTable.id, id.data), eq(ordersTable.paymentStatus, "unpaid")))
+        .where(
+          and(
+            eq(ordersTable.id, id.data),
+            eq(ordersTable.paymentStatus, "unpaid"),
+            // Not before the buyer has accepted the confirmed total.
+            sql`(${ordersTable.confirmationStatus} IS NULL OR ${ordersTable.confirmationStatus} = 'accepted')`,
+          ),
+        )
         .returning();
       if (paid) await recordUnitSaleFees(tx, paid.id);
       return paid;
     });
     if (!updated) {
-      res.status(409).json({ error: "This order is already paid or does not exist. Refresh and try again." });
+      res.status(409).json({
+        error: "This order is already paid, is still awaiting the buyer's acceptance, or does not exist. Refresh and try again.",
+      });
       return;
     }
     res.json({ id: updated.id, paymentStatus: updated.paymentStatus, paidAt: updated.paidAt });

@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
+import { ownerVisible } from "../lib/identity";
 import { alias } from "drizzle-orm/pg-core";
 import { db, bookingsTable, servicesTable, usersTable, type BookingRow, type BookingStatus } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
@@ -84,7 +85,9 @@ router.post("/bookings", async (req: AuthenticatedRequest, res) => {
   const [service] = await db
     .select()
     .from(servicesTable)
-    .where(and(eq(servicesTable.id, parsed.data.serviceId), eq(servicesTable.status, "active")));
+    .where(
+      and(eq(servicesTable.id, parsed.data.serviceId), eq(servicesTable.status, "active"), ownerVisible(servicesTable.providerId)),
+    );
   if (!service) {
     res.status(404).json({ error: "This service is no longer available." });
     return;

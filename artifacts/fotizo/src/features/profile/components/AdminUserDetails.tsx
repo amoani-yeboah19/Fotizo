@@ -6,6 +6,7 @@ import {
   adminService,
   ADMIN_ROLES,
   type AccountChange,
+  type IdentityStatus,
 } from "../services/manager.service";
 import {
   Dialog,
@@ -20,7 +21,17 @@ import { Loading } from "@/components/common/QueryStates";
 
 type PendingChange =
   | Omit<Extract<AccountChange, { action: "role" }>, "reason">
-  | Omit<Extract<AccountChange, { action: "status" }>, "reason">;
+  | Omit<Extract<AccountChange, { action: "status" }>, "reason">
+  // A manager's identity decision (name mismatches, declines, appeals).
+  | { id: string; action: "identity"; value: "approved" | "declined"; expected: IdentityStatus };
+const IDENTITY_TONE: Record<IdentityStatus, "success" | "warning" | "danger" | "info" | "neutral"> = {
+  none: "neutral",
+  pending: "warning",
+  review: "info",
+  approved: "success",
+  declined: "danger",
+  resubmission_requested: "warning",
+};
 const label = (value: string) => value.replaceAll("_", " ");
 function errorMessage(error: unknown) {
   if (
@@ -53,7 +64,16 @@ export function AdminUserDetails({
     queryFn: () => adminService.userDetails(id),
   });
   const mutation = useMutation({
-    mutationFn: adminService.changeAccount,
+    mutationFn: (change: PendingChange & { reason: string }) =>
+      change.action === "identity"
+        ? adminService.decide({
+            id: change.id,
+            kind: "identity",
+            status: change.value,
+            expected: change.expected,
+            reason: change.reason,
+          })
+        : adminService.changeAccount(change),
     onSuccess: async () => {
       setPending(null);
       setReason("");
@@ -127,7 +147,11 @@ export function AdminUserDetails({
                 >
                   <div className="rounded-xl border border-border p-4 mb-4">
                     <p className="font-medium">
-                      {pending.action === "role"
+                      {pending.action === "identity"
+                        ? pending.value === "approved"
+                          ? "Approve identity"
+                          : "Decline identity"
+                        : pending.action === "role"
                         ? "Change role"
                         : pending.value === "suspended"
                           ? "Suspend account"
@@ -137,7 +161,11 @@ export function AdminUserDetails({
                       {label(pending.expected)} → {label(pending.value)}
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      {pending.action === "role"
+                      {pending.action === "identity"
+                        ? pending.value === "approved"
+                          ? "The seller is marked identity-verified: their listings become public and the ID verified badge shows."
+                          : "The seller is marked not verified. Once verification is required their listings are hidden."
+                        : pending.action === "role"
                         ? "This changes the account’s assigned workspace and permissions once connected to the backend."
                         : pending.value === "suspended"
                           ? "When connected, suspension must block protected access and revoke active sessions."
@@ -191,8 +219,8 @@ export function AdminUserDetails({
                     <Button
                       type="submit"
                       variant={
-                        pending.action === "status" &&
-                        pending.value === "suspended"
+                        (pending.action === "status" && pending.value === "suspended") ||
+                        (pending.action === "identity" && pending.value === "declined")
                           ? "destructive"
                           : "default"
                       }
@@ -254,6 +282,61 @@ export function AdminUserDetails({
                       </div>
                     </dl>
                   </section>
+                  {user.role === "seller" && user.identityStatus && (
+                    <section className="rounded-xl border border-border p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <h3 className="font-semibold">Identity verification</h3>
+                        <StatusBadge tone={IDENTITY_TONE[user.identityStatus]}>
+                          {label(user.identityStatus === "none" ? "not started" : user.identityStatus)}
+                        </StatusBadge>
+                      </div>
+                      {details.data.identityChecks?.length ? (
+                        <ul className="space-y-2 mb-3">
+                          {details.data.identityChecks.map((check) => (
+                            <li key={check.sessionId} className="rounded-lg bg-muted/50 p-3 text-sm">
+                              <p className="font-medium capitalize">
+                                {label(check.status)}
+                                {check.documentType ? ` · ${label(check.documentType.toLowerCase())}` : ""}
+                                {check.documentCountry ? ` (${check.documentCountry})` : ""}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Started {new Date(check.createdAt).toLocaleString()}
+                                {check.decidedAt ? ` · decided ${new Date(check.decidedAt).toLocaleString()}` : ""}
+                              </p>
+                              {check.nameMatches === false && (
+                                <p className="text-xs text-amber-700 mt-1">The document name differs from the account name.</p>
+                              )}
+                              {check.reason && <p className="text-xs mt-1">Veriff: {check.reason}</p>}
+                              <p className="text-xs text-muted-foreground mt-1 break-all">Veriff session {check.sessionId}</p>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-muted-foreground mb-3">No identity checks yet.</p>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {user.identityStatus !== "approved" && (
+                          <Button
+                            size="sm"
+                            disabled={mutation.isPending}
+                            onClick={() => start({ id, action: "identity", value: "approved", expected: user.identityStatus! })}
+                          >
+                            Approve identity
+                          </Button>
+                        )}
+                        {(user.identityStatus === "review" || user.identityStatus === "approved") && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={mutation.isPending}
+                            onClick={() => start({ id, action: "identity", value: "declined", expected: user.identityStatus! })}
+                          >
+                            {user.identityStatus === "approved" ? "Revoke identity" : "Decline identity"}
+                          </Button>
+                        )}
+                      </div>
+                    </section>
+                  )}
                   <section className="rounded-xl border border-border p-4">
                     <h3 className="font-semibold mb-3">Account controls</h3>
                     {self && (

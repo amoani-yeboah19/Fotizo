@@ -14,7 +14,7 @@ import { ordersService } from "@/features/payments/services/orders.service";
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage } from "@/api";
 import type { DeliveryDetails, OnlinePaymentMethod, PaymentMethod } from "@/types";
-import { Loader2, CheckCircle2, Truck, Smartphone, Globe, Lock } from "lucide-react";
+import { Loader2, CheckCircle2, Truck, Smartphone, Globe, Lock, ClipboardCheck } from "lucide-react";
 
 // Same rule the server applies when it prices the order.
 const FREE_DELIVERY_OVER = 50;
@@ -135,6 +135,10 @@ export default function CheckoutPage() {
   // One key per checkout: a retried or double-clicked submission returns the
   // order already created instead of placing a second one.
   const [idempotencyKey] = useState(() => crypto.randomUUID());
+  // Imported goods are confirmed with the supplier before payment: the buyer
+  // says which options they want, and pays once they accept the confirmed total.
+  const [options, setOptions] = useState<Record<string, string>>({});
+  const needsConfirmation = items.some((i) => i.needsConfirmation);
 
   const shipping = total > FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE;
   const grandTotal = total + (items.length > 0 ? shipping : 0);
@@ -180,7 +184,11 @@ export default function CheckoutPage() {
     setIsProcessing(true);
     try {
       const order = await placeOrder.mutateAsync({
-        items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+        items: items.map((i) => ({
+          productId: i.productId,
+          quantity: i.quantity,
+          ...(i.needsConfirmation && options[i.productId]?.trim() ? { options: options[i.productId].trim() } : {}),
+        })),
         delivery,
         paymentMethod,
         idempotencyKey,
@@ -354,7 +362,9 @@ export default function CheckoutPage() {
                   <p className="flex items-start gap-2 text-sm text-muted-foreground">
                     {paysOnline && <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />}
                     {paysOnline
-                      ? `After you place your order you'll pay on ${payment.label}'s secure page. Fotizo never sees your card details.`
+                      ? needsConfirmation
+                        ? `You'll pay on ${payment.label}'s secure page once you accept the confirmed total. Fotizo never sees your card details.`
+                        : `After you place your order you'll pay on ${payment.label}'s secure page. Fotizo never sees your card details.`
                       : "No card details are needed. Nothing is charged online."}
                   </p>
                   <div className="pt-4 flex gap-4">
@@ -378,11 +388,47 @@ export default function CheckoutPage() {
                 <div className="animate-in fade-in">
                   <p className="text-muted-foreground mb-6">Please review your items and details before placing the order.</p>
 
+                  {needsConfirmation && (
+                    <div className="mb-6 flex gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+                      <ClipboardCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                      <div>
+                        <p className="font-semibold">Imported items are confirmed before you pay</p>
+                        <p className="mt-1 text-muted-foreground">
+                          Prices for imported items are estimates. We'll check your options, the final price, the
+                          supplier's minimum order and delivery, then send you a confirmed total to accept. Nothing is
+                          charged until you accept it.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-4 mb-6">
                     {items.map(item => (
-                      <div key={item.id} className="flex justify-between text-sm">
-                        <span>{item.quantity}x {item.title}</span>
-                        <Price amount={item.price * item.quantity} className="font-medium" />
+                      <div key={item.id} className="text-sm">
+                        <div className="flex justify-between gap-4">
+                          <span>{item.quantity}x {item.title}</span>
+                          <Price amount={item.price * item.quantity} className="font-medium shrink-0" />
+                        </div>
+                        {item.needsConfirmation && (
+                          <div className="mt-2 space-y-1.5 rounded-lg bg-muted/50 p-3">
+                            {item.minimumOrder && (
+                              <p className="text-xs text-muted-foreground">
+                                Supplier minimum order: {item.minimumOrder}. Smaller orders may cost more per item; we'll confirm.
+                              </p>
+                            )}
+                            <Label htmlFor={`options-${item.productId}`} className="text-xs">
+                              Options you want (optional)
+                            </Label>
+                            <Input
+                              id={`options-${item.productId}`}
+                              placeholder="e.g. colour, size, model"
+                              maxLength={300}
+                              value={options[item.productId] ?? ""}
+                              onChange={(e) => setOptions((o) => ({ ...o, [item.productId]: e.target.value }))}
+                              className="h-9 bg-white"
+                            />
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -410,7 +456,9 @@ export default function CheckoutPage() {
                     <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
                     <Button onClick={handlePlaceOrder} className="flex-1" disabled={isProcessing}>
                       {isProcessing ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-                      {paysOnline ? "Place Order & Pay" : "Place Order"} - <Price amount={grandTotal} />
+                      {needsConfirmation
+                        ? <>Request Confirmation - <Price amount={grandTotal} /> est.</>
+                        : <>{paysOnline ? "Place Order & Pay" : "Place Order"} - <Price amount={grandTotal} /></>}
                     </Button>
                   </div>
                 </div>
@@ -440,9 +488,14 @@ export default function CheckoutPage() {
               <div className="h-px bg-border mb-6" />
 
               <div className="flex justify-between mb-2">
-                <span className="text-lg font-bold">Total</span>
+                <span className="text-lg font-bold">{needsConfirmation ? "Estimated total" : "Total"}</span>
                 <Price amount={grandTotal} className="text-2xl font-bold text-primary" />
               </div>
+              {needsConfirmation && (
+                <p className="text-xs text-muted-foreground">
+                  Final prices and delivery for imported items are confirmed before you pay.
+                </p>
+              )}
             </SurfaceCard>
           </div>
 

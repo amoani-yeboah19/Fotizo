@@ -37,7 +37,13 @@ export const usersTable = pgTable(
     googleId: text("google_id").unique(),
     role: userRoleEnum("role").notNull().default("buyer"),
     avatar: text("avatar"),
+    /** Verified by a Fotizo manager (shown publicly). */
     verified: boolean("verified").notNull().default(false),
+    /** Google confirmed the email address (migration 0017). */
+    emailVerified: boolean("email_verified").notNull().default(false),
+    /** Seller identity verification through Veriff (migration 0017). */
+    identityStatus: text("identity_status").$type<IdentityStatus>().notNull().default("none"),
+    identityVerifiedAt: timestamp("identity_verified_at", { withTimezone: true }),
     suspendedAt: timestamp("suspended_at", { withTimezone: true }),
     accountStatusVersion: integer("account_status_version")
       .notNull()
@@ -55,6 +61,9 @@ export const insertUserSchema = createInsertSchema(usersTable).omit({
   id: true,
   passwordHash: true,
   verified: true,
+  emailVerified: true,
+  identityStatus: true,
+  identityVerifiedAt: true,
   suspendedAt: true,
   accountStatusVersion: true,
   onboardingCompletedAt: true,
@@ -62,4 +71,6 @@ export const insertUserSchema = createInsertSchema(usersTable).omit({
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export const IDENTITY_STATUSES = ["none", "pending", "review", "approved", "declined", "resubmission_requested"] as const;
+export type IdentityStatus = (typeof IDENTITY_STATUSES)[number];
 export type UserRow = typeof usersTable.$inferSelect;

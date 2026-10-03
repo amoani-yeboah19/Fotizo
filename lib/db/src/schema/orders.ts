@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, uuid, text, integer, numeric, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, uuid, text, integer, numeric, timestamp, boolean } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 import { productsTable } from "./products";
 
@@ -37,7 +37,40 @@ export const ordersTable = pgTable("orders", {
   paidAt: timestamp("paid_at", { withTimezone: true }),
   paidBy: uuid("paid_by").references(() => usersTable.id, { onDelete: "set null" }),
   idempotencyKey: text("idempotency_key"),
+  // Supplier confirmation for imported goods (migrations/0016). NULL status:
+  // nothing in the order needs confirming.
+  confirmationStatus: text("confirmation_status").$type<ConfirmationStatus>(),
+  /** Fotizo's message with a quote, or the reason it was declined. */
+  confirmationNote: text("confirmation_note"),
+  deliveryDaysMin: integer("delivery_days_min"),
+  deliveryDaysMax: integer("delivery_days_max"),
+  quotedAt: timestamp("quoted_at", { withTimezone: true }),
+  quotedBy: uuid("quoted_by").references(() => usersTable.id, { onDelete: "set null" }),
+  quoteExpiresAt: timestamp("quote_expires_at", { withTimezone: true }),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
 });
+
+export const CONFIRMATION_STATUSES = ["awaiting", "quoted", "accepted", "declined", "withdrawn", "expired"] as const;
+export type ConfirmationStatus = (typeof CONFIRMATION_STATUSES)[number];
+/** Days a confirmed quote stays open for the buyer to accept. */
+export const QUOTE_VALID_DAYS = 7;
+
+/**
+ * Imported goods are listed at an estimate: their options, final price, the
+ * supplier's minimum order and delivery are confirmed with the supplier before
+ * the buyer pays.
+ */
+export function needsSupplierConfirmation(p: {
+  channel: string;
+  sourcePlatform: string | null;
+  sourceProductId: string | null;
+}): boolean {
+  return p.channel === "shop" && Boolean(p.sourcePlatform && p.sourceProductId);
+}
+
+/** Whether an order may be paid and fulfilled (it needs no confirmation, or the buyer accepted). */
+export const readyToFulfil = (order: { confirmationStatus: ConfirmationStatus | null }) =>
+  order.confirmationStatus === null || order.confirmationStatus === "accepted";
 
 export const PAYMENT_METHODS = ["pay_on_delivery", "mobile_money", "bank_transfer", "paystack", "stripe"] as const;
 /**
@@ -71,6 +104,13 @@ export const orderItemsTable = pgTable("order_items", {
   quantity: integer("quantity").notNull(),
   status: orderStatusEnum("status").notNull().default("pending"),
   trackingNumber: text("tracking_number"),
+  needsConfirmation: boolean("needs_confirmation").notNull().default(false),
+  /** What the buyer asked for: colour, size, model and so on. */
+  requestedOptions: text("requested_options"),
+  /** What Fotizo confirmed with the supplier. */
+  confirmedOptions: text("confirmed_options"),
+  /** The estimated unit price shown at checkout; price holds the confirmed one. */
+  estimatedPrice: numeric("estimated_price", { precision: 10, scale: 2, mode: "number" }),
 });
 
 export type OrderRow = typeof ordersTable.$inferSelect;

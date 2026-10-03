@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { and, asc, desc, eq, gt, gte, ilike, lte, or, sql } from "drizzle-orm";
 import { productsTable as p, usersTable } from "@workspace/db";
+import { ownerVisible } from "./identity";
 
 import { ListCatalogueProductsQueryParams } from "@workspace/api-zod";
 const shape = ListCatalogueProductsQueryParams.shape;
@@ -70,6 +71,8 @@ export function catalogueWhere(filter: z.infer<typeof catalogueQuery>) {
   return and(
     eq(p.status, "active"),
     eq(p.channel, filter.channel),
+    // Sellers' listings are public once their identity is verified.
+    ownerVisible(p.sellerId),
     filter.category ? eq(categoryKey, filter.category) : undefined,
     filter.sellerId ? eq(p.sellerId, filter.sellerId) : undefined,
     filter.q

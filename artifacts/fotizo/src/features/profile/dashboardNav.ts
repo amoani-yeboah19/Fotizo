@@ -20,6 +20,7 @@ export const DASHBOARD_NAV: Record<string, DashboardNavItem[]> = {
     { label: "My Products", tab: "products" },
     { label: "Orders", tab: "orders" },
     { label: "Earnings", tab: "earnings" },
+    { label: "Verification", tab: "verification" },
     { label: "My Purchases", tab: "purchases" },
   ],
   manager: DEMO_MODE ? [
@@ -29,6 +30,7 @@ export const DASHBOARD_NAV: Record<string, DashboardNavItem[]> = {
     { label: "Users", tab: "users" },
     { label: "Account audit", tab: "audit" },
     { label: "Orders", tab: "orders" },
+    { label: "Order confirmations", tab: "confirmations" },
     { label: "Support", tab: "support" },
     { label: "Vehicle enquiries", tab: "enquiries" },
     { label: "Moderation", tab: "moderation" },
@@ -48,6 +50,7 @@ export const DASHBOARD_NAV: Record<string, DashboardNavItem[]> = {
   ],
   china_representative: [
     { label: "Overview", tab: "overview" },
+    { label: "Order confirmations", tab: "confirmations" },
     { label: "Shop Supply", tab: "shop" },
     { label: "Autos Pipeline", tab: "autos" },
     { label: "Freight", tab: "freight" },

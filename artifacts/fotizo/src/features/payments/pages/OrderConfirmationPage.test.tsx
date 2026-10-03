@@ -21,7 +21,10 @@ vi.mock("@/contexts/CurrencyContext", () => ({
 }));
 vi.mock("framer-motion", () => ({ motion: { div: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div> } }));
 vi.mock("../services/orders.service", () => ({
-  ordersService: { getOrder: vi.fn(), verifyPayment: vi.fn(), startPayment: vi.fn(), openCheckout: vi.fn() },
+  ordersService: {
+    getOrder: vi.fn(), verifyPayment: vi.fn(), startPayment: vi.fn(), openCheckout: vi.fn(),
+    acceptQuote: vi.fn(), withdrawOrder: vi.fn(),
+  },
 }));
 
 const order = (patch: Partial<OrderDetail> = {}): OrderDetail => ({
@@ -35,6 +38,11 @@ const order = (patch: Partial<OrderDetail> = {}): OrderDetail => ({
   createdAt: "2026-09-26T10:00:00Z",
   delivery: { name: "Ama", phone: "0244", addressLine1: "1 Road", addressLine2: "", city: "Accra", postalCode: "", country: "GH" },
   items: [],
+  confirmationStatus: null,
+  confirmationNote: null,
+  deliveryDaysMin: null,
+  deliveryDaysMax: null,
+  quoteExpiresAt: null,
   ...patch,
 });
 
@@ -85,4 +93,66 @@ it("does not contact a provider for offline orders", async () => {
   mount();
   expect(await screen.findByText("Order Placed!")).toBeTruthy();
   expect(ordersService.verifyPayment).not.toHaveBeenCalled();
+});
+
+const bagLine = {
+  id: "l1", orderId: "o1", reference: "FTZ-ABCDEFGH", paymentStatus: "unpaid" as const, paymentMethod: "paystack" as const,
+  productId: "p1", productTitle: "Waist bag", productImage: "", seller: "Fotizo Shop", price: 2.5, quantity: 4,
+  status: "pending", date: "2026-09-26", trackingNumber: null, needsConfirmation: true,
+  requestedOptions: "Black", confirmedOptions: "Black, adjustable strap", estimatedPrice: 1.95,
+};
+
+it("holds an order with imported items for confirmation without opening payment", async () => {
+  vi.mocked(ordersService.getOrder).mockResolvedValue(
+    order({ confirmationStatus: "awaiting", items: [{ ...bagLine, price: 1.95, confirmedOptions: null, confirmationStatus: "awaiting" }] }),
+  );
+  vi.mocked(ordersService.withdrawOrder).mockResolvedValue(order({ confirmationStatus: "withdrawn" }));
+  mount();
+  expect(await screen.findByText("Confirming Your Items")).toBeTruthy();
+  expect(screen.getByText("Estimated total")).toBeTruthy();
+  expect(screen.getByText("Requested: Black")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /Pay Now|Accept/ })).toBeNull();
+  expect(ordersService.verifyPayment).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Cancel Request" }));
+  await waitFor(() => expect(ordersService.withdrawOrder).toHaveBeenCalledWith("o1"));
+});
+
+it("shows the confirmed quote and sends the buyer to pay when they accept", async () => {
+  vi.mocked(ordersService.getOrder).mockResolvedValue(
+    order({
+      confirmationStatus: "quoted",
+      confirmationNote: "Small-order surcharge applies.",
+      subtotal: 10,
+      shipping: 12,
+      total: 22,
+      deliveryDaysMin: 12,
+      deliveryDaysMax: 20,
+      quoteExpiresAt: "2026-10-03T10:00:00Z",
+      items: [{ ...bagLine, confirmationStatus: "quoted" }],
+    }),
+  );
+  vi.mocked(ordersService.acceptQuote).mockResolvedValue({
+    ...order({ confirmationStatus: "accepted" }),
+    checkoutUrl: "https://checkout.paystack.com/quote",
+  });
+  mount();
+  expect(await screen.findByText("Your Order Is Confirmed")).toBeTruthy();
+  expect(screen.getByText("Small-order surcharge applies.")).toBeTruthy();
+  expect(screen.getByText("Confirmed: Black, adjustable strap")).toBeTruthy();
+  expect(screen.getByText("12–20 days")).toBeTruthy();
+  expect(
+    screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "£2.50 each (estimated £1.95)"),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /Accept & Pay/ }));
+  await waitFor(() => expect(ordersService.openCheckout).toHaveBeenCalledWith("https://checkout.paystack.com/quote"));
+});
+
+it("explains a declined order with Fotizo's reason", async () => {
+  vi.mocked(ordersService.getOrder).mockResolvedValue(
+    order({ confirmationStatus: "declined", confirmationNote: "The supplier discontinued this item." }),
+  );
+  mount();
+  expect(await screen.findByText("We Couldn't Supply This Order")).toBeTruthy();
+  expect(screen.getByText("The supplier discontinued this item.")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /Accept|Pay Now/ })).toBeNull();
 });

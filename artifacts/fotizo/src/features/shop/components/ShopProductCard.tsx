@@ -9,7 +9,7 @@ import {
   discountPct,
   soldLabel,
   type ShopProduct,
-} from "@/features/shop/data/products";
+} from "@/features/shop/data/shop-product";
 
 export const SHOP_SELLER = "Fotizo Import";
 

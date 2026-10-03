@@ -23,11 +23,8 @@ import {
   ShopProductCard,
   SHOP_SELLER,
 } from "@/features/shop/components/ShopProductCard";
-import {
-  discountPct,
-  soldLabel,
-  categoryLabel,
-} from "@/features/shop/data/products";
+import { discountPct, soldLabel } from "@/features/shop/data/shop-product";
+import { categoryLabel } from "@/features/shop/data/categories";
 
 export default function ShopProductPage() {
   const [, params] = useRoute("/shop/:id");

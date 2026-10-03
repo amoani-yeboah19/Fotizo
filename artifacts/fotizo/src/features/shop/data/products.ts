@@ -7,50 +7,13 @@ import { SHOP_CATEGORIES } from "@/features/shop/data/categories";
 // ./categories directly — see the note there.
 export { SHOP_CATEGORIES, categoryLabel } from "@/features/shop/data/categories";
 export type { ShopCategory } from "@/features/shop/data/categories";
+import { discountPct, type ShopProduct } from "./shop-product";
+export { discountPct, soldLabel, type ShopProduct } from "./shop-product";
 
 // Fotizo Shop catalog — real products sourced from the supplier storefront.
 // Prices are stored in the app's base currency (GBP); the Price component
 // converts to the active currency (the ₵ prices convert back at the app's
 // GHS rate). Images are hosted by the supplier and load over HTTPS.
-
-export interface ShopProduct {
-  sourcing?: {
-    platform: string;
-    productId: string;
-    originalTitle: string;
-    sourcePage: string;
-    capturedAt: string;
-    currency: string;
-    priceRange: string;
-    minimumOrder: string | null;
-    unit: string | null;
-    originalImage: string;
-    priceStatus: string;
-    usdPerGbp?: number;
-    sourceToGbp?: number;
-    exchangeRateDate?: string;
-    exchangeRateSource?: string;
-    previewMarkup: number;
-  };
-  stockCount?: number;
-  id: string;
-  title: string;
-  category: string;
-  price: number;
-  originalPrice: number;
-  rating: number;
-  sold: number;
-  image: string;
-  images: string[];
-  freeShipping: boolean;
-  almostGone: boolean;
-  description: string;
-  /**
-   * Supplier listing this was imported from, for buyers/ops to trace a product
-   * back to its source. Absent on the older hand-entered listings.
-   */
-  sourceUrl?: string;
-}
 
 const EXISTING_SHOP_PRODUCTS: ShopProduct[] = [
   // ── Supplier listings (tuwa.com.gh) ─────────────────────────────────────
@@ -783,10 +746,6 @@ export const SHOP_PRODUCTS: ShopProduct[] = [
 ];
 
 
-export function discountPct(p: Pick<ShopProduct, "price" | "originalPrice">): number {
-  if (p.originalPrice <= p.price) return 0;
-  return Math.round((1 - p.price / p.originalPrice) * 100);
-}
 
 // These take the catalogue as an argument rather than closing over
 // SHOP_PRODUCTS, so the same logic serves the committed file and the listings
@@ -851,10 +810,4 @@ export function shopCategoryCards(products: ShopProduct[] = SHOP_PRODUCTS): Shop
   })
     .filter((c) => c.count > 0 && c.image)
     .sort((a, b) => b.count - a.count);
-}
-
-// Formats a sold count Temu-style: 9500 → "9.5k+ sold".
-export function soldLabel(sold: number): string {
-  if (sold >= 1000) return `${(sold / 1000).toFixed(1).replace(/\.0$/, "")}k+ sold`;
-  return `${sold} sold`;
 }

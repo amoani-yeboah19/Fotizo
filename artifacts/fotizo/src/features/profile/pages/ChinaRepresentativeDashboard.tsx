@@ -22,7 +22,10 @@ import {
   CarFront,
   Warehouse,
   AlertTriangle,
+  ClipboardCheck,
 } from "lucide-react";
+import { ConfirmationQueue } from "@/features/orders/components/ConfirmationQueue";
+import { useConfirmationQueue } from "@/features/payments/hooks";
 import { useDashboardSection } from "@/features/profile/hooks";
 import { Loading } from "@/components/common/QueryStates";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -43,7 +46,7 @@ import {
   VehicleCatalogueControls,
 } from "@/features/profile/components/Operations";
 
-type Section = "overview" | "shop" | "autos" | "freight" | "suppliers";
+type Section = "overview" | "confirmations" | "shop" | "autos" | "freight" | "suppliers";
 
 const subText = (t: string) => (
   <p className="text-xs text-muted-foreground mt-2">{t}</p>
@@ -291,9 +294,12 @@ function RestockQueue() {
 
 export default function ChinaRepresentativeDashboard() {
   const [section, setSection] = useDashboardSection<Section>(
-    ["overview", "shop", "autos", "freight", "suppliers"],
+    ["overview", "confirmations", "shop", "autos", "freight", "suppliers"],
     "overview",
   );
+  // Orders with imported goods waiting for a confirmed quote.
+  const confirmations = useConfirmationQueue();
+  const toConfirm = confirmations.data?.filter((r) => r.confirmationStatus === "awaiting").length ?? 0;
   const {
     AUTOS_TOTAL,
     CHINA_MARQUE_UNITS,
@@ -318,6 +324,13 @@ export default function ChinaRepresentativeDashboard() {
           label: "Overview",
           active: section === "overview",
           onClick: () => setSection("overview"),
+        },
+        {
+          icon: <ClipboardCheck className="w-4 h-4" />,
+          label: "Order confirmations",
+          active: section === "confirmations",
+          onClick: () => setSection("confirmations"),
+          badge: toConfirm,
         },
         {
           icon: <Boxes className="w-4 h-4" />,
@@ -563,6 +576,7 @@ export default function ChinaRepresentativeDashboard() {
       {section === "freight" && <SourcingDrafts kind="shipment" />}
 
       {section === "suppliers" && <SourcingDrafts kind="supplier" />}
+      {section === "confirmations" && <ConfirmationQueue />}
     </DashboardLayout>
   );
 }
