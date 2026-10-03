@@ -1,4 +1,5 @@
-import { PurchaseDetailsDialog, purchaseStatusTone } from "@/features/orders/components/PurchaseDetailsDialog";
+import { PurchaseDetailsDialog } from "@/features/orders/components/PurchaseDetailsDialog";
+import { purchaseStatus } from "@/features/orders/confirmation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMessages } from "@/contexts/MessagesContext";
 import { useOrders, useDashboardSection } from "@/features/profile/hooks";
@@ -22,6 +23,7 @@ import {
 type Section = "overview" | "orders" | "bookings" | "wishlist";
 
 function OrderRow({ order }: { order: Order }) {
+  const status = purchaseStatus(order);
   return (
     <PurchaseDetailsDialog order={order}>
       <button type="button" aria-label={`View purchase details for ${order.productTitle}`} className="w-full p-6 flex items-center justify-between text-left hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary">
@@ -34,7 +36,7 @@ function OrderRow({ order }: { order: Order }) {
           </span>
         </span>
         <span className="flex flex-col items-end shrink-0 pl-4">
-          <StatusBadge tone={purchaseStatusTone(order.status)} className="mb-1">{order.status.replaceAll("_", " ")}</StatusBadge>
+          <StatusBadge tone={status.tone} className="mb-1">{status.label}</StatusBadge>
           <Price amount={order.price * order.quantity} className="text-sm font-bold" />
         </span>
       </button>

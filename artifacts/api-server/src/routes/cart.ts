@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { productIdSchema } from "../lib/product-ids";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
-import { db, cartItemsTable, productsTable, usersTable } from "@workspace/db";
+import { db, cartItemsTable, productsTable, usersTable, needsSupplierConfirmation } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
 
 // A signed-in customer's saved cart. Titles, images and prices come from the
@@ -22,6 +22,9 @@ async function readCart(userId: string) {
       price: productsTable.price,
       images: productsTable.images,
       channel: productsTable.channel,
+      sourcePlatform: productsTable.sourcePlatform,
+      sourceProductId: productsTable.sourceProductId,
+      specs: productsTable.specs,
       seller: usersTable.name,
     })
     .from(cartItemsTable)
@@ -38,6 +41,14 @@ async function readCart(userId: string) {
     image: r.images[0] ?? "",
     seller: r.channel === "shop" ? "Fotizo Shop" : r.seller,
     quantity: r.quantity,
+    // Imported goods are confirmed with the supplier before payment; checkout
+    // shows the supplier's minimum order and asks for the options wanted.
+    ...(needsSupplierConfirmation(r)
+      ? {
+          needsConfirmation: true,
+          minimumOrder: (r.specs as Record<string, string> | null)?.minimumOrder ?? null,
+        }
+      : {}),
   }));
 }
 

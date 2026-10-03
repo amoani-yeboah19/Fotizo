@@ -10,13 +10,15 @@ import { ApiError } from "@/api/client";
 const navigate = vi.hoisted(() => vi.fn());
 const clearCart = vi.hoisted(() => vi.fn());
 const toast = vi.hoisted(() => vi.fn());
+const kettle = { id: "c1", productId: "p1", title: "Kettle", price: 20, image: "", seller: "Ama", quantity: 2 };
+const cart = vi.hoisted(() => ({ items: [] as Record<string, unknown>[] }));
 vi.mock("wouter", () => ({ useLocation: () => ["/checkout", navigate] }));
 vi.mock("@/components/layout/PageLayout", () => ({
   PageLayout: ({ children }: { children: ReactNode }) => <main>{children}</main>,
 }));
 vi.mock("@/contexts/CartContext", () => ({
   useCart: () => ({
-    items: [{ id: "c1", productId: "p1", title: "Kettle", price: 20, image: "", seller: "Ama", quantity: 2 }],
+    items: cart.items,
     total: 40,
     isLoaded: true,
     clearCart,
@@ -53,8 +55,11 @@ function toReview() {
 }
 
 const offlineOnly = { paystack: false, stripe: false };
+// Orders that need no supplier confirmation (marketplace goods only).
+const unconfirmed = { confirmationStatus: null, confirmationNote: null, deliveryDaysMin: null, deliveryDaysMax: null, quoteExpiresAt: null };
 beforeEach(() => {
   vi.resetAllMocks();
+  cart.items = [kettle];
   vi.mocked(ordersService.paymentConfig).mockResolvedValue(offlineOnly);
 });
 afterEach(cleanup);
@@ -79,6 +84,7 @@ it("places the order with delivery, payment method and a reused retry key", asyn
       total: 45.99,
       paymentMethod: "pay_on_delivery",
       paymentStatus: "unpaid",
+      ...unconfirmed,
     });
   mount();
   fillDelivery();
@@ -123,6 +129,7 @@ const placed = {
   shipping: 5.99,
   total: 45.99,
   paymentStatus: "unpaid" as const,
+  ...unconfirmed,
 };
 
 it("offers Paystack for Ghana, Stripe elsewhere, and sends the buyer to the payment page", async () => {
@@ -190,5 +197,33 @@ it("keeps the order and explains when the payment page couldn't be opened", asyn
   fireEvent.click(screen.getByRole("button", { name: /Place Order & Pay/ }));
   await waitFor(() => expect(navigate).toHaveBeenCalledWith("/order-confirmation?order=o2"));
   expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Order placed, payment not started" }));
+  expect(ordersService.openCheckout).not.toHaveBeenCalled();
+});
+
+it("asks for options on imported items and requests confirmation instead of charging the estimate", async () => {
+  cart.items = [
+    { ...kettle, needsConfirmation: true, minimumOrder: "20 pieces", title: "Waist bag" },
+  ];
+  vi.mocked(ordersService.paymentConfig).mockResolvedValue({ paystack: true, stripe: true });
+  vi.mocked(ordersService.placeOrder).mockResolvedValue({
+    ...placed,
+    paymentMethod: "paystack",
+    ...unconfirmed,
+    confirmationStatus: "awaiting",
+  });
+  mount();
+  fillDelivery();
+  fireEvent.click(screen.getByRole("button", { name: "Continue to Payment" }));
+  await waitFor(() => expect(screen.getByLabelText(/Paystack/)).toHaveProperty("disabled", false));
+  expect(screen.getByText(/once you accept the confirmed total/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Review Order" }));
+  expect(screen.getByText("Imported items are confirmed before you pay")).toBeTruthy();
+  expect(screen.getByText(/Supplier minimum order: 20 pieces/)).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Options you want (optional)"), { target: { value: " Black " } });
+  fireEvent.click(screen.getByRole("button", { name: /Request Confirmation/ }));
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith("/order-confirmation?order=o2"));
+  expect(vi.mocked(ordersService.placeOrder).mock.calls[0][0].items).toEqual([
+    { productId: "p1", quantity: 2, options: "Black" },
+  ]);
   expect(ordersService.openCheckout).not.toHaveBeenCalled();
 });

@@ -163,7 +163,22 @@ export interface Order {
   status: string;
   date: string;
   trackingNumber: string | null;
+  /** Imported goods: where the order is in supplier confirmation (null when not needed). */
+  confirmationStatus?: ConfirmationStatus | null;
+  /** This line is an imported item confirmed with the supplier before payment. */
+  needsConfirmation?: boolean;
+  requestedOptions?: string | null;
+  confirmedOptions?: string | null;
+  /** The estimated unit price shown at checkout; price is the confirmed one once quoted. */
+  estimatedPrice?: number | null;
 }
+
+/**
+ * Imported goods are confirmed before payment: awaiting (Fotizo is checking with
+ * the supplier), quoted (confirmed total ready to accept), accepted, or closed
+ * as declined (by Fotizo), withdrawn (by the buyer) or expired.
+ */
+export type ConfirmationStatus = "awaiting" | "quoted" | "accepted" | "declined" | "withdrawn" | "expired";
 
 export type BookingStatus = "requested" | "confirmed" | "declined" | "cancelled" | "completed";
 
@@ -325,7 +340,8 @@ export interface DeliveryDetails {
 
 /** Prices and totals are decided by the server; the cart sends only quantities. */
 export interface PlaceOrderInput {
-  items: { productId: string; quantity: number }[];
+  /** options: the colour, size or model wanted, for imported items. */
+  items: { productId: string; quantity: number; options?: string }[];
   delivery: DeliveryDetails;
   paymentMethod: PaymentMethod;
   /** One per checkout attempt, so a retried submission cannot create a second order. */
@@ -343,6 +359,42 @@ export interface OrderConfirmation {
   /** Online orders: the provider's payment page, or null if it could not be opened. */
   checkoutUrl?: string | null;
   paymentError?: string;
+  confirmationStatus: ConfirmationStatus | null;
+  /** Fotizo's note with the quote, or why the order was declined. */
+  confirmationNote: string | null;
+  deliveryDaysMin: number | null;
+  deliveryDaysMax: number | null;
+  quoteExpiresAt: string | null;
+}
+
+/** Supplier terms recorded when an imported product was listed. */
+export interface SupplierTerms {
+  platform: string | null;
+  productId: string | null;
+  sourceUrl: string | null;
+  priceRange: string | null;
+  minimumOrder: string | null;
+  unit: string | null;
+  supplierCurrency: string | null;
+  supplierCost: number | null;
+  supplierRate: number | null;
+}
+
+/** An order in Fotizo's supplier-confirmation queue. */
+export interface ConfirmationRequest extends OrderConfirmation {
+  createdAt: string;
+  quotedAt: string | null;
+  buyer: { name: string; email: string | null; phone: string | null };
+  delivery: { city: string | null; country: string | null };
+  items: (Order & { supplier: SupplierTerms | null })[];
+}
+
+export interface ConfirmationQuote {
+  items: { id: string; price: number; confirmedOptions?: string }[];
+  shipping: number;
+  deliveryDaysMin: number;
+  deliveryDaysMax: number;
+  note?: string;
 }
 
 export interface PaymentVerification {

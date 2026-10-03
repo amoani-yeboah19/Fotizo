@@ -1,4 +1,5 @@
 import { useState, type ReactElement } from "react";
+import { Link } from "wouter";
 import { Package } from "lucide-react";
 import type { Order } from "@/types";
 import { Price } from "@/components/common/Price";
@@ -6,6 +7,8 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { ORDERS_USE_MOCKS } from "@/api";
 import { ReportProblem } from "./ReportProblem";
+import { purchaseStatus } from "@/features/orders/confirmation";
+export { purchaseStatusTone } from "@/features/orders/confirmation";
 import {
   Dialog,
   DialogTrigger,
@@ -16,16 +19,6 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 
-export function purchaseStatusTone(status: string) {
-  return status === "delivered"
-    ? "success"
-    : status === "cancelled"
-      ? "danger"
-      : ["shipped", "in_transit"].includes(status)
-        ? "info"
-        : "warning";
-}
-
 // Show the purchased snapshot, not today's catalogue price or availability.
 export function PurchaseDetailsDialog({
   order,
@@ -35,6 +28,9 @@ export function PurchaseDetailsDialog({
   children: ReactElement;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
+  const status = purchaseStatus(order);
+  // Imported items wait for Fotizo's confirmed quote, reviewed on the order page.
+  const decisionPending = order.confirmationStatus === "awaiting" || order.confirmationStatus === "quoted";
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -71,11 +67,8 @@ export function PurchaseDetailsDialog({
             <p className="mt-1 text-sm text-muted-foreground">
               Sold by {order.seller}
             </p>
-            <StatusBadge
-              tone={purchaseStatusTone(order.status)}
-              className="mt-3 capitalize"
-            >
-              {order.status.replaceAll("_", " ")}
+            <StatusBadge tone={status.tone} className="mt-3 capitalize">
+              {status.label}
             </StatusBadge>
           </div>
         </div>
@@ -92,8 +85,18 @@ export function PurchaseDetailsDialog({
             <dt className="text-muted-foreground">Quantity</dt>
             <dd>{order.quantity}</dd>
           </div>
+          {(order.confirmedOptions || order.requestedOptions) && (
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">
+                {order.confirmedOptions ? "Confirmed options" : "Options requested"}
+              </dt>
+              <dd className="text-right break-words">{order.confirmedOptions || order.requestedOptions}</dd>
+            </div>
+          )}
           <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Price per item</dt>
+            <dt className="text-muted-foreground">
+              {order.needsConfirmation && order.confirmationStatus === "awaiting" ? "Estimated price per item" : "Price per item"}
+            </dt>
             <dd>
               <Price amount={order.price} />
             </dd>
@@ -114,6 +117,20 @@ export function PurchaseDetailsDialog({
                 : "No tracking number is available for this item.")}
           </p>
         </div>
+        {decisionPending && order.orderId && (
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+            <p className="text-muted-foreground">
+              {order.confirmationStatus === "quoted"
+                ? "Fotizo has confirmed the options, final price and delivery for this order. Review and accept it to continue."
+                : "Fotizo is confirming the options, final price and delivery with the supplier. Nothing has been charged."}
+            </p>
+            <Link href={`/order-confirmation?order=${order.orderId}`}>
+              <Button size="sm" className="mt-3">
+                {order.confirmationStatus === "quoted" ? "Review confirmed quote" : "View order"}
+              </Button>
+            </Link>
+          </div>
+        )}
         {/* Demo orders have no server record to report against. */}
         {!ORDERS_USE_MOCKS && order.orderId && <ReportProblem orderId={order.orderId} />}
         <DialogClose asChild>

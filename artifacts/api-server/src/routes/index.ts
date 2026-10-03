@@ -23,6 +23,7 @@ import disputesRouter from "./disputes";
 import uploadsRouter from "./uploads";
 import searchRouter from "./search";
 import earningsRouter from "./earnings";
+import confirmationsRouter from "./confirmations";
 
 const router: IRouter = Router();
 
@@ -50,5 +51,6 @@ router.use(disputesRouter);
 router.use(uploadsRouter);
 router.use(searchRouter);
 router.use(earningsRouter);
+router.use(confirmationsRouter);
 
 export default router;

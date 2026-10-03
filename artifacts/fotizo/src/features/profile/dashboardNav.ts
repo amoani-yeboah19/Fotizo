@@ -48,6 +48,7 @@ export const DASHBOARD_NAV: Record<string, DashboardNavItem[]> = {
   ],
   china_representative: [
     { label: "Overview", tab: "overview" },
+    { label: "Order confirmations", tab: "confirmations" },
     { label: "Shop Supply", tab: "shop" },
     { label: "Autos Pipeline", tab: "autos" },
     { label: "Freight", tab: "freight" },

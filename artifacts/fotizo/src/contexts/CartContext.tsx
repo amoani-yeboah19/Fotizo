@@ -20,6 +20,10 @@ export interface CartItem {
   image: string;
   seller: string;
   quantity: number;
+  /** Imported goods, confirmed with the supplier before payment (from the server cart). */
+  needsConfirmation?: boolean;
+  /** The supplier's minimum order, e.g. "20 pieces". */
+  minimumOrder?: string | null;
 }
 
 interface CartContextType {
