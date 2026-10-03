@@ -29,6 +29,7 @@ export const DASHBOARD_NAV: Record<string, DashboardNavItem[]> = {
     { label: "Users", tab: "users" },
     { label: "Account audit", tab: "audit" },
     { label: "Orders", tab: "orders" },
+    { label: "Order confirmations", tab: "confirmations" },
     { label: "Support", tab: "support" },
     { label: "Vehicle enquiries", tab: "enquiries" },
     { label: "Moderation", tab: "moderation" },

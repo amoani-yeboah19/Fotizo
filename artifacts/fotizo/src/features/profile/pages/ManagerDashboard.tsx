@@ -15,7 +15,10 @@ import {
   Banknote,
   LifeBuoy,
   CarFront,
+  ClipboardCheck,
 } from "lucide-react";
+import { ConfirmationQueue } from "@/features/orders/components/ConfirmationQueue";
+import { useConfirmationQueue } from "@/features/payments/hooks";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { ADMIN_USE_MOCKS, ApiError } from "@/api";
@@ -45,6 +48,7 @@ type Section =
   | "overview"
   | "users"
   | "orders"
+  | "confirmations"
   | "payments"
   | "approvals"
   | "moderation"
@@ -52,7 +56,7 @@ type Section =
   | "enquiries"
   | "audit";
 // Queues served only by the live API; demo builds have no records for them.
-const LIVE_ONLY: Section[] = ["payments", "support", "enquiries"];
+const LIVE_ONLY: Section[] = ["confirmations", "payments", "support", "enquiries"];
 type Review = {
   title: string;
   label: string;
@@ -133,9 +137,12 @@ function ManagerWorkspace() {
   const [section, setSection] = useDashboardSection<Section>(
     ADMIN_USE_MOCKS
       ? ["overview", "users", "orders", "approvals", "moderation", "audit"]
-      : ["overview", "users", "orders", "payments", "approvals", "moderation", "support", "enquiries", "audit"],
+      : ["overview", "users", "orders", "confirmations", "payments", "approvals", "moderation", "support", "enquiries", "audit"],
     "overview",
   );
+  // Orders with imported goods waiting for a confirmed quote (shared with the China desk).
+  const confirmations = useConfirmationQueue();
+  const toConfirm = confirmations.data?.filter((r) => r.confirmationStatus === "awaiting").length ?? 0;
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("");
@@ -223,6 +230,13 @@ function ManagerWorkspace() {
           ? []
           : [
               {
+                icon: <ClipboardCheck className="w-4 h-4" />,
+                label: "Order confirmations",
+                active: section === "confirmations",
+                onClick: () => navigate("confirmations"),
+                badge: toConfirm,
+              },
+              {
                 icon: <Banknote className="w-4 h-4" />,
                 label: "Payments",
                 active: section === "payments",
@@ -270,6 +284,7 @@ function ManagerWorkspace() {
     overview: "Platform overview",
     users: "Users & verification",
     orders: "Orders & disputes",
+    confirmations: "Order confirmations",
     payments: "Payments",
     approvals: "Approval queue",
     support: "Support requests",
@@ -401,6 +416,8 @@ function ManagerWorkspace() {
       )}
       {section === "orders" ? (
         <AdminOperations />
+      ) : section === "confirmations" ? (
+        <ConfirmationQueue showHeading={false} />
       ) : section === "payments" ? (
         <OrderPayments />
       ) : section === "support" ? (

@@ -14,14 +14,14 @@ import type { ConfirmationRequest } from "@/types";
 // Fotizo's queue of orders with imported goods. For each one, check the
 // buyer's options, the supplier's price and minimum order and the delivery,
 // then send the confirmed quote (GBP, including Fotizo's margin) or decline.
-export function ConfirmationQueue() {
+export function ConfirmationQueue({ showHeading = true }: { showHeading?: boolean }) {
   const { data, isLoading, isError } = useConfirmationQueue();
   if (isLoading) return <Loading label="Loading orders to confirm…" />;
   if (isError) return <ErrorState label="Orders to confirm could not be loaded." />;
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-bold">Order confirmations</h2>
+        {showHeading && <h2 className="text-lg font-bold">Order confirmations</h2>}
         <p className="text-sm text-muted-foreground">
           Imported items are confirmed with the supplier before the buyer pays. The buyer has{" "}
           7 days to accept a quote.
