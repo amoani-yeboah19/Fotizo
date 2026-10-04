@@ -33,6 +33,8 @@ function validRates(rates: CurrencyRates): boolean {
 interface CurrencyContextType {
   currency: CurrencyMeta;
   availableCurrencies: CurrencyMeta[];
+  ratesStatus: "loading" | "ready" | "error";
+  retryRates: () => void;
   setCurrency: (code: CurrencyCode) => void;
   format: (amountGBP: number) => string;
   convert: (amountGBP: number) => number;
@@ -51,20 +53,44 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   });
   const [rates, setRates] = useState<CurrencyRates | null>(null);
 
+  const [ratesStatus, setRatesStatus] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
+  const [attempt, setAttempt] = useState(0);
+  const retryRates = useCallback(() => setAttempt((n) => n + 1), []);
+
   useEffect(() => {
     let active = true;
+    setRatesStatus("loading");
     currencyService
       .getRates()
       .then((r) => {
-        if (active && validRates(r)) setRates(r);
+        if (!validRates(r)) throw new Error("Invalid exchange rates");
+        if (active) {
+          setRates(r);
+          setRatesStatus("ready");
+        }
       })
       .catch(() => {
-        if (active) setRates(null);
+        if (active) {
+          setRates(null);
+          setRatesStatus("error");
+        }
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [attempt]);
+
+  useEffect(() => {
+    if (ratesStatus !== "error") return;
+    window.addEventListener("online", retryRates);
+    window.addEventListener("focus", retryRates);
+    return () => {
+      window.removeEventListener("online", retryRates);
+      window.removeEventListener("focus", retryRates);
+    };
+  }, [ratesStatus, retryRates]);
 
   const effectiveCode = rates ? currencyCode : "GBP";
   const availableCurrencies = rates ? CURRENCIES : [CURRENCIES[0]];
@@ -101,8 +127,16 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ currency, availableCurrencies, setCurrency, format, convert }),
-    [currency, rates, setCurrency, format, convert],
+    () => ({
+      currency,
+      availableCurrencies,
+      setCurrency,
+      format,
+      convert,
+      ratesStatus,
+      retryRates,
+    }),
+    [currency, rates, setCurrency, format, convert, ratesStatus, retryRates],
   );
 
   return (
