@@ -1,3 +1,4 @@
+import { browserCurrency } from "./currency-region";
 import {
   createContext,
   useContext,
@@ -46,9 +47,11 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [currencyCode, setCurrencyCode] = useState<CurrencyCode>(() => {
     try {
       const saved = localStorage.getItem("fotizo_currency");
-      return CURRENCIES.find((c) => c.code === saved)?.code ?? "GBP";
+      return (
+        CURRENCIES.find((c) => c.code === saved)?.code ?? browserCurrency()
+      );
     } catch {
-      return "GBP";
+      return browserCurrency();
     }
   });
   const [rates, setRates] = useState<CurrencyRates | null>(null);
