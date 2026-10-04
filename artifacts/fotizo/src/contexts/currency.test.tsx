@@ -1,14 +1,22 @@
 // @vitest-environment jsdom
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
-import { render, screen, waitFor, cleanup } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  cleanup,
+  fireEvent,
+} from "@testing-library/react";
 import { CurrencyProvider, useCurrency } from "./CurrencyContext";
 import { currencyService } from "@/services";
 vi.mock("@/services", () => ({ currencyService: { getRates: vi.fn() } }));
 function Probe() {
-  const { currency, format, availableCurrencies } = useCurrency();
+  const { currency, format, availableCurrencies, retryRates, ratesStatus } =
+    useCurrency();
   return (
     <div>
       {currency.code}:{format(10)}:{availableCurrencies.length}
+      <button onClick={retryRates}>Retry {ratesStatus}</button>
     </div>
   );
 }
@@ -57,5 +65,21 @@ it("converts only with validated rates", async () => {
       <Probe />
     </CurrencyProvider>,
   );
-  await screen.findByText("USD:$12.50:3");
+  await screen.findByText(/USD:\$12.50:3/);
+});
+
+it("recovers a saved currency after retrying failed rates", async () => {
+  localStorage.setItem("fotizo_currency", "GHS");
+  vi.mocked(currencyService.getRates)
+    .mockRejectedValueOnce(new Error("offline"))
+    .mockResolvedValueOnce({ GBP: 1, USD: 1.25, GHS: 15 });
+  render(
+    <CurrencyProvider>
+      <Probe />
+    </CurrencyProvider>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "Retry error" }));
+  await waitFor(() =>
+    expect(screen.getByText(/GHS:/).textContent).toContain("GHS:₵150.00:3"),
+  );
 });

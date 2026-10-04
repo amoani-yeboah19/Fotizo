@@ -25,6 +25,17 @@ Drafts are stored at `fotizo_sourcing_drafts_v1:<userId>`, validated on read/wri
 
 Verification covers product filtering/pagination/details/edit destinations, supplier draft creation/editing, account isolation, failed storage, invalid quantities/dates and CSV escaping, alongside existing staff mutation tests. Hosted end-to-end verification requires a real staff session; the public dashboard URL could not be inspected by the browsing tool.
 
-## Alibaba frontend catalogue
+## Launch catalogue cleanup — 4 October 2026
 
-A local Alibaba selection now covers all 21 shop departments, retaining supplier images and English product text. Source IDs, links, quoted price ranges and minimum orders are saved for the backend handoff. No database import is performed. See [catalogue sourcing notes](../../../shop/data/ALIBABA.md) for data files, preview pricing, refresh instructions and integration requirements.
+Alibaba.com products are retired from the published frontend catalogue. The archived sourcing JSON is retained for reference, but is not imported by the shop. The seed script now reads only the reviewed Taobao catalogue. Future sources are Taobao, JD.com and 1688.com (distinct from Alibaba.com).
+
+At the owner's request, this cleanup is frontend-only. No database records were changed. Backend team:
+
+- Delete Alibaba.com products identified by their supplier URL/platform metadata, including legacy imported rows. Do not delete JD.com, Taobao or 1688.com listings.
+- Remove Bright's **Iphone 13 Pro** and Patrick Mensah's **Hp Laptop**, plus their **Web Development** and **Content Creator** test services. Exact IDs are recorded in [retired-listings.json](../../../catalogue/retired-listings.json).
+- Remove the 19 old Autos records listed in the same file. New reviewed vehicle uploads are not blocked.
+- Preserve existing order, booking and enquiry history. If referenced rows cannot be deleted, unpublish them and prevent republishing instead of deleting customer history.
+- Verify listing/detail/search/category endpoints, shopping carts and checkout exclude retired records. Frontend removal does not prevent a direct API purchase.
+- The UI blocks exact retired IDs and Alibaba.com sources while the backend catches up; paginated totals/category counts can remain stale until server cleanup is complete.
+
+Service cards now let customers choose hourly work or a fixed-price contract. The offer records hours/days, scope and the total GBP budget in its description, using the existing offer API. A five-day contract has one fixed total; hourly totals multiply the proposed hourly rate by hours. These are negotiated offers, not an automatic recurring billing or timesheet system.

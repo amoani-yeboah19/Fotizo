@@ -1,3 +1,4 @@
+import { visibleProduct } from "@/features/catalogue/launch-policy";
 import { api, ApiError, SHOP_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import type { Product } from "@/types";
@@ -95,7 +96,7 @@ export const shopService = {
         : [];
     }
     return (await api.get<Product[]>(`/products/${id}/related`))
-      .filter((p) => p.channel === "shop")
+      .filter((p) => p.channel === "shop" && visibleProduct(p))
       .map(toShopProduct);
   },
 
@@ -106,7 +107,9 @@ export const shopService = {
     }
     try {
       const product = await api.get<Product>(`/products/${id}`);
-      return product.channel === "shop" ? toShopProduct(product) : null;
+      return product.channel === "shop" && visibleProduct(product)
+        ? toShopProduct(product)
+        : null;
     } catch (error) {
       if (!(error instanceof ApiError) || error.status !== 404) throw error;
       // A missing or unpublished listing is a 404 — a normal outcome here, not

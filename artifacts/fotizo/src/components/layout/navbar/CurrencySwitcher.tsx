@@ -1,11 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
-import { useCurrency, CurrencyCode } from "@/contexts/CurrencyContext";
+import {
+  useCurrency,
+  CurrencyCode,
+  CURRENCIES,
+} from "@/contexts/CurrencyContext";
 
 // Currency picker. Click-toggled (hover menus don't work on touch devices).
 // `dropUp` opens the menu above the trigger (for footer placement).
 export function CurrencySwitcher({ dropUp = false }: { dropUp?: boolean }) {
-  const { currency, setCurrency, availableCurrencies } = useCurrency();
+  const {
+    currency,
+    setCurrency,
+    availableCurrencies,
+    ratesStatus,
+    retryRates,
+  } = useCurrency();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -13,7 +23,8 @@ export function CurrencySwitcher({ dropUp = false }: { dropUp?: boolean }) {
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+      if (rootRef.current && !rootRef.current.contains(e.target as Node))
+        setOpen(false);
     };
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
@@ -24,6 +35,7 @@ export function CurrencySwitcher({ dropUp = false }: { dropUp?: boolean }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-label={`Change currency, currently ${currency.name}`}
         aria-expanded={open}
         aria-haspopup="listbox"
         className="flex items-center gap-1 text-sm font-medium text-foreground hover:text-primary transition-colors py-2"
@@ -36,28 +48,58 @@ export function CurrencySwitcher({ dropUp = false }: { dropUp?: boolean }) {
       </button>
       {open && (
         <div
-          role="listbox"
-          className={`absolute right-0 w-32 bg-white border border-border rounded-lg shadow-lg py-2 z-50 ${
+          className={`absolute right-0 w-64 bg-white border border-border rounded-lg shadow-lg py-2 z-50 ${
             dropUp ? "bottom-full mb-1" : "top-full mt-1"
           }`}
         >
-          {availableCurrencies.map((c) => (
-            <button
-              key={c.code}
-              type="button"
-              role="option"
-              aria-selected={currency.code === c.code}
-              onClick={() => {
-                setCurrency(c.code as CurrencyCode);
-                setOpen(false);
-              }}
-              className={`w-full text-left px-4 py-2 text-sm hover:bg-muted ${
-                currency.code === c.code ? "font-bold text-primary" : "text-foreground"
-              }`}
+          <div role="listbox" aria-label="Currency">
+            {CURRENCIES.map((c) => (
+              <button
+                key={c.code}
+                type="button"
+                role="option"
+                disabled={
+                  !availableCurrencies.some(
+                    (available) => available.code === c.code,
+                  )
+                }
+                aria-selected={currency.code === c.code}
+                onClick={() => {
+                  setCurrency(c.code as CurrencyCode);
+                  setOpen(false);
+                }}
+                className={`disabled:opacity-50 disabled:cursor-not-allowed w-full text-left px-4 py-2 text-sm hover:bg-muted ${
+                  currency.code === c.code
+                    ? "font-bold text-primary"
+                    : "text-foreground"
+                }`}
+              >
+                {c.flag} {c.code} · {c.name}
+              </button>
+            ))}
+          </div>
+          {ratesStatus === "loading" && (
+            <p
+              className="px-4 py-2 text-xs text-muted-foreground"
+              role="status"
             >
-              {c.flag} {c.code}
-            </button>
-          ))}
+              Loading exchange rates…
+            </p>
+          )}
+          {ratesStatus === "error" && (
+            <div className="border-t border-border px-4 py-3">
+              <p className="text-xs text-muted-foreground" role="status">
+                Exchange rates could not load. Prices are shown in GBP.
+              </p>
+              <button
+                type="button"
+                onClick={retryRates}
+                className="mt-2 text-sm font-semibold text-primary underline"
+              >
+                Retry exchange rates
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

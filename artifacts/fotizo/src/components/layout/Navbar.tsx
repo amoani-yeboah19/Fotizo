@@ -1,3 +1,4 @@
+import { CurrencySwitcher } from "@/components/layout/navbar/CurrencySwitcher";
 import { useWishlistView as useWishlist } from "@/features/wishlist/hooks/useWishlistView";
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
@@ -20,7 +21,20 @@ export function Navbar() {
   const { isAuthenticated } = useAuth();
   const { count } = useCart();
   const { items: wishlist } = useWishlist();
-  const wishlistLink = <Link href="/wishlist" aria-label={`Wishlist, ${wishlist.length} saved items`} className="relative p-2 text-foreground hover:text-primary transition-colors"><Heart className="w-5 h-5" aria-hidden="true" />{wishlist.length > 0 && <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">{wishlist.length > 99 ? "99+" : wishlist.length}</span>}</Link>;
+  const wishlistLink = (
+    <Link
+      href="/wishlist"
+      aria-label={`Wishlist, ${wishlist.length} saved items`}
+      className="relative p-2 text-foreground hover:text-primary transition-colors"
+    >
+      <Heart className="w-5 h-5" aria-hidden="true" />
+      {wishlist.length > 0 && (
+        <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+          {wishlist.length > 99 ? "99+" : wishlist.length}
+        </span>
+      )}
+    </Link>
+  );
   const { totalUnread } = useMessages();
 
   const openAuthModal = useAuthModal();
@@ -52,28 +66,33 @@ export function Navbar() {
               decoding="async"
               src="/fotizo-logo.webp"
               alt="Fotizo"
-              className="h-6 w-auto object-contain"
+              className="h-5 sm:h-6 w-auto object-contain"
             />
           </Link>
 
           {/* Desktop Nav */}
           {/* Two groups, split by intent: buy something, or hire someone. */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-4">
             <BuyMegaMenu />
             <HireMegaMenu />
           </nav>
 
           {/* Search Bar (Desktop) */}
-          <div className="hidden lg:flex flex-1 max-w-md mx-8 relative">
+          <div className="hidden lg:flex flex-1 max-w-md mx-4 relative">
             <GlobalSearch />
           </div>
 
+          {/* Currency is always visible in the top bar, including phones. */}
+          <CurrencySwitcher />
           {/* Actions */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2">
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
                 <Link href="/messages">
-                  <button aria-label="Messages" className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer">
+                  <button
+                    aria-label="Messages"
+                    className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer"
+                  >
                     <MessageSquare className="w-5 h-5" />
                     {totalUnread > 0 && (
                       <span className="absolute top-0 right-0 w-4 h-4 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -82,9 +101,11 @@ export function Navbar() {
                     )}
                   </button>
                 </Link>
-                {wishlistLink}
                 <Link href="/cart">
-                  <button aria-label="Cart" className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer">
+                  <button
+                    aria-label="Cart"
+                    className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer"
+                  >
                     <ShoppingCart className="w-5 h-5" />
                     {count > 0 && (
                       <span className="absolute top-0 right-0 w-4 h-4 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -98,8 +119,23 @@ export function Navbar() {
             ) : (
               <>
                 {wishlistLink}
-                <Link href="/cart" aria-label={`Cart, ${count} items`} className="relative p-2 text-foreground hover:text-primary"><ShoppingCart className="w-5 h-5" aria-hidden="true" />{count > 0 && <span className="absolute top-0 right-0 min-w-4 h-4 px-1 bg-accent text-white text-[10px] rounded-full text-center">{count}</span>}</Link>
-                <Button variant="ghost" className="text-sm font-medium" onClick={() => openAuth("signin")}>
+                <Link
+                  href="/cart"
+                  aria-label={`Cart, ${count} items`}
+                  className="relative p-2 text-foreground hover:text-primary"
+                >
+                  <ShoppingCart className="w-5 h-5" aria-hidden="true" />
+                  {count > 0 && (
+                    <span className="absolute top-0 right-0 min-w-4 h-4 px-1 bg-accent text-white text-[10px] rounded-full text-center">
+                      {count}
+                    </span>
+                  )}
+                </Link>
+                <Button
+                  variant="ghost"
+                  className="text-sm font-medium"
+                  onClick={() => openAuth("signin")}
+                >
                   Sign In
                 </Button>
                 <Button
@@ -115,8 +151,11 @@ export function Navbar() {
           {/* Mobile Toggle */}
           <div className="flex md:hidden items-center gap-1 sm:gap-3">
             {isAuthenticated && (
-              <Link href="/messages">
-                <button aria-label="Messages" className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer">
+              <Link href="/messages" className="hidden sm:block">
+                <button
+                  aria-label="Messages"
+                  className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer"
+                >
                   <MessageSquare className="w-5 h-5" />
                   {totalUnread > 0 && (
                     <span className="absolute top-0 right-0 w-4 h-4 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -126,9 +165,11 @@ export function Navbar() {
                 </button>
               </Link>
             )}
-            {wishlistLink}
-                <Link href="/cart">
-              <button aria-label="Cart" className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer">
+            <Link href="/cart">
+              <button
+                aria-label="Cart"
+                className="relative p-2 text-foreground hover:text-primary transition-colors cursor-pointer"
+              >
                 <ShoppingCart className="w-5 h-5" />
                 {count > 0 && (
                   <span className="absolute top-0 right-0 w-4 h-4 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -145,7 +186,11 @@ export function Navbar() {
               aria-expanded={mobileMenuOpen}
               className="p-2 text-foreground hover:text-primary transition-colors"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </button>
           </div>
         </div>
@@ -158,7 +203,6 @@ export function Navbar() {
           onClose={() => setMobileMenuOpen(false)}
         />
       )}
-
     </header>
   );
 }

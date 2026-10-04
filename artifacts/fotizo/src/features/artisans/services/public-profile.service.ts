@@ -1,3 +1,4 @@
+import { retiredService } from "@/features/catalogue/launch-policy";
 import { api } from "@/api";
 
 /** GET /profiles/:userId — only what a professional publishes, never private details. */
@@ -29,5 +30,11 @@ export interface PublicProfile {
 }
 
 export const publicProfileService = {
-  get: (userId: string) => api.get<PublicProfile>(`/profiles/${userId}`),
+  get: async (userId: string) => {
+    const profile = await api.get<PublicProfile>(`/profiles/${userId}`);
+    return {
+      ...profile,
+      services: profile.services.filter((s) => !retiredService(s.id)),
+    };
+  },
 };

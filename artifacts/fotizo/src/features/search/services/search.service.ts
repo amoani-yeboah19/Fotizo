@@ -1,3 +1,8 @@
+import {
+  visibleProduct,
+  retiredService,
+  retiredVehicle,
+} from "@/features/catalogue/launch-policy";
 import { api, CATALOG_USE_MOCKS } from "@/api";
 import type { Product, Service } from "@/types";
 import type { ShopProduct } from "@/features/shop/data/shop-product";
@@ -22,7 +27,10 @@ export interface GlobalSearchResults {
 /** Searches start at two characters, matching the server. */
 export const MIN_SEARCH_LENGTH = 2;
 
-const group = <T,>(all: T[], limit: number): SearchGroup<T> => ({ items: all.slice(0, limit), total: all.length });
+const group = <T>(all: T[], limit: number): SearchGroup<T> => ({
+  items: all.slice(0, limit),
+  total: all.length,
+});
 const matches = (q: string, ...values: (string | undefined)[]) =>
   values.some((v) => v?.toLowerCase().includes(q.toLowerCase()));
 
@@ -39,17 +47,65 @@ export const searchService = {
       const shopProducts = await loadLocalCatalogue();
       return {
         q,
-        products: group(fx.products.filter((p) => matches(q, p.title, p.seller, p.category)), limit),
-        shop: group(shopProducts.filter((p) => matches(q, p.title, p.category)), limit),
-        services: group(fx.services.filter((s) => matches(q, s.title, s.provider, s.category, ...s.skills)), limit),
-        vehicles: group(vehicles.filter((v) => matches(q, `${v.make} ${v.model}`, v.bodyType, v.fuel)), limit),
+
+        products: group(
+          fx.products.filter((p) => matches(q, p.title, p.seller, p.category)),
+          limit,
+        ),
+        shop: group(
+          shopProducts.filter((p) => matches(q, p.title, p.category)),
+          limit,
+        ),
+        services: group(
+          fx.services.filter((s) =>
+            matches(q, s.title, s.provider, s.category, ...s.skills),
+          ),
+          limit,
+        ),
+        vehicles: group(
+          vehicles.filter((v) =>
+            matches(q, `${v.make} ${v.model}`, v.bodyType, v.fuel),
+          ),
+          limit,
+        ),
       };
     }
-    const result = await api.get<Omit<GlobalSearchResults, "shop"> & { shop: SearchGroup<Product> }>("/search", {
+    const result = await api.get<
+      Omit<GlobalSearchResults, "shop"> & { shop: SearchGroup<Product> }
+    >("/search", {
       q,
       limit,
     });
-    return { ...result, shop: { ...result.shop, items: result.shop.items.map(toShopProduct) } };
+    const removeRetired = <T>(
+      group: SearchGroup<T>,
+      visible: (item: T) => boolean,
+    ) => {
+      const items = group.items.filter(visible);
+      return {
+        ...group,
+        items,
+        total: items.length
+          ? Math.max(
+              items.length,
+              group.total - (group.items.length - items.length),
+            )
+          : 0,
+      };
+    };
+    result.products = removeRetired(result.products, visibleProduct);
+    result.shop = removeRetired(result.shop, visibleProduct);
+    result.services = removeRetired(
+      result.services,
+      (s) => !retiredService(s.id),
+    );
+    result.vehicles = removeRetired(
+      result.vehicles,
+      (v) => !retiredVehicle(v.id),
+    );
+    return {
+      ...result,
+      shop: { ...result.shop, items: result.shop.items.map(toShopProduct) },
+    };
   },
 };
 

@@ -1,3 +1,7 @@
+import {
+  visibleProduct,
+  retiredProduct,
+} from "@/features/catalogue/launch-policy";
 import { cataloguePages } from "./catalogue-page";
 import { api, CATALOG_USE_MOCKS, SELLER_CATALOG_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
@@ -11,7 +15,7 @@ import type {
 
 // Production classification is enforced by the API, not display names.
 function localOnly(products: Product[]): Product[] {
-  return products.filter((p) => p.channel !== "shop");
+  return products.filter((p) => p.channel !== "shop" && visibleProduct(p));
 }
 
 export const catalogService = {
@@ -67,6 +71,7 @@ export const catalogService = {
   },
 
   async getProduct(id: string): Promise<Product | null> {
+    if (retiredProduct(id)) return null;
     if (CATALOG_USE_MOCKS) {
       await delay();
       return fx.products.find((p) => p.id === id) ?? null;
@@ -78,7 +83,8 @@ export const catalogService = {
       const seeded = fx.products.find((p) => p.id === id);
       if (seeded) return seeded;
     }
-    return api.get<Product>(`/products/${id}`);
+    const product = await api.get<Product>(`/products/${id}`);
+    return visibleProduct(product) ? product : null;
   },
 
   async getRelatedProducts(id: string): Promise<Product[]> {
@@ -135,7 +141,12 @@ export const catalogService = {
           stock: updated.stockCount,
           image: updated.image,
           category: updated.category,
-          status: updated.status === "unpublished" ? "unpublished" : updated.stockCount > 0 ? "active" : "out_of_stock",
+          status:
+            updated.status === "unpublished"
+              ? "unpublished"
+              : updated.stockCount > 0
+                ? "active"
+                : "out_of_stock",
         };
       }
       return updated;

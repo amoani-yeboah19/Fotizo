@@ -1,3 +1,4 @@
+import { retiredVehicle } from "@/features/catalogue/launch-policy";
 import { api, ApiError, AUTOS_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import type { Vehicle } from "@/features/autos/data/vehicles";
@@ -29,13 +30,18 @@ export const autosService = {
       await delay();
       return [];
     }
-    return api.get<Vehicle[]>("/vehicles");
+    return (await api.get<Vehicle[]>("/vehicles")).filter(
+      (v) => !retiredVehicle(v.id),
+    );
   },
 
   async getVehicle(slug: string): Promise<Vehicle | null> {
     if (AUTOS_USE_MOCKS) return null;
     try {
-      return await api.get<Vehicle>(`/vehicles/${encodeURIComponent(slug)}`);
+      const vehicle = await api.get<Vehicle>(
+        `/vehicles/${encodeURIComponent(slug)}`,
+      );
+      return retiredVehicle(vehicle.id) ? null : vehicle;
     } catch (error) {
       // An unpublished or unknown vehicle is a normal "not found" outcome.
       if (error instanceof ApiError && error.status === 404) return null;
@@ -44,7 +50,10 @@ export const autosService = {
   },
 };
 
-export async function submitVehicleEnquiry(input: VehicleEnquiryInput): Promise<VehicleEnquiry> {
-  if (AUTOS_USE_MOCKS) throw new Error("Vehicle enquiries are unavailable in demo mode.");
+export async function submitVehicleEnquiry(
+  input: VehicleEnquiryInput,
+): Promise<VehicleEnquiry> {
+  if (AUTOS_USE_MOCKS)
+    throw new Error("Vehicle enquiries are unavailable in demo mode.");
   return api.post<VehicleEnquiry>("/vehicle-enquiries", input);
 }
