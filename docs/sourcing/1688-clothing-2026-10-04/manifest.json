@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-10-04T23:28:56.166872+00:00",
+  "platform": "1688",
+  "publicationStatus": "unpublished-backend-review-only",
+  "uniqueProducts": 3242,
+  "categoryMemberships": 3244,
+  "translationPending": 3242,
+  "invalidPriceCount": 0,
+  "missingImageCount": 0,
+  "wholeCategoryComplete": false,
+  "coverageNote": "Captured public promotional search results. The site's pagination displays a 50-page window, not a verified count of all supplier products. Scroll batches stop when an identical result set repeats. Search rankings and prices can change.",
+  "categories": [
+    {
+      "category": "mens",
+      "label": "Men's Clothing",
+      "searchTerm": "男装",
+      "searchUrl": "https://www.1688.com/zw/page.html?hpageId=old-sem-pc-list&keywords=%E7%94%B7%E8%A3%85",
+      "uniqueProducts": 645,
+      "pagesAttempted": 50,
+      "visiblePageRangeCompleted": true,
+      "wholeCategoryComplete": false,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "category": "womens",
+      "label": "Women's Clothing",
+      "searchTerm": "女装",
+      "searchUrl": "https://www.1688.com/zw/page.html?hpageId=old-sem-pc-list&keywords=%E5%A5%B3%E8%A3%85",
+      "uniqueProducts": 654,
+      "pagesAttempted": 50,
+      "visiblePageRangeCompleted": true,
+      "wholeCategoryComplete": false,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "category": "underwear",
+      "label": "Underwear",
+      "searchTerm": "内衣",
+      "searchUrl": "https://www.1688.com/zw/page.html?hpageId=old-sem-pc-list&keywords=%E5%86%85%E8%A1%A3",
+      "uniqueProducts": 662,
+      "pagesAttempted": 50,
+      "visiblePageRangeCompleted": true,
+      "wholeCategoryComplete": false,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "category": "gymwear",
+      "label": "Gym Wear",
+      "searchTerm": "运动户外服装",
+      "searchUrl": "https://www.1688.com/zw/page.html?hpageId=old-sem-pc-list&keywords=%E8%BF%90%E5%8A%A8%E6%88%B7%E5%A4%96%E6%9C%8D%E8%A3%85",
+      "uniqueProducts": 661,
+      "pagesAttempted": 50,
+      "visiblePageRangeCompleted": true,
+      "wholeCategoryComplete": false,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "category": "shoes-bags",
+      "label": "Shoes & Bags",
+      "searchTerm": "运动户外鞋包",
+      "searchUrl": "https://www.1688.com/zw/page.html?hpageId=old-sem-pc-list&keywords=%E8%BF%90%E5%8A%A8%E6%88%B7%E5%A4%96%E9%9E%8B%E5%8C%85",
+      "uniqueProducts": 622,
+      "pagesAttempted": 50,
+      "visiblePageRangeCompleted": true,
+      "wholeCategoryComplete": false,
+      "stopReason": "visible-page-range-completed"
+    }
+  ],
+  "files": {
+    "products.json": {
+      "sha256": "3197de5ac062ebe759b9dc66538d0a5f1b26eb756721903794a4f66c9b190fba"
+    },
+    "coverage.json": {
+      "sha256": "b0ca9e7944a6ee376a85905e0b4c3dbc8fb2acde5608cf0bebfb31c83effb435"
+    },
+    "review.csv": {
+      "sha256": "c4af937d513122898646ee565d909bb7c4f4b1dc659e1401328092ef3dcd35df"
+    }
+  }
+}
