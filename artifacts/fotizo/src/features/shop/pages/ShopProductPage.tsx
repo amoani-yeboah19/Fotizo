@@ -63,6 +63,7 @@ export default function ShopProductPage() {
 
   // Shop goods are sourced to order, so local stock does not limit the cart.
   const add = (goToCart: boolean) => {
+    if (product.previewOnly) return;
     for (let i = 0; i < qty; i++) {
       addItem({
         id: `shop-${product.id}`,
@@ -130,27 +131,46 @@ export default function ShopProductPage() {
           <h1 className="text-xl font-bold leading-snug text-foreground sm:text-2xl">
             {product.title}
           </h1>
-          <WishlistButton item={{ id: product.id, source: "shop", title: product.title, image: product.image, price: product.price, seller: SHOP_SELLER }} className="mt-3 border border-border" />
-
-          <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <Star
-                className="h-4 w-4 fill-amber-400 text-amber-400"
-                aria-hidden="true"
-              />
-              <span className="font-semibold text-foreground">
-                {product.rating.toFixed(1)}
-              </span>
-            </span>
-            <span>·</span>
-            <span>{soldLabel(product.sold)}</span>
-          </div>
-
-          <div className="mt-4 flex items-end gap-3">
-            <Price
-              amount={product.price}
-              className="text-3xl font-extrabold text-[#FF6A00]"
+          {!product.previewOnly && (
+            <WishlistButton
+              item={{
+                id: product.id,
+                source: "shop",
+                title: product.title,
+                image: product.image,
+                price: product.price,
+                seller: SHOP_SELLER,
+              }}
+              className="mt-3 border border-border"
             />
+          )}
+
+          {!product.previewOnly && (
+            <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                <Star
+                  className="h-4 w-4 fill-amber-400 text-amber-400"
+                  aria-hidden="true"
+                />
+                <span className="font-semibold text-foreground">
+                  {product.rating.toFixed(1)}
+                </span>
+              </span>
+              <span>·</span>
+              <span>{soldLabel(product.sold)}</span>
+            </div>
+          )}
+          <div className="mt-4 flex items-end gap-3">
+            {product.previewOnly ? (
+              <span className="text-3xl font-bold text-accent">
+                CNY {product.previewPriceCny}
+              </span>
+            ) : (
+              <Price
+                amount={product.price}
+                className="text-3xl font-extrabold text-[#FF6A00]"
+              />
+            )}
             {product.originalPrice > product.price && (
               <Price
                 amount={product.originalPrice}
@@ -164,18 +184,29 @@ export default function ShopProductPage() {
             )}
           </div>
 
+          {product.previewOnly && (
+            <p className="mt-3 rounded-lg border p-3 text-sm text-muted-foreground">
+              Collection preview. This CNY estimate includes a 30% markup,
+              excluding delivery. English translation, colours, sizes and final
+              pricing are awaiting confirmation. Purchasing will open after
+              review.
+            </p>
+          )}
           {product.sourcing && (
             <div className="mt-3 rounded-lg border border-border p-3 text-sm text-muted-foreground">
-              <p>Estimated price. Final price, availability and delivery costs require confirmation.</p>
+              <p>
+                Estimated price. Final price, availability and delivery costs
+                require confirmation.
+              </p>
               {product.sourcing.minimumOrder && (
-                <p className="mt-1">Supplier minimum order: {product.sourcing.minimumOrder}.</p>
+                <p className="mt-1">
+                  Supplier minimum order: {product.sourcing.minimumOrder}.
+                </p>
               )}
-              <p className="mt-1">Supplier price: {product.sourcing.priceRange} per {product.sourcing.unit || "unit"}.</p>
-              {product.sourcing.platform !== "taobao" && product.sourceUrl && (
-                <a href={product.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-primary underline">
-                  View original Alibaba listing
-                </a>
-              )}
+              <p className="mt-1">
+                Supplier price: {product.sourcing.priceRange} per{" "}
+                {product.sourcing.unit || "unit"}.
+              </p>
             </div>
           )}
 
@@ -231,6 +262,7 @@ export default function ShopProductPage() {
             <Button
               variant="outline"
               className="flex-1 gap-2"
+              disabled={product.previewOnly}
               onClick={() => add(false)}
             >
               <ShoppingCart className="h-4 w-4" aria-hidden="true" /> Add to
@@ -238,6 +270,7 @@ export default function ShopProductPage() {
             </Button>
             <Button
               className="flex-1 bg-[#FF6A00] text-white hover:bg-[#FF6A00]/90"
+              disabled={product.previewOnly}
               onClick={() => add(true)}
             >
               Buy now

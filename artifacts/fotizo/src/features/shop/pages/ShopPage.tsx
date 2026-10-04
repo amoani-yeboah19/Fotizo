@@ -25,6 +25,7 @@ import { ShopProductCard } from "@/features/shop/components/ShopProductCard";
 import "./shop.css";
 import { SHOP_CATEGORIES, categoryLabel } from "@/features/shop/data/categories";
 import type { Product } from "@/types";
+import { PreviewCatalogue } from "../components/PreviewCatalogue";
 
 type Sort =
   | "recommended"
@@ -191,6 +192,7 @@ export default function ShopPage() {
             </span>
           </div>
 
+          <PreviewCatalogue />
           <section className="shop-discover" aria-labelledby="discover-heading">
             <div className="shop-section-heading">
               <div>

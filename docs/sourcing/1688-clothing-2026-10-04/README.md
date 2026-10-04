@@ -4,6 +4,14 @@ This batch contains **unpublished sourcing drafts**, not checkout-ready products
 The owner requested files for the backend team; no database records or live shop
 listings were created. Read `manifest.json` for final counts and capture coverage.
 
+The owner's subsequent request connects all 3,242 offers to a **New collection
+preview** section on `/shop`, independently of backend availability. Preview
+cards have category/search filters and detail pages, show CNY markup estimates,
+and cannot be added to the cart or purchased. English translations and verified
+colour options remain pending. The frontend snapshot excludes supplier links;
+the private handoff below retains them for operations. This change must be
+deployed before it appears on the hosted website.
+
 **Captured: 3,242 unique offers**, after removing two cross-category duplicates.
 All 50 exposed page numbers were checked for each category, with no recorded
 request errors. This is coverage of the public search window, not the full
