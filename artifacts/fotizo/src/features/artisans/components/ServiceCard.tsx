@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { Clock, Briefcase } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,14 @@ interface Service {
   availability: string;
 }
 
-export const ServiceCard = memo(function ServiceCard({ service }: { service: Service }) {
+export const ServiceCard = memo(function ServiceCard({
+  service,
+}: {
+  service: Service;
+}) {
+  const [billingMode, setBillingMode] = useState<"hourly" | "contract">(
+    "hourly",
+  );
   const isAvailableNow = service.availability.toLowerCase().includes("now");
 
   return (
@@ -35,16 +42,22 @@ export const ServiceCard = memo(function ServiceCard({ service }: { service: Ser
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-center gap-4">
             <div className="relative shrink-0">
-              <img loading="lazy" decoding="async"
+              <img
+                loading="lazy"
+                decoding="async"
                 src={service.avatar}
                 alt={service.provider}
                 className="w-16 h-16 rounded-full object-cover border border-border"
               />
-              <div className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white ${isAvailableNow ? 'bg-green-500' : 'bg-yellow-500'}`} />
+              <div
+                className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white ${isAvailableNow ? "bg-green-500" : "bg-yellow-500"}`}
+              />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h4 className="font-semibold text-foreground">{service.provider}</h4>
+                <h4 className="font-semibold text-foreground">
+                  {service.provider}
+                </h4>
               </div>
               <p className="text-sm text-muted-foreground">
                 {serviceCategoryLabel(service.category)}
@@ -79,13 +92,42 @@ export const ServiceCard = memo(function ServiceCard({ service }: { service: Ser
         </span>
       </Link>
 
-      <div className="mt-auto pt-4 border-t border-border flex items-center justify-between gap-2">
+      <div
+        className="mb-4 flex gap-2"
+        role="group"
+        aria-label={`Work arrangement for ${service.title}`}
+      >
+        {(["hourly", "contract"] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            aria-pressed={billingMode === mode}
+            onClick={() => setBillingMode(mode)}
+            className={`rounded-full border px-4 py-2 text-sm ${billingMode === mode ? "bg-primary text-white border-primary" : "border-border text-primary"}`}
+          >
+            {mode === "hourly" ? "Hourly" : "Contract"}
+          </button>
+        ))}
+      </div>
+      <div className="mt-auto pt-4 border-t border-border flex flex-wrap items-center justify-between gap-2">
         <div className="shrink-0">
-          <Price amount={service.hourlyRate} className="text-lg font-bold text-foreground" />
-          <span className="text-sm text-muted-foreground">/hr</span>
+          {billingMode === "hourly" ? (
+            <>
+              <Price
+                amount={service.hourlyRate}
+                className="text-lg font-bold text-foreground"
+              />
+              <span className="text-sm text-muted-foreground">/hr</span>
+            </>
+          ) : (
+            <span className="text-sm font-semibold text-primary">
+              Agree a fixed price
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <NegotiateDialog
+            billingMode={billingMode}
             service={{
               id: service.id,
               title: service.title,
@@ -96,7 +138,10 @@ export const ServiceCard = memo(function ServiceCard({ service }: { service: Ser
             }}
           />
           <Link href={`/services/${service.id}`}>
-            <Button variant="outline" className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5">
+            <Button
+              variant="outline"
+              className="border-primary/20 text-primary hover:bg-primary/5 rounded-full px-5"
+            >
               View
             </Button>
           </Link>

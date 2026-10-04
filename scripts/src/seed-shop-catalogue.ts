@@ -82,10 +82,8 @@ function readCategories(): { id: string; label: string }[] {
 }
 
 function readProducts(): ShopProduct[] {
-  const src = readFileSync(resolve(SHOP, "products.ts"), "utf8");
-  const m = src.match(/export const SHOP_PRODUCTS: ShopProduct\[\] = (\[[\s\S]*?\n\]);/);
-  if (!m) throw new Error("Could not locate SHOP_PRODUCTS — did products.ts change shape?");
-  const products = new Function(`return ${m[1]}`)() as ShopProduct[];
+  // Seed only the reviewed launch source. Never reintroduce retired Alibaba.com stock.
+  const products = JSON.parse(readFileSync(resolve(SHOP, "taobao-products.json"), "utf8")) as ShopProduct[];
   if (!Array.isArray(products) || products.length === 0) throw new Error("SHOP_PRODUCTS is empty.");
   return products;
 }

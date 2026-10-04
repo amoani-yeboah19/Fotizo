@@ -30,11 +30,11 @@ describe("Alibaba frontend catalogue", () => {
     }
   });
 
-  it("merges refreshed listings without duplicate public or supplier IDs", () => {
+  it("keeps archived Alibaba.com listings out of the launch catalogue", () => {
     expect(new Set(SHOP_PRODUCTS.map((p) => p.id)).size).toBe(SHOP_PRODUCTS.length);
     expect(new Set(alibabaProducts.map((p) => p.sourcing.productId)).size).toBe(alibabaProducts.length);
     for (const p of alibabaProducts) {
-      expect(SHOP_PRODUCTS.filter((candidate) => candidate.sourceUrl?.includes(`_${p.sourcing.productId}.html`))).toHaveLength(1);
+      expect(SHOP_PRODUCTS.filter((candidate) => candidate.sourceUrl?.includes(`_${p.sourcing.productId}.html`))).toHaveLength(0);
     }
   });
 

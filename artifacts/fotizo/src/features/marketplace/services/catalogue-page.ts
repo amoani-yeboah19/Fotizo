@@ -1,3 +1,4 @@
+import { visibleProduct } from "@/features/catalogue/launch-policy";
 import { api, CATALOG_USE_MOCKS, SHOP_USE_MOCKS } from "@/api";
 import type { Product } from "@/types";
 import type {
@@ -38,8 +39,18 @@ export const cataloguePages = {
     channel: CatalogueChannel,
     filters: CatalogueFilters = {},
   ): Promise<CataloguePage> {
-    if (!isDemo(channel))
-      return api.get<CataloguePage>("/products", { ...filters, channel });
+    if (!isDemo(channel)) {
+      const page = await api.get<CataloguePage>("/products", {
+        ...filters,
+        channel,
+      });
+      const items = page.items.filter(visibleProduct);
+      return {
+        ...page,
+        items,
+        total: Math.max(0, page.total - (page.items.length - items.length)),
+      };
+    }
     const q = (filters.q ?? "").trim().toLowerCase();
     const discount = (p: Product) =>
       p.originalPrice && p.originalPrice > p.price
@@ -47,6 +58,7 @@ export const cataloguePages = {
         : 0;
     const all = (await demoProducts(channel)).filter(
       (p) =>
+        visibleProduct(p) &&
         (!q ||
           [p.title, p.seller, p.category].some((v) =>
             v.toLowerCase().includes(q),

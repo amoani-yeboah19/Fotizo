@@ -1,4 +1,8 @@
-import { groupForCategory, matchServiceCategory } from "@workspace/service-taxonomy";
+import { retiredService } from "@/features/catalogue/launch-policy";
+import {
+  groupForCategory,
+  matchServiceCategory,
+} from "@workspace/service-taxonomy";
 import { api, ARTISANS_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import * as fx from "@/services/mocks/fixtures";
@@ -12,7 +16,11 @@ function normalise(service: Service): Service {
   if (service.group && service.category) return service;
   const match = matchServiceCategory(service.category ?? "");
   if (!match) return service;
-  return { ...service, category: match.id, group: service.group ?? match.group };
+  return {
+    ...service,
+    category: match.id,
+    group: service.group ?? match.group,
+  };
 }
 
 export const artisansService = {
@@ -23,7 +31,8 @@ export const artisansService = {
       // the chosen category, never sent by the client, so a plumber's listing
       // lands under Artisans & Trades on its own.
       const group = groupForCategory(input.category);
-      if (!group) throw new Error(`Unknown service category: ${input.category}`);
+      if (!group)
+        throw new Error(`Unknown service category: ${input.category}`);
       const id = `s-${Date.now()}`;
       const service: Service = {
         id,
@@ -48,11 +57,15 @@ export const artisansService = {
     return normalise(await api.post<Service>("/services", input));
   },
 
-  async listServices(filter?: { group?: string; category?: string }): Promise<Service[]> {
+  async listServices(filter?: {
+    group?: string;
+    category?: string;
+  }): Promise<Service[]> {
     if (ARTISANS_USE_MOCKS) {
       await delay();
       return fx.services.filter(
         (s) =>
+          !retiredService(s.id) &&
           (!filter?.group || s.group === filter.group) &&
           (!filter?.category || s.category === filter.category),
       );
@@ -66,12 +79,14 @@ export const artisansService = {
     // An older backend ignores the query params, so re-apply the filter here.
     return normalised.filter(
       (s) =>
+        !retiredService(s.id) &&
         (!filter?.group || s.group === filter.group) &&
         (!filter?.category || s.category === filter.category),
     );
   },
 
   async getService(id: string): Promise<Service | null> {
+    if (retiredService(id)) return null;
     if (ARTISANS_USE_MOCKS) {
       await delay();
       return fx.services.find((s) => s.id === id) ?? null;
@@ -92,7 +107,17 @@ export const artisansService = {
   // Sends only the editable fields; ownership, ratings and the group are
   // decided by the server.
   async updateService(id: string, input: NewServiceInput): Promise<Service> {
-    const { title, category, description, experience, hourlyRate, availability, skills, avatar, packages } = input;
+    const {
+      title,
+      category,
+      description,
+      experience,
+      hourlyRate,
+      availability,
+      skills,
+      avatar,
+      packages,
+    } = input;
     return normalise(
       await api.patch<Service>(`/services/${id}`, {
         title,
@@ -108,7 +133,12 @@ export const artisansService = {
     );
   },
 
-  async setServiceStatus(id: string, status: "active" | "unpublished"): Promise<Service> {
-    return normalise(await api.post<Service>(`/services/${id}/status`, { status }));
+  async setServiceStatus(
+    id: string,
+    status: "active" | "unpublished",
+  ): Promise<Service> {
+    return normalise(
+      await api.post<Service>(`/services/${id}/status`, { status }),
+    );
   },
 };

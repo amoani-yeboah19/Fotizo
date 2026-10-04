@@ -4,7 +4,6 @@ import {
   SERVICE_CATEGORIES,
   serviceCategoryLabel,
 } from "@workspace/service-taxonomy";
-import { CurrencySwitcher } from "@/components/layout/navbar/CurrencySwitcher";
 import { categoryLabel as shopCategoryLabel } from "@/features/shop/data/categories";
 
 interface FooterLink {
@@ -152,7 +151,6 @@ export function Footer() {
             <span className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
               <Globe className="w-4 h-4" aria-hidden="true" /> English
             </span>
-            <CurrencySwitcher dropUp />
           </div>
         </div>
       </div>

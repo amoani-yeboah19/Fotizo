@@ -25,16 +25,28 @@ type Participant = { id: string; name: string; avatar?: string; role: string };
 
 interface MessagesContextType {
   conversations: Conversation[];
-  sendMessage: (conversationId: string, content: string, senderId: string, senderName: string) => void;
+  sendMessage: (
+    conversationId: string,
+    content: string,
+    senderId: string,
+    senderName: string,
+  ) => void;
   sendOffer: (
     conversationId: string,
     offer: { description: string; amount: number },
     senderId: string,
     senderName: string,
+  ) => Promise<void>;
+  respondToOffer: (
+    conversationId: string,
+    messageId: string,
+    status: "accepted" | "declined",
   ) => void;
-  respondToOffer: (conversationId: string, messageId: string, status: "accepted" | "declined") => void;
   markAsRead: (conversationId: string) => void;
-  startConversation: (participant: Participant, subject: string) => Promise<string>;
+  startConversation: (
+    participant: Participant,
+    subject: string,
+  ) => Promise<string>;
   totalUnread: number;
 }
 
@@ -43,15 +55,23 @@ const MessagesContext = createContext<MessagesContextType | null>(null);
 export function MessagesProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, user } = useAuth();
   const mounted = useRef(false);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   // Non-zero while a local mutation is in flight, so a background poll can't
   // overwrite an optimistic update before the server reflects it.
   const busyRef = useRef(0);
 
-  const patch = useCallback((id: string, fn: (c: Conversation) => Conversation) => {
-    setConversations((prev) => prev.map((c) => (c.id === id ? fn(c) : c)));
-  }, []);
+  const patch = useCallback(
+    (id: string, fn: (c: Conversation) => Conversation) => {
+      setConversations((prev) => prev.map((c) => (c.id === id ? fn(c) : c)));
+    },
+    [],
+  );
 
   // Pull server truth. No-op on mocks (a refetch would wipe local state) and
   // while a mutation is mid-flight.
@@ -93,7 +113,12 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
   );
 
   const sendMessage = useCallback(
-    (conversationId: string, content: string, senderId: string, senderName: string) => {
+    (
+      conversationId: string,
+      content: string,
+      senderId: string,
+      senderName: string,
+    ) => {
       // Show the message instantly with a temp id, then swap in the persisted
       // one (or roll back if the send fails).
       const optimistic: Message = {
@@ -117,7 +142,9 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
         .then((real) => {
           patch(conversationId, (c) => ({
             ...c,
-            messages: c.messages.map((m) => (m.id === optimistic.id ? real : m)),
+            messages: c.messages.map((m) =>
+              m.id === optimistic.id ? real : m,
+            ),
           }));
         })
         .catch(() => {
@@ -153,7 +180,7 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
       senderName: string,
     ) => {
       busyRef.current += 1;
-      messagesService
+      return messagesService
         .sendOffer(conversationId, offer, senderId, senderName)
         .then((newMsg) => {
           patch(conversationId, (c) => ({
@@ -163,7 +190,6 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
             lastMessageTime: newMsg.timestamp,
           }));
         })
-        .catch(() => {})
         .finally(() => {
           busyRef.current -= 1;
         });
@@ -172,12 +198,18 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
   );
 
   const respondToOffer = useCallback(
-    (conversationId: string, messageId: string, status: "accepted" | "declined") => {
+    (
+      conversationId: string,
+      messageId: string,
+      status: "accepted" | "declined",
+    ) => {
       // Optimistic status flip, reverted to pending if the request fails.
       patch(conversationId, (c) => ({
         ...c,
         messages: c.messages.map((m) =>
-          m.id === messageId && m.offer ? { ...m, offer: { ...m.offer, status } } : m,
+          m.id === messageId && m.offer
+            ? { ...m, offer: { ...m.offer, status } }
+            : m,
         ),
       }));
 
@@ -195,7 +227,9 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
           patch(conversationId, (c) => ({
             ...c,
             messages: c.messages.map((m) =>
-              m.id === messageId && m.offer ? { ...m, offer: { ...m.offer, status: "pending" } } : m,
+              m.id === messageId && m.offer
+                ? { ...m, offer: { ...m.offer, status: "pending" } }
+                : m,
             ),
           }));
         })
@@ -208,11 +242,15 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
 
   const markAsRead = useCallback(
     (conversationId: string) => {
-      void messagesService.markAsRead(conversationId).catch(() => void refresh());
+      void messagesService
+        .markAsRead(conversationId)
+        .catch(() => void refresh());
       patch(conversationId, (c) => ({
         ...c,
         unreadCount: 0,
-        messages: c.messages.map((m) => m.senderId === user?.id ? m : { ...m, read: true }),
+        messages: c.messages.map((m) =>
+          m.senderId === user?.id ? m : { ...m, read: true },
+        ),
       }));
     },
     [patch, refresh, user?.id],
@@ -227,8 +265,13 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
 
       busyRef.current += 1;
       try {
-        const conv = await messagesService.startConversation(participant, subject);
-        setConversations((prev) => (prev.some((c) => c.id === conv.id) ? prev : [conv, ...prev]));
+        const conv = await messagesService.startConversation(
+          participant,
+          subject,
+        );
+        setConversations((prev) =>
+          prev.some((c) => c.id === conv.id) ? prev : [conv, ...prev],
+        );
         return conv.id;
       } finally {
         busyRef.current -= 1;
@@ -238,11 +281,31 @@ export function MessagesProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ conversations, sendMessage, sendOffer, respondToOffer, markAsRead, startConversation, totalUnread }),
-    [conversations, sendMessage, sendOffer, respondToOffer, markAsRead, startConversation, totalUnread],
+    () => ({
+      conversations,
+      sendMessage,
+      sendOffer,
+      respondToOffer,
+      markAsRead,
+      startConversation,
+      totalUnread,
+    }),
+    [
+      conversations,
+      sendMessage,
+      sendOffer,
+      respondToOffer,
+      markAsRead,
+      startConversation,
+      totalUnread,
+    ],
   );
 
-  return <MessagesContext.Provider value={value}>{children}</MessagesContext.Provider>;
+  return (
+    <MessagesContext.Provider value={value}>
+      {children}
+    </MessagesContext.Provider>
+  );
 }
 
 export function useMessages() {
