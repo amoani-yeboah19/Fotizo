@@ -29,6 +29,7 @@ const stub = {
   requests: [] as { method: string; url: string; auth?: string; apikey?: string; type?: string; upsert?: string; bytes: number }[],
   bucketExists: false,
   failObjects: false,
+  rejectKey: false,
 };
 
 const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(200, 1)]);
@@ -84,6 +85,10 @@ beforeAll(async () => {
         bytes: body.length,
       });
       res.setHeader("Content-Type", "application/json");
+      if (stub.rejectKey) {
+        res.writeHead(400).end(JSON.stringify({ statusCode: "403", error: "Unauthorized", message: "Invalid Compact JWS" }));
+        return;
+      }
       if (req.url === "/storage/v1/bucket") {
         // Supabase answers an existing bucket with a 400 carrying statusCode "409".
         if (stub.bucketExists) {
@@ -121,6 +126,7 @@ beforeEach(async () => {
   stub.requests = [];
   stub.bucketExists = false;
   stub.failObjects = false;
+  stub.rejectKey = false;
   resetStorageState();
 });
 
@@ -235,5 +241,30 @@ describe("profile photos", () => {
       packages: [{ name: "Basic", price: 300, delivery: "7 days", description: "Five pages" }],
     };
     expect((await send("POST", "/services", { ...service, avatar: photo }, seller.cookie)).status).toBe(201);
+  });
+});
+
+describe("storage status for operators", () => {
+  const status = async (cookie?: string) => {
+    const response = await fetch(`${base}/api/uploads/status`, { headers: cookie ? { Cookie: cookie } : {} });
+    return { code: response.status, body: (await response.json()) as Record<string, unknown> };
+  };
+
+  it("explains missing settings, a rejected key and a working setup without exposing the key", async () => {
+    const buyer = await account("buyer");
+    expect((await status()).code).toBe(401);
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    expect((await status(buyer.cookie)).body).toMatchObject({ configured: false, ready: false });
+    // Quotes pasted around a value in a hosting dashboard are ignored.
+    process.env.SUPABASE_SERVICE_ROLE_KEY = '"service-role-test"';
+    stub.rejectKey = true;
+    const rejected = await status(buyer.cookie);
+    expect(rejected.body).toMatchObject({ configured: true, ready: false });
+    expect(String(rejected.body.problem)).toContain("service_role");
+    expect(JSON.stringify(rejected.body)).not.toContain("service-role-test");
+    stub.rejectKey = false;
+    resetStorageState();
+    expect((await status(buyer.cookie)).body).toMatchObject({ ready: true, problem: null, bucket: "fotizo-images" });
+    expect(stub.requests.at(-1)).toMatchObject({ auth: "Bearer service-role-test" });
   });
 });

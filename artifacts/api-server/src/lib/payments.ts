@@ -7,6 +7,7 @@ import {
   productsTable,
   paymentAttemptsTable,
   paymentEventsTable,
+  readyToFulfil,
   type OrderRow,
   type PaymentAttemptRow,
   type PaymentProvider,
@@ -14,6 +15,7 @@ import {
 import { caseReference } from "./cases";
 import { logger } from "./logger";
 import { currentRates } from "../routes/currency";
+import { recordUnitSaleFees } from "./fees";
 import { configuredOrigins } from "../middlewares/security";
 
 // Online payment: Paystack for Ghana (charged in GHS), Stripe for other
@@ -89,6 +91,8 @@ export async function startPayment(order: OrderRow): Promise<{ checkoutUrl: stri
   if (!isOnlineMethod(order.paymentMethod))
     throw new PaymentError(409, "This order is not paid online.");
   if (order.paymentStatus === "paid") throw new PaymentError(409, "This order is already paid.");
+  if (!readyToFulfil(order))
+    throw new PaymentError(409, "Fotizo is still confirming the items in this order. You can pay once you accept the confirmed total.");
   const provider = order.paymentMethod;
   if (!providersAvailable()[provider])
     throw new PaymentError(503, "Online payment is not available right now. Choose another payment method.");
@@ -216,6 +220,8 @@ export async function recordOutcome(attemptId: string, observed: Observation) {
         .set({ paymentStatus: "paid", paidAt: now })
         .where(and(eq(ordersTable.id, attempt.orderId), eq(ordersTable.paymentStatus, "unpaid")))
         .returning({ id: ordersTable.id });
+      // Seller fees in the currency actually charged, once per order line.
+      if (order) await recordUnitSaleFees(tx, attempt.orderId, { currency: attempt.currency, exchangeRate: attempt.exchangeRate });
       const [cancelled] = await tx
         .select({ id: orderItemsTable.id })
         .from(orderItemsTable)
@@ -338,9 +344,30 @@ export async function attemptByReference(provider: PaymentProvider, reference: s
 // ── Abandoned checkouts ──────────────────────────────────────────────────────
 
 /**
+ * Cancels an order's pending lines and puts their marketplace stock back.
+ * Returns how many lines were cancelled.
+ */
+export async function releaseOrderLines(tx: Tx, orderId: string) {
+  const lines = await tx
+    .update(orderItemsTable)
+    .set({ status: "cancelled" })
+    .where(and(eq(orderItemsTable.orderId, orderId), eq(orderItemsTable.status, "pending")))
+    .returning({ productId: orderItemsTable.productId, quantity: orderItemsTable.quantity });
+  for (const line of lines)
+    await tx
+      .update(productsTable)
+      .set({ stockCount: sql`${productsTable.stockCount} + ${line.quantity}` })
+      .where(and(eq(productsTable.id, line.productId), eq(productsTable.channel, "marketplace")));
+  return lines.length;
+}
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
  * Cancels online orders still unpaid after the payment window and puts their
- * marketplace stock back. Late provider confirmations are still recorded (and
- * logged for a refund or re-fulfilment decision).
+ * marketplace stock back. For orders that needed supplier confirmation the
+ * window starts when the buyer accepted the confirmed total. Late provider
+ * confirmations are still recorded (and logged for a refund or re-fulfilment
+ * decision). Confirmed quotes the buyer has not accepted in time expire too.
  */
 export async function releaseAbandonedOrders(now = Date.now()) {
   const cutoff = new Date(now - PAYMENT_WINDOW_MS);
@@ -351,32 +378,47 @@ export async function releaseAbandonedOrders(now = Date.now()) {
       and(
         inArray(ordersTable.paymentMethod, ["paystack", "stripe"]),
         eq(ordersTable.paymentStatus, "unpaid"),
-        lt(ordersTable.createdAt, cutoff),
+        sql`(${ordersTable.confirmationStatus} IS NULL OR ${ordersTable.confirmationStatus} = 'accepted')`,
+        lt(sql`coalesce(${ordersTable.acceptedAt}, ${ordersTable.createdAt})`, cutoff),
       ),
     )
     .limit(200);
   let released = 0;
   for (const { id } of stale) {
     const changed = await db.transaction(async (tx) => {
-      const lines = await tx
-        .update(orderItemsTable)
-        .set({ status: "cancelled" })
-        .where(and(eq(orderItemsTable.orderId, id), eq(orderItemsTable.status, "pending")))
-        .returning({ productId: orderItemsTable.productId, quantity: orderItemsTable.quantity });
-      for (const line of lines)
-        await tx
-          .update(productsTable)
-          .set({ stockCount: sql`${productsTable.stockCount} + ${line.quantity}` })
-          .where(and(eq(productsTable.id, line.productId), eq(productsTable.channel, "marketplace")));
+      const lines = await releaseOrderLines(tx, id);
       await tx
         .update(paymentAttemptsTable)
         .set({ status: "expired", updatedAt: new Date() })
         .where(and(eq(paymentAttemptsTable.orderId, id), eq(paymentAttemptsTable.status, "pending")));
-      return lines.length;
+      return lines;
     });
     if (changed) released += 1;
   }
-  return released;
+  return released + (await expireQuotes(now));
+}
+
+/** Confirmed quotes left unanswered past their expiry are closed and their stock released. */
+export async function expireQuotes(now = Date.now()) {
+  const expired = await db
+    .select({ id: ordersTable.id })
+    .from(ordersTable)
+    .where(and(eq(ordersTable.confirmationStatus, "quoted"), lt(ordersTable.quoteExpiresAt, new Date(now))))
+    .limit(200);
+  let closed = 0;
+  for (const { id } of expired) {
+    const changed = await db.transaction(async (tx) => {
+      const [order] = await tx
+        .update(ordersTable)
+        .set({ confirmationStatus: "expired" })
+        .where(and(eq(ordersTable.id, id), eq(ordersTable.confirmationStatus, "quoted")))
+        .returning({ id: ordersTable.id });
+      if (order) await releaseOrderLines(tx, id);
+      return Boolean(order);
+    });
+    if (changed) closed += 1;
+  }
+  return closed;
 }
 
 /** Stops treating an attempt as open once the order has been cancelled. */

@@ -27,6 +27,12 @@ vi.mock("../components/Operations", () => ({
   OrderPayments: () => <p>Payments queue</p>,
   CaseQueue: ({ type }: { type: string }) => <p>{type} queue</p>,
 }));
+vi.mock("@/features/orders/components/ConfirmationQueue", () => ({
+  ConfirmationQueue: () => <p>confirmations queue</p>,
+}));
+vi.mock("@/features/payments/hooks", () => ({
+  useConfirmationQueue: () => ({ data: [{ confirmationStatus: "awaiting" }, { confirmationStatus: "quoted" }] }),
+}));
 vi.mock("../services/manager.service", async (original) => ({
   ...(await original<typeof import("../services/manager.service")>()),
   adminService: {
@@ -84,10 +90,15 @@ it("shows live figures and the live-only queues to managers", async () => {
   mount();
   expect(await screen.findByText("Unverified accounts")).toBeTruthy();
   expect(screen.getByText("5")).toBeTruthy();
-  for (const label of ["Payments", "Support requests", "Vehicle enquiries", "Approval queue", "Orders & disputes"])
+  for (const label of ["Order confirmations", "Payments", "Support requests", "Vehicle enquiries", "Approval queue", "Orders & disputes"])
     expect(screen.getAllByText(label).length).toBeGreaterThan(0);
   fireEvent.click(screen.getAllByText("Support requests")[0]);
   expect(await screen.findByText("support queue")).toBeTruthy();
+  // Imported-goods orders awaiting a quote, shared with the China desk.
+  const confirmations = screen.getAllByText("Order confirmations")[0].closest("button")!;
+  expect(confirmations.textContent).toContain("1");
+  fireEvent.click(confirmations);
+  expect(await screen.findByText("confirmations queue")).toBeTruthy();
 });
 
 it("does not load management data for other roles", () => {

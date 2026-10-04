@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { listingImagesProblem } from "../lib/storage";
+import { productIdSchema } from "../lib/product-ids";
 import {
   HOLD_MESSAGE,
   REVIEWED_ROLES,
@@ -11,6 +12,7 @@ import {
 import { z } from "zod";
 import type { CatalogueProduct } from "@workspace/api-zod";
 import { eq, and, ne, desc, sql } from "drizzle-orm";
+import { ownerVisible } from "../lib/identity";
 import {
   db,
   productsTable,
@@ -85,10 +87,28 @@ export function toPublicProduct(
     status: row.status,
     image: row.images[0] ?? "",
     images: row.images,
-    inStock: row.stockCount > 0,
+    // Fotizo Shop goods are sourced to order, so they never run out.
+    inStock: row.channel === "shop" || row.stockCount > 0,
     stockCount: row.stockCount,
     tags: row.tags,
     specs: row.specs,
+    ...(row.sourcePlatform && row.sourceProductId
+      ? {
+          // Supplier prices, variants, minimums and delivery are confirmed
+          // before purchase, so the listed price stays an estimate.
+          sourcing: {
+            platform: row.sourcePlatform as "alibaba" | "taobao" | "pinduoduo" | "tuwa",
+            productId: row.sourceProductId,
+            sourceUrl: row.sourceUrl,
+            currency: row.supplierCurrency,
+            priceRange: row.specs.priceRange ?? null,
+            minimumOrder: row.specs.minimumOrder ?? null,
+            unit: row.specs.unit ?? null,
+            capturedAt: row.specs.capturedAt ?? null,
+            priceStatus: "estimate" as const,
+          },
+        }
+      : {}),
   };
 }
 
@@ -152,6 +172,7 @@ router.get("/products/categories", async (req, res) => {
       and(
         eq(productsTable.status, "active"),
         eq(productsTable.channel, filter.data.channel),
+        ownerVisible(productsTable.sellerId),
       ),
     )
     .groupBy(sql`1`)
@@ -160,7 +181,7 @@ router.get("/products/categories", async (req, res) => {
 });
 
 router.get("/products/:id", async (req, res) => {
-  const parsedId = z.string().uuid().safeParse(req.params.id);
+  const parsedId = productIdSchema.safeParse(req.params.id);
   if (!parsedId.success) {
     res.status(404).json({ error: "Product not found." });
     return;
@@ -173,6 +194,7 @@ router.get("/products/:id", async (req, res) => {
       and(
         eq(productsTable.id, parsedId.data),
         eq(productsTable.status, "active"),
+        ownerVisible(productsTable.sellerId),
       ),
     )
     .limit(1);
@@ -184,7 +206,7 @@ router.get("/products/:id", async (req, res) => {
 });
 
 router.get("/products/:id/related", async (req, res) => {
-  const parsedId = z.string().uuid().safeParse(req.params.id);
+  const parsedId = productIdSchema.safeParse(req.params.id);
   if (!parsedId.success) {
     res.json([]);
     return;
@@ -193,6 +215,7 @@ router.get("/products/:id/related", async (req, res) => {
     where: and(
       eq(productsTable.id, parsedId.data),
       eq(productsTable.status, "active"),
+      ownerVisible(productsTable.sellerId),
     ),
   });
   if (!product) {
@@ -212,6 +235,7 @@ router.get("/products/:id/related", async (req, res) => {
         eq(productsTable.channel, product.channel),
         ne(productsTable.id, product.id),
         eq(productsTable.status, "active"),
+        ownerVisible(productsTable.sellerId),
       ),
     )
     .orderBy(desc(productsTable.createdAt), desc(productsTable.id))
@@ -313,14 +337,17 @@ router.get(
         id: row.id,
         title: row.title,
         price: row.price,
-        stock: row.stockCount,
+        // Fotizo Shop goods are sourced to order: there is no stock to count
+        // or run out of, so no quantity is reported for them.
+        stock: row.channel === "shop" ? null : row.stockCount,
+        sourcedToOrder: row.channel === "shop",
         sales: unitsSold.get(row.id) ?? 0,
         rating: row.rating,
         reviewCount: row.reviewCount,
         status:
           row.status === "unpublished"
             ? "unpublished"
-            : row.stockCount > 0
+            : row.channel === "shop" || row.stockCount > 0
               ? "active"
               : "out_of_stock",
         image: row.images[0] ?? "",

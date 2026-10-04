@@ -1,10 +1,12 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
+import { ownerVisible } from "../lib/identity";
 import { alias } from "drizzle-orm/pg-core";
 import { db, bookingsTable, servicesTable, usersTable, type BookingRow, type BookingStatus } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
 import { caseReference } from "../lib/cases";
+import { recordBookingFee } from "../lib/fees";
 
 // Service bookings are requests: the customer proposes a package and time, the
 // provider confirms or declines. Payment is arranged offline.
@@ -83,7 +85,9 @@ router.post("/bookings", async (req: AuthenticatedRequest, res) => {
   const [service] = await db
     .select()
     .from(servicesTable)
-    .where(and(eq(servicesTable.id, parsed.data.serviceId), eq(servicesTable.status, "active")));
+    .where(
+      and(eq(servicesTable.id, parsed.data.serviceId), eq(servicesTable.status, "active"), ownerVisible(servicesTable.providerId)),
+    );
   if (!service) {
     res.status(404).json({ error: "This service is no longer available." });
     return;
@@ -167,6 +171,10 @@ router.post("/bookings/:id/status", async (req: AuthenticatedRequest, res) => {
       })
       .where(eq(bookingsTable.id, booking.id))
       .returning();
+    // The artisan fee, once per booking (repeat bookings are separate bookings).
+    // Booking payments don't run through Fotizo yet, so completion is when the
+    // booking counts as paid; move this to payment confirmation once they do.
+    if (updated.status === "completed") await recordBookingFee(tx, updated);
     return { status: 200 as const, booking: updated };
   });
   if (outcome.status !== 200) {

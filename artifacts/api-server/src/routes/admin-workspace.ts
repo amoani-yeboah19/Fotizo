@@ -15,6 +15,8 @@ import {
   sessionsTable,
   usersTable,
   userRoleEnum,
+  identityVerificationsTable,
+  IDENTITY_STATUSES,
   type DisputeStatus,
 } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
@@ -80,6 +82,9 @@ const toAdminUser = (u: typeof usersTable.$inferSelect) => ({
   email: u.email,
   role: u.role,
   verified: u.verified,
+  emailVerified: u.emailVerified,
+  identityStatus: u.identityStatus,
+  identityVerifiedAt: u.identityVerifiedAt?.toISOString() ?? null,
   status: accountStatus(u),
   createdAt: u.createdAt.toISOString(),
 });
@@ -127,6 +132,7 @@ const usersQuery = z.object({
   search,
   role: z.enum(userRoleEnum.enumValues).optional(),
   verification: z.enum(["verified", "unverified"]).optional(),
+  identity: z.enum(IDENTITY_STATUSES).optional(),
 });
 
 router.get("/users", async (req, res) => {
@@ -138,6 +144,7 @@ router.get("/users", async (req, res) => {
       : undefined,
     q.data.role ? eq(usersTable.role, q.data.role) : undefined,
     q.data.verification ? eq(usersTable.verified, q.data.verification === "verified") : undefined,
+    q.data.identity ? eq(usersTable.identityStatus, q.data.identity) : undefined,
   );
   const [rows, [{ total }]] = await Promise.all([
     db
@@ -184,7 +191,7 @@ router.get("/users/:id", async (req, res) => {
     res.status(404).json({ error: "User not found." });
     return;
   }
-  const [products, services, activity] = await Promise.all([
+  const [products, services, activity, identityChecks] = await Promise.all([
     db.select().from(productsTable).where(eq(productsTable.sellerId, user.id)).orderBy(desc(productsTable.createdAt)).limit(100),
     db.select().from(servicesTable).where(eq(servicesTable.providerId, user.id)).orderBy(desc(servicesTable.createdAt)).limit(100),
     db
@@ -193,6 +200,12 @@ router.get("/users/:id", async (req, res) => {
       .where(eq(adminAuditTable.targetId, user.id))
       .orderBy(desc(adminAuditTable.createdAt), desc(adminAuditTable.id))
       .limit(100),
+    db
+      .select()
+      .from(identityVerificationsTable)
+      .where(eq(identityVerificationsTable.userId, user.id))
+      .orderBy(desc(identityVerificationsTable.createdAt))
+      .limit(10),
   ]);
   res.json({
     user: toAdminUser(user),
@@ -201,6 +214,18 @@ router.get("/users/:id", async (req, res) => {
       ...services.map((s) => ({ ...serviceListing(s, user.name), kind: "service" as const })),
     ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     activity: activity.map(toAuditEntry),
+    // Veriff sessions: decisions only. Images and personal details stay with
+    // Veriff; the session id finds the session in Veriff's portal.
+    identityChecks: identityChecks.map((c) => ({
+      sessionId: c.sessionId,
+      status: c.status,
+      reason: c.reason,
+      documentType: c.documentType,
+      documentCountry: c.documentCountry,
+      nameMatches: c.nameMatches,
+      createdAt: c.createdAt.toISOString(),
+      decidedAt: c.decidedAt?.toISOString() ?? null,
+    })),
   });
 });
 
@@ -342,6 +367,14 @@ router.get("/listings", async (req, res) => {
 
 const decision = z.discriminatedUnion("kind", [
   z.object({ id: z.string().optional(), kind: z.literal("user"), verified: z.boolean(), expected: z.boolean(), reason }),
+  // A manager's identity decision: name mismatches, Veriff declines and appeals.
+  z.object({
+    id: z.string().optional(),
+    kind: z.literal("identity"),
+    status: z.enum(["approved", "declined"]),
+    expected: z.enum(IDENTITY_STATUSES),
+    reason,
+  }),
   z.object({
     id: z.string().optional(),
     kind: z.enum(["product", "service"]),
@@ -383,6 +416,27 @@ router.post("/decisions/:id", async (req: AuthenticatedRequest, res) => {
         reason: d.reason,
         before: { verified: user.verified },
         after: { verified: d.verified },
+      });
+      return;
+    }
+    if (d.kind === "identity") {
+      const [user] = await tx.select().from(usersTable).where(eq(usersTable.id, targetId.data)).for("update");
+      if (!user) throw new AdminError(404, "User not found.");
+      if (user.role !== "seller") throw new AdminError(409, "Only seller accounts have identity checks.");
+      if (user.identityStatus !== d.expected || d.status === d.expected) throw stale();
+      await tx
+        .update(usersTable)
+        .set({ identityStatus: d.status, identityVerifiedAt: d.status === "approved" ? new Date() : null })
+        .where(eq(usersTable.id, user.id));
+      await recordAudit(tx, {
+        actor,
+        action: d.status === "approved" ? "user.identity_approve" : "user.identity_decline",
+        targetType: "user",
+        targetId: user.id,
+        targetLabel: user.name,
+        reason: d.reason,
+        before: { identityStatus: user.identityStatus },
+        after: { identityStatus: d.status },
       });
       return;
     }

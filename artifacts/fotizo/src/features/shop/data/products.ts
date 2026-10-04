@@ -4,72 +4,38 @@ import { SHOP_CATEGORIES } from "@/features/shop/data/categories";
 // Re-exported so the shop pages can keep importing departments and listings
 // from one place. Light consumers (the Footer) should import from
 // ./categories directly — see the note there.
-export { SHOP_CATEGORIES, categoryLabel } from "@/features/shop/data/categories";
+export {
+  SHOP_CATEGORIES,
+  categoryLabel,
+} from "@/features/shop/data/categories";
 export type { ShopCategory } from "@/features/shop/data/categories";
+import { discountPct, type ShopProduct } from "./shop-product";
+export { discountPct, soldLabel, type ShopProduct } from "./shop-product";
 
 // Fotizo Shop catalog — real products sourced from the supplier storefront.
 // Prices are stored in the app's base currency (GBP); the Price component
 // converts to the active currency (the ₵ prices convert back at the app's
 // GHS rate). Images are hosted by the supplier and load over HTTPS.
 
-export interface ShopProduct {
-  sourcing?: {
-    platform: string;
-    productId: string;
-    originalTitle: string;
-    sourcePage: string;
-    capturedAt: string;
-    currency: string;
-    priceRange: string;
-    minimumOrder: string | null;
-    unit: string | null;
-    originalImage: string;
-    priceStatus: string;
-    usdPerGbp?: number;
-    sourceToGbp?: number;
-    exchangeRateDate?: string;
-    exchangeRateSource?: string;
-    previewMarkup: number;
-  };
-  stockCount?: number;
-  id: string;
-  title: string;
-  category: string;
-  price: number;
-  originalPrice: number;
-  rating: number;
-  sold: number;
-  image: string;
-  images: string[];
-  freeShipping: boolean;
-  almostGone: boolean;
-  description: string;
-  /**
-   * Supplier listing this was imported from, for buyers/ops to trace a product
-   * back to its source. Absent on the older hand-entered listings.
-   */
-  sourceUrl?: string;
-}
-
-// Launch catalogue: Alibaba.com listings are retired. Taobao is currently
-// published; reviewed JD.com and 1688.com imports can be added separately.
+// Retired Alibaba.com stock stays out of the local/demo catalogue.
 export const SHOP_PRODUCTS: ShopProduct[] = [...taobaoProducts];
-
-export function discountPct(p: Pick<ShopProduct, "price" | "originalPrice">): number {
-  if (p.originalPrice <= p.price) return 0;
-  return Math.round((1 - p.price / p.originalPrice) * 100);
-}
 
 // These take the catalogue as an argument rather than closing over
 // SHOP_PRODUCTS, so the same logic serves the committed file and the listings
 // fetched from the API (see features/shop/services). Callers with no live data
 // pass SHOP_PRODUCTS directly.
 
-export function getShopProduct(products: ShopProduct[], id: string): ShopProduct | undefined {
+export function getShopProduct(
+  products: ShopProduct[],
+  id: string,
+): ShopProduct | undefined {
   return products.find((p) => p.id === id);
 }
 
-export function shopProductsByCategory(products: ShopProduct[], categoryId: string | null): ShopProduct[] {
+export function shopProductsByCategory(
+  products: ShopProduct[],
+  categoryId: string | null,
+): ShopProduct[] {
   if (!categoryId) return products;
   return products.filter((p) => p.category === categoryId);
 }
@@ -82,8 +48,14 @@ export function flashDeals(products: ShopProduct[], limit = 12): ShopProduct[] {
     .slice(0, limit);
 }
 
-export function relatedShopProducts(products: ShopProduct[], product: ShopProduct, limit = 6): ShopProduct[] {
-  return products.filter((p) => p.category === product.category && p.id !== product.id).slice(0, limit);
+export function relatedShopProducts(
+  products: ShopProduct[],
+  product: ShopProduct,
+  limit = 6,
+): ShopProduct[] {
+  return products
+    .filter((p) => p.category === product.category && p.id !== product.id)
+    .slice(0, limit);
 }
 
 export interface ShopCategoryCard {
@@ -97,10 +69,13 @@ export interface ShopCategoryCard {
 
 const CATEGORY_COVER_ART: Record<string, string> = {
   mens: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=80",
-  jackets: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1200&q=80",
-  beauty: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1200&q=80",
+  jackets:
+    "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1200&q=80",
+  beauty:
+    "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1200&q=80",
   car: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80",
-  womens: "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=80",
+  womens:
+    "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=80",
 };
 
 /**
@@ -108,7 +83,9 @@ const CATEGORY_COVER_ART: Record<string, string> = {
  * cover art so the homepage cards represent the category, not whichever product
  * happened to appear first in the catalogue.
  */
-export function shopCategoryCards(products: ShopProduct[] = SHOP_PRODUCTS): ShopCategoryCard[] {
+export function shopCategoryCards(
+  products: ShopProduct[] = SHOP_PRODUCTS,
+): ShopCategoryCard[] {
   return SHOP_CATEGORIES.map((cat) => {
     const items = products.filter((p) => p.category === cat.id);
     const image = CATEGORY_COVER_ART[cat.id] ?? items[0]?.image ?? "";
@@ -123,10 +100,4 @@ export function shopCategoryCards(products: ShopProduct[] = SHOP_PRODUCTS): Shop
   })
     .filter((c) => c.count > 0 && c.image)
     .sort((a, b) => b.count - a.count);
-}
-
-// Formats a sold count Temu-style: 9500 → "9.5k+ sold".
-export function soldLabel(sold: number): string {
-  if (sold >= 1000) return `${(sold / 1000).toFixed(1).replace(/\.0$/, "")}k+ sold`;
-  return `${sold} sold`;
 }

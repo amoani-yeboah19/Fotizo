@@ -17,8 +17,8 @@ async function demoProducts(channel: CatalogueChannel): Promise<Product[]> {
       (p) => p.channel !== "shop" && p.status !== "unpublished",
     );
   }
-  const { SHOP_PRODUCTS } = await import("@/features/shop/data/products");
-  return SHOP_PRODUCTS.map((p) => ({
+  const { loadLocalCatalogue } = await import("@/features/shop/data/local-catalogue");
+  return (await loadLocalCatalogue()).map((p) => ({
     ...p,
     channel: "shop",
     status: "active",
@@ -88,7 +88,8 @@ export const cataloguePages = {
     return {
       items: all
         .slice(page * pageSize, (page + 1) * pageSize)
-        .map((p) => ({ ...p, channel, status: "active" })),
+        // Preview records keep their own supplier details locally (see toShopProduct).
+        .map(({ sourcing: _sourcing, ...p }) => ({ ...p, channel, status: "active" })),
       total: all.length,
       page,
       pageSize,

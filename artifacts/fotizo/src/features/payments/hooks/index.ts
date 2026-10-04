@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { ordersService, type SaleStatus } from "@/features/payments/services/orders.service";
+import type { ConfirmationQuote } from "@/types";
 
 export const usePlaceOrder = () => {
   const qc = useQueryClient();
@@ -56,6 +57,44 @@ export const useOrderDetail = (id: string | null) => {
     queryFn: () => ordersService.getOrder(id!),
     enabled: Boolean(id && user),
   });
+};
+
+/** The buyer accepting or cancelling a confirmed (or pending) order. */
+export const useOrderDecision = (orderId: string | null) => {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["order", user?.id, orderId] });
+    qc.invalidateQueries({ queryKey: ["orders"] });
+  };
+  return {
+    accept: useMutation({ mutationFn: () => ordersService.acceptQuote(orderId!), onSuccess: refresh }),
+    withdraw: useMutation({ mutationFn: () => ordersService.withdrawOrder(orderId!), onSuccess: refresh }),
+  };
+};
+
+export const useConfirmationQueue = (status = "open") =>
+  useQuery({
+    queryKey: ["confirmations", status],
+    queryFn: () => ordersService.listConfirmations(status),
+  });
+
+/** Fotizo staff sending a confirmed quote or declining an order. */
+export const useConfirmationActions = () => {
+  const qc = useQueryClient();
+  const refresh = () => qc.invalidateQueries({ queryKey: ["confirmations"] });
+  return {
+    quote: useMutation({
+      mutationFn: ({ orderId, quote }: { orderId: string; quote: ConfirmationQuote }) =>
+        ordersService.sendQuote(orderId, quote),
+      onSuccess: refresh,
+    }),
+    decline: useMutation({
+      mutationFn: ({ orderId, reason }: { orderId: string; reason: string }) =>
+        ordersService.declineOrder(orderId, reason),
+      onSuccess: refresh,
+    }),
+  };
 };
 
 /** Seller fulfilment: move one order line forward. */

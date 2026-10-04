@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { eq, and, desc, type SQL } from "drizzle-orm";
+import { ownerVisible } from "../lib/identity";
 import { db, servicesTable, usersTable, type ServiceRow } from "@workspace/db";
 import {
   SERVICE_GROUPS,
@@ -81,7 +82,7 @@ router.get("/services", async (req, res) => {
   }
   const { group, category } = parsedQuery.data;
 
-  const filters: SQL[] = [eq(servicesTable.status, "active")];
+  const filters: SQL[] = [eq(servicesTable.status, "active"), ownerVisible(servicesTable.providerId)];
   if (group) filters.push(eq(servicesTable.group, group));
   if (category) filters.push(eq(servicesTable.category, category));
 
@@ -104,7 +105,7 @@ router.get("/services/:id", async (req, res) => {
     .select({ service: servicesTable, providerName: usersTable.name })
     .from(servicesTable)
     .leftJoin(usersTable, eq(servicesTable.providerId, usersTable.id))
-    .where(and(eq(servicesTable.id, parsedId.data), eq(servicesTable.status, "active")))
+    .where(and(eq(servicesTable.id, parsedId.data), eq(servicesTable.status, "active"), ownerVisible(servicesTable.providerId)))
     .limit(1);
   if (!row) {
     res.status(404).json({ error: "Service not found." });

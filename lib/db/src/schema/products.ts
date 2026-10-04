@@ -67,6 +67,17 @@ export const productsTable = pgTable(
     status: productStatusEnum("status").notNull().default("active"),
     // Set by staff when they unpublish or reject a listing; the owner cannot clear it.
     moderationHold: boolean("moderation_hold").notNull().default(false),
+    // Imported goods (migration 0015): where they came from and what they cost.
+    sourcePlatform: text("source_platform"),
+    sourceProductId: text("source_product_id"),
+    sourceUrl: text("source_url"),
+    supplierCurrency: text("supplier_currency"),
+    supplierCost: numeric("supplier_cost", { precision: 14, scale: 4, mode: "number" }),
+    /** Supplier-currency units per GBP used to price it. */
+    supplierRate: numeric("supplier_rate", { precision: 18, scale: 8, mode: "number" }),
+    markupPercent: numeric("markup_percent", { precision: 6, scale: 2, mode: "number" }),
+    priceBasis: text("price_basis").$type<"quoted" | "recovered">(),
+    pricedAt: timestamp("priced_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

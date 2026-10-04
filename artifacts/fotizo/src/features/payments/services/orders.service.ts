@@ -2,6 +2,8 @@ import { api, ORDERS_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import * as fx from "@/services/mocks/fixtures";
 import type {
+  ConfirmationQuote,
+  ConfirmationRequest,
   OnlinePaymentMethod,
   Order,
   OrderDetail,
@@ -68,6 +70,32 @@ export const ordersService = {
   /** Asks the server to confirm payment with the provider after checkout. */
   async verifyPayment(orderId: string) {
     return api.post<PaymentVerification>(`/payments/orders/${orderId}/verify`, {});
+  },
+
+  // ── Supplier confirmation for imported goods ──
+
+  /** The buyer accepts the confirmed total; online orders come back with the payment page. */
+  async acceptQuote(orderId: string) {
+    return api.post<OrderConfirmation>(`/orders/${orderId}/accept`, {});
+  },
+
+  /** The buyer cancels an order still being confirmed, or declines the quote. */
+  async withdrawOrder(orderId: string) {
+    return api.post<OrderConfirmation>(`/orders/${orderId}/withdraw`, {});
+  },
+
+  /** Fotizo's queue of orders to confirm with suppliers. */
+  async listConfirmations(status = "open"): Promise<ConfirmationRequest[]> {
+    if (ORDERS_USE_MOCKS) return [];
+    return api.get<ConfirmationRequest[]>("/operations/confirmations", { status });
+  },
+
+  async sendQuote(orderId: string, quote: ConfirmationQuote) {
+    return api.post<OrderConfirmation>(`/operations/orders/${orderId}/quote`, quote);
+  },
+
+  async declineOrder(orderId: string, reason: string) {
+    return api.post<OrderConfirmation>(`/operations/orders/${orderId}/decline`, { reason });
   },
 
   async markPaid(orderId: string) {

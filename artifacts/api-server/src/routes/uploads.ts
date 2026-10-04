@@ -3,7 +3,8 @@ import { z } from "zod";
 import { MEDIA_PURPOSES } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
 import { consumeAuthAttempt } from "../middlewares/security";
-import { MAX_IMAGE_BYTES, StorageError, storeImage } from "../lib/storage";
+import { MAX_IMAGE_BYTES, StorageError, storageHealth, storeImage } from "../lib/storage";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -45,9 +46,17 @@ router.post(
       res.status(201).json(await storeImage(req.auth!.userId, purpose.data, body));
     } catch (error) {
       if (!(error instanceof StorageError)) throw error;
+      if (error.status >= 500) logger.warn({ reason: error.reason, purpose: purpose.data }, "Image upload failed");
       res.status(error.status).json({ error: error.message });
     }
   },
 );
+
+// For whoever deploys the API: open this while signed in to see whether image
+// storage is set up. Shows no secrets.
+router.get("/uploads/status", requireAuth, async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json(await storageHealth());
+});
 
 export default router;

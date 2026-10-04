@@ -32,3 +32,6 @@ export * from "./managedAccount";
 export * from "./managedAccountPage";
 export * from "./managedAccountRole";
 export * from "./managedAccountSummary";
+export * from "./productSourcing";
+export * from "./productSourcingPlatform";
+export * from "./productSourcingPriceStatus";

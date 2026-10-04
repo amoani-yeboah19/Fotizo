@@ -10,7 +10,8 @@
     "inspect-services": "tsx ./src/inspect-services.ts",
     "seed-shop-catalogue": "tsx ./src/seed-shop-catalogue.ts",
     "import-vehicles": "tsx ./src/import-vehicles.ts",
-    "move-images-to-storage": "tsx ./src/move-images-to-storage.ts"
+    "move-images-to-storage": "tsx ./src/move-images-to-storage.ts",
+    "import-shop-catalogue": "tsx ./src/import-shop-catalogue.ts"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

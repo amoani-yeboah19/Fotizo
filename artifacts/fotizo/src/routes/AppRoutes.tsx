@@ -7,6 +7,7 @@ import { Loading } from "@/components/common/QueryStates";
 import NotFound from "@/routes/NotFound";
 import { RequireSession } from "@/components/common/RequireSession";
 import { DEMO_MODE } from "@/api";
+import { useScrollToTopOnNavigate } from "@/hooks/useFeedScrollRestore";
 
 // Route-level code splitting: each page (and its heavy deps like recharts on the
 // dashboards) loads only when its route is visited.
@@ -120,6 +121,8 @@ function OpenAuthModal({ view }: { view: AuthView }) {
 }
 
 export function AppRoutes() {
+  const [pathname] = useLocation();
+  useScrollToTopOnNavigate(pathname);
   return (
     <Suspense
       fallback={

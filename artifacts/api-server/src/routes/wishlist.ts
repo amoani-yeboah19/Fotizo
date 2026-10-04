@@ -1,6 +1,8 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
+import { productIdSchema } from "../lib/product-ids";
 import { and, desc, eq, sql } from "drizzle-orm";
+import { ownerVisible } from "../lib/identity";
 import { db, productsTable, usersTable, wishlistItemsTable } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
 import { toPublicProduct } from "./products";
@@ -23,6 +25,7 @@ router.get("/wishlist", async (req: AuthenticatedRequest, res) => {
       and(
         eq(wishlistItemsTable.userId, req.auth!.userId),
         eq(productsTable.status, "active"),
+        ownerVisible(productsTable.sellerId),
       ),
     )
     .orderBy(desc(wishlistItemsTable.createdAt), desc(wishlistItemsTable.productId))
@@ -30,7 +33,7 @@ router.get("/wishlist", async (req: AuthenticatedRequest, res) => {
   res.json(rows.map((r) => toPublicProduct(r.product, r.sellerName ?? "Unknown seller")));
 });
 
-const productId = z.string().uuid();
+const productId = productIdSchema;
 
 router.put("/wishlist/:productId", async (req: AuthenticatedRequest, res) => {
   const id = productId.safeParse(req.params.productId);
@@ -38,7 +41,7 @@ router.put("/wishlist/:productId", async (req: AuthenticatedRequest, res) => {
     ? await db
         .select({ id: productsTable.id })
         .from(productsTable)
-        .where(and(eq(productsTable.id, id.data), eq(productsTable.status, "active")))
+        .where(and(eq(productsTable.id, id.data), eq(productsTable.status, "active"), ownerVisible(productsTable.sellerId)))
     : [];
   if (!product) {
     res.status(404).json({ error: "Product not found." });

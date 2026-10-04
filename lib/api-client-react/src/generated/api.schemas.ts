@@ -126,6 +126,46 @@ export const CatalogueProductStatus = {
 
 export type CatalogueProductSpecs = { [key: string]: string };
 
+export type ProductSourcingPlatform =
+  (typeof ProductSourcingPlatform)[keyof typeof ProductSourcingPlatform];
+
+export const ProductSourcingPlatform = {
+  alibaba: "alibaba",
+  taobao: "taobao",
+  pinduoduo: "pinduoduo",
+  tuwa: "tuwa",
+} as const;
+
+/**
+ * Supplier prices, variants, minimums and delivery still need confirming before purchase.
+ */
+export type ProductSourcingPriceStatus =
+  (typeof ProductSourcingPriceStatus)[keyof typeof ProductSourcingPriceStatus];
+
+export const ProductSourcingPriceStatus = {
+  estimate: "estimate",
+  confirmed: "confirmed",
+} as const;
+
+export interface ProductSourcing {
+  platform: ProductSourcingPlatform;
+  productId: string;
+  /** @nullable */
+  sourceUrl?: string | null;
+  /** @nullable */
+  currency?: string | null;
+  /** @nullable */
+  priceRange?: string | null;
+  /** @nullable */
+  minimumOrder?: string | null;
+  /** @nullable */
+  unit?: string | null;
+  /** @nullable */
+  capturedAt?: string | null;
+  /** Supplier prices, variants, minimums and delivery still need confirming before purchase. */
+  priceStatus: ProductSourcingPriceStatus;
+}
+
 export interface CatalogueProduct {
   id: string;
   channel: CatalogueProductChannel;
@@ -146,6 +186,8 @@ export interface CatalogueProduct {
   stockCount: number;
   tags: string[];
   specs: CatalogueProductSpecs;
+  /** Supplier details for imported Fotizo Shop goods; absent for other listings. */
+  sourcing?: ProductSourcing;
 }
 
 export interface CataloguePage {

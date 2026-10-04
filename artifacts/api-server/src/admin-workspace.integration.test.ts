@@ -340,3 +340,205 @@ describe("global search", () => {
     expect((await get("/search?q=drill&limit=50")).status).toBe(400);
   });
 });
+
+describe("checkout payment methods", () => {
+  it("accepts pay on delivery, Paystack and Stripe, and no longer takes mobile money or bank transfer", async () => {
+    const seller = await account("seller");
+    const buyer = await account();
+    const created = await json<{ id: string }>(await post("/products", product, seller.cookie));
+    const place = (paymentMethod: string) =>
+      post(
+        "/orders",
+        {
+          items: [{ productId: created.id, quantity: 1 }],
+          delivery: {
+            name: "Kwame", email: "kwame@example.com", phone: "0244000000", addressLine1: "1 Road",
+            addressLine2: "", city: "Accra", postalCode: "", country: "GH",
+          },
+          paymentMethod,
+          idempotencyKey: crypto.randomUUID(),
+        },
+        buyer.cookie,
+      );
+    expect((await place("mobile_money")).status).toBe(400);
+    expect((await place("bank_transfer")).status).toBe(400);
+    expect((await place("pay_on_delivery")).status).toBe(201);
+  });
+});
+
+describe("Fotizo fees and imported-goods pricing", () => {
+  type Earnings = {
+    collectionActive: boolean;
+    totals: { currency: string; gross: number; fees: number; net: number; count: number }[];
+    items: { kind: string; quantity: number; fee: number; gross: number; currency: string; status: string; title: string }[];
+  };
+  const earnings = async (cookie: string) => json<Earnings>(await get("/earnings", cookie));
+  const delivery = {
+    name: "Kwame", email: "kwame@example.com", phone: "0244000000", addressLine1: "1 Road",
+    addressLine2: "", city: "Accra", postalCode: "", country: "GH",
+  };
+
+  it("keeps the server's rates equal to the published schedule and prices imports at cost x 1.30", async () => {
+    const { FEE_SCHEDULE, CHINESE_GOODS, sourcedPriceGbp } = await import("@workspace/db");
+    const { readFileSync } = await import("node:fs");
+    const published = JSON.parse(
+      readFileSync(new URL("../../fotizo/src/features/pricing/rates.json", import.meta.url), "utf8"),
+    );
+    expect(FEE_SCHEDULE.artisan).toEqual(published.artisan.amounts);
+    expect(FEE_SCHEDULE.seller).toEqual(published.seller.amounts);
+    expect(CHINESE_GOODS.markupPercent).toBe(published.chineseGoods.markupPercent);
+    expect([...CHINESE_GOODS.platforms]).toEqual(published.chineseGoods.platforms);
+    // GH₵100 supplier cost sells for GH₵130: at 15 GHS per GBP that is £8.67.
+    expect(sourcedPriceGbp(100, 15)).toBe(8.67);
+    expect(sourcedPriceGbp(1.98, 1.27)).toBe(2.03);
+    expect(() => sourcedPriceGbp(0, 1.27)).toThrow();
+  });
+
+  it("charges sellers one unit of the paid currency per unit sold, once per order line", async () => {
+    const manager = await account("manager");
+    const seller = await account("seller", "Ama Mensah");
+    const rep = await account("china_representative");
+    const buyer = await account();
+    const own = await json<{ id: string }>(await post("/products", { ...product, price: 20 }, seller.cookie));
+    const fotizo = await json<{ id: string }>(await post("/products", { ...product, title: "Fotizo shop kettle", price: 10 }, rep.cookie));
+    const placed = await post(
+      "/orders",
+      {
+        items: [{ productId: own.id, quantity: 3 }, { productId: fotizo.id, quantity: 2 }],
+        delivery,
+        paymentMethod: "pay_on_delivery",
+        idempotencyKey: crypto.randomUUID(),
+      },
+      buyer.cookie,
+    );
+    const { orderId } = await json<{ orderId: string; total: number }>(placed);
+    // Nothing is owed until the order is paid; the buyer's total has no fee in it.
+    expect((await earnings(seller.cookie)).totals).toEqual([]);
+    expect((await post(`/operations/orders/${orderId}/payment`, { status: "paid" }, manager.cookie)).status).toBe(200);
+    expect((await post(`/operations/orders/${orderId}/payment`, { status: "paid" }, manager.cookie)).status).toBe(409);
+    const report = await earnings(seller.cookie);
+    expect(report.collectionActive).toBe(false);
+    expect(report.totals).toEqual([{ currency: "GBP", gross: 60, fees: 3, net: 57, count: 1 }]);
+    expect(report.items[0]).toMatchObject({ kind: "unit_sale", quantity: 3, fee: 3, gross: 60, status: "pending", title: "Cordless drill set" });
+    // Fotizo's own shop lines carry the 30% markup only, not the seller fee.
+    expect((await earnings(rep.cookie)).totals).toEqual([]);
+    expect((await earnings(buyer.cookie)).totals).toEqual([]);
+
+    // Paid by Paystack in cedis: the fee is GH₵ per unit, not a conversion of £1,
+    // and a repeated confirmation records nothing new.
+    const { db, platformFeesTable } = await import("@workspace/db");
+    const { recordUnitSaleFees } = await import("./lib/fees");
+    const second = await json<{ orderId: string }>(
+      await post(
+        "/orders",
+        { items: [{ productId: own.id, quantity: 2 }], delivery, paymentMethod: "pay_on_delivery", idempotencyKey: crypto.randomUUID() },
+        buyer.cookie,
+      ),
+    );
+    for (let i = 0; i < 2; i++)
+      await db.transaction((tx) => recordUnitSaleFees(tx, second.orderId, { currency: "GHS", exchangeRate: 15 }));
+    expect(await db.transaction((tx) => recordUnitSaleFees(tx, second.orderId, { currency: "JPY", exchangeRate: 190 }))).toBe(0);
+    const cedis = (await earnings(seller.cookie)).totals.find((t) => t.currency === "GHS");
+    expect(cedis).toEqual({ currency: "GHS", gross: 600, fees: 2, net: 598, count: 1 });
+    expect((await db.select().from(platformFeesTable)).length).toBe(2);
+  });
+
+  it("charges artisans one fee per completed booking, repeat customers included", async () => {
+    const provider = await account("seller", "Kofi Owusu");
+    const buyer = await account();
+    const created = await json<{ id: string }>(await post("/services", service, provider.cookie));
+    const book = async () => {
+      const response = await post(
+        "/bookings",
+        {
+          serviceId: created.id,
+          packageName: "Basic",
+          scheduledFor: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+          timezone: "Africa/Accra",
+          notes: "",
+        },
+        buyer.cookie,
+      );
+      expect(response.status).toBe(201);
+      const booking = await json<{ id: string; statusVersion: number }>(response);
+      const move = (status: string, expectedVersion: number) =>
+        post(`/bookings/${booking.id}/status`, { status, expectedVersion }, provider.cookie);
+      const feesBefore = (await earnings(provider.cookie)).items.length;
+      expect((await move("confirmed", 0)).status).toBe(200);
+      // Confirming isn't payment: no fee yet.
+      expect((await earnings(provider.cookie)).items.length).toBe(feesBefore);
+      expect((await move("completed", 1)).status).toBe(200);
+      // A retried completion can't charge again.
+      expect((await move("completed", 2)).status).toBe(409);
+    };
+    await book();
+    expect((await earnings(provider.cookie)).totals).toEqual([{ currency: "GBP", gross: 300, fees: 1, net: 299, count: 1 }]);
+    await book();
+    const report = await earnings(provider.cookie);
+    expect(report.totals).toEqual([{ currency: "GBP", gross: 600, fees: 2, net: 598, count: 2 }]);
+    expect(report.items.map((i) => i.kind)).toEqual(["booking", "booking"]);
+    expect(report.items[0].title).toBe("Website build");
+  });
+});
+
+describe("sourced-to-order shop listings", () => {
+  it("reports no stock for Fotizo Shop goods instead of showing them out of stock", async () => {
+    const rep = await account("china_representative");
+    const seller = await account("seller");
+    await post("/products", { ...product, stockCount: 0 }, rep.cookie);
+    await post("/products", { ...product, stockCount: 0 }, seller.cookie);
+    const [shop] = await json<{ stock: number | null; status: string; sourcedToOrder: boolean }[]>(await get("/seller/products", rep.cookie));
+    expect(shop).toMatchObject({ stock: null, status: "active", sourcedToOrder: true });
+    // Marketplace sellers hold their own stock, so zero still means sold out.
+    const [own] = await json<{ stock: number | null; status: string }[]>(await get("/seller/products", seller.cookie));
+    expect(own).toMatchObject({ stock: 0, status: "out_of_stock" });
+  });
+});
+
+describe("shop catalogue served by the API", () => {
+  it("keeps preview-era product links, carts and orders working and returns supplier terms", async () => {
+    const { catalogueUuid } = await import("@workspace/db");
+    const rep = await account("china_representative");
+    const buyer = await account();
+    const id = catalogueUuid("taobao-861590261376");
+    await database.query(
+      `INSERT INTO products (id, title, description, price, seller_id, category, stock_count, channel, images, specs,
+         source_platform, source_product_id, source_url, supplier_currency, supplier_cost, supplier_rate, markup_percent, price_basis)
+       VALUES ($1, 'Magnetic Screen Protector', 'Fits MacBook M5.', 18.14, $2, 'Computers', 0, 'shop', ARRAY['/images/taobao/861590261376.webp'],
+         '{"department":"computers","priceRange":"CNY 124","shopId":"taobao-861590261376"}',
+         'taobao', '861590261376', 'https://item.taobao.com/item.htm?id=861590261376', 'CNY', 124, 8.888512, 30, 'quoted')`,
+      [id, rep.id],
+    );
+    // The old frontend id resolves to the stored product.
+    const page = await get("/products/taobao-861590261376");
+    expect(page.status).toBe(200);
+    expect(await page.json()).toMatchObject({
+      id,
+      inStock: true,
+      sourcing: { platform: "taobao", productId: "861590261376", currency: "CNY", priceRange: "CNY 124", priceStatus: "estimate" },
+    });
+    expect((await get("/products/not a product!")).status).toBe(404);
+    // A cart or order holding the old id still works.
+    expect((await send("PUT", "/cart/items/taobao-861590261376", { quantity: 2 }, buyer.cookie)).status).toBe(204);
+    const cart = await json<{ productId: string }[]>(await get("/cart", buyer.cookie));
+    expect(cart[0].productId).toBe(id);
+    const order = await post(
+      "/orders",
+      {
+        items: [{ productId: "taobao-861590261376", quantity: 1 }],
+        delivery: {
+          name: "Kwame", email: "kwame@example.com", phone: "0244000000", addressLine1: "1 Road",
+          addressLine2: "", city: "Accra", postalCode: "", country: "GH",
+        },
+        paymentMethod: "pay_on_delivery",
+        idempotencyKey: crypto.randomUUID(),
+      },
+      buyer.cookie,
+    );
+    expect(order.status).toBe(201);
+    // Marketplace listings carry no supplier terms.
+    const seller = await account("seller");
+    const own = await json<{ id: string }>(await post("/products", product, seller.cookie));
+    expect(await json(await get(`/products/${own.id}`))).not.toHaveProperty("sourcing");
+  });
+});

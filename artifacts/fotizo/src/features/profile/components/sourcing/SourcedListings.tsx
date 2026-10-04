@@ -26,6 +26,8 @@ const statusName = (p: SellerProduct) =>
     : p.stock === 0
       ? "Out of stock"
       : "Live";
+// Sourced-to-order goods have no stock to show.
+const stockLabel = (p: Pick<SellerProduct, "stock">) => (p.stock === null ? "Sourced to order" : p.stock);
 export function filterListings(
   items: SellerProduct[],
   search: string,
@@ -41,7 +43,7 @@ export function filterListings(
       (category === "all" || p.category === category) &&
       (status === "all" ||
         (status === "low"
-          ? p.status !== "unpublished" && p.stock <= 5
+          ? p.status !== "unpublished" && p.stock !== null && p.stock <= 5
           : statusName(p) === status)),
   );
 }
@@ -85,7 +87,7 @@ function ProductDetails({ id }: { id: string }) {
           <Price amount={p.price} />
         </dd>
         <dt>Stock</dt>
-        <dd>{p.stockCount}</dd>
+        <dd>{p.channel === "shop" ? "Sourced to order" : p.stockCount}</dd>
         <dt>Department</dt>
         <dd>{categoryName(p.category)}</dd>
         <dt>Visibility</dt>
@@ -140,7 +142,7 @@ export function SourcedListings() {
                 p.title,
                 categoryName(p.category),
                 p.price,
-                p.stock,
+                stockLabel(p),
                 statusName(p),
               ]),
             ])
@@ -265,7 +267,7 @@ export function SourcedListings() {
                     <td className="p-4">
                       <Price amount={p.price} />
                     </td>
-                    <td className="p-4">{p.stock}</td>
+                    <td className="p-4">{stockLabel(p)}</td>
                     <td className="p-4">{statusName(p)}</td>
                     <td className="p-4">
                       <div className="flex gap-3 items-center">

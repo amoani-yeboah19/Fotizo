@@ -114,8 +114,10 @@ export function useChinaSourcing() {
       .sort((a, b) => b.units - a.units);
 
     const live = listings.filter((p) => p.status !== "unpublished");
+    // Only listings with tracked stock can need a reorder; Fotizo Shop goods
+    // are sourced to order and have none.
     const needsRestock = (p: (typeof listings)[number]) =>
-      p.status !== "unpublished" && p.stock <= RESTOCK_AT;
+      p.status !== "unpublished" && p.stock !== null && p.stock <= RESTOCK_AT;
     const labels = new Map(SHOP_CATEGORIES.map((c) => [c.id, c.label]));
     const byDepartment = new Map<string, typeof listings>();
     for (const p of live)
