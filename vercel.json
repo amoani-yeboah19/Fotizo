@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm --filter @workspace/fotizo run typecheck && pnpm exec vitest run artifacts/fotizo --maxWorkers=2 && pnpm --filter @workspace/fotizo run build",
+  "buildCommand": "pnpm run typecheck:libs && pnpm --filter @workspace/fotizo run typecheck && pnpm exec vitest run artifacts/fotizo --maxWorkers=2 && pnpm --filter @workspace/fotizo run build",
   "installCommand": "pnpm install --frozen-lockfile",
   "outputDirectory": "artifacts/fotizo/dist/public",
   "framework": null,
