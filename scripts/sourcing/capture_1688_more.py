@@ -12,7 +12,9 @@ def request(category,query,page,batch):
  if not raw.startswith('fotizoImport('):raise RuntimeError('unexpected response; access may be restricted')
  obj=json.JSONDecoder().raw_decode(raw[len('fotizoImport('):])[0]
  content=obj.get('data',{}).get('content')
- if not isinstance(content,dict) or 'offerResult' not in content:raise RuntimeError('product data missing')
+ if not isinstance(content,dict) or 'offerResult' not in content:
+  if obj.get('ret')==0 and obj.get('info',{}).get('ok') is True and obj.get('data')=={}:return []
+  raise RuntimeError('product data missing')
  rows=[]
  for r in content['offerResult']:
   offer=str(r.get('offerid') or r.get('offerId') or '')
