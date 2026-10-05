@@ -24,7 +24,7 @@ export const ShopProductCard = memo(function ShopProductCard({
 
   const quickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (product.previewOnly) return;
+    if (product.requiresPublication) return;
     // Shop goods are sourced to order, so local stock does not limit the cart.
     addItem({
       id: `shop-${product.id}`,
@@ -49,7 +49,7 @@ export const ShopProductCard = memo(function ShopProductCard({
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         </Link>
-        {!product.previewOnly && (
+        {!product.requiresPublication && (
           <WishlistButton
             item={{
               id: product.id,
@@ -73,7 +73,7 @@ export const ShopProductCard = memo(function ShopProductCard({
             Almost gone
           </span>
         )}
-        {!product.previewOnly && (
+        {!product.requiresPublication && (
           <button
             type="button"
             aria-label={`Add ${product.title} to cart`}
@@ -91,16 +91,10 @@ export const ShopProductCard = memo(function ShopProductCard({
         </h3>
 
         <div className="mt-1.5 flex items-baseline gap-1.5">
-          {product.previewOnly ? (
-            <span className="font-bold text-accent">
-              CNY {product.previewPriceCny} · Preview
-            </span>
-          ) : (
-            <Price
-              amount={product.price}
-              className="text-base font-extrabold text-[#FF6A00]"
-            />
-          )}
+          <Price
+            amount={product.price}
+            className="text-base font-extrabold text-[#FF6A00]"
+          />
           {product.originalPrice > product.price && (
             <Price
               amount={product.originalPrice}
@@ -109,7 +103,8 @@ export const ShopProductCard = memo(function ShopProductCard({
           )}
         </div>
 
-        {product.sourcing?.priceStatus === "estimate" && (
+        {(product.sourcing?.priceStatus === "estimate" ||
+          product.requiresPublication) && (
           <p className="mt-1 text-[11px] text-muted-foreground">
             Estimated price · delivery extra
           </p>

@@ -16,16 +16,16 @@ import { LoadMoreSentinel } from "@/components/common/LoadMoreSentinel";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useFeedScrollRestore } from "@/hooks/useFeedScrollRestore";
 import {
-  useCatalogueInfinite,
-  useCataloguePage,
-} from "@/features/marketplace/hooks/useCatalogue";
+  useShopCatalogueInfinite as useCatalogueInfinite,
+  useShopCataloguePage as useCataloguePage,
+} from "@/features/shop/services/shop-catalogue";
 import type { CatalogueFilters } from "@/features/marketplace/services/catalogue-page";
-import { toShopProduct } from "@/features/shop/services/shop.service";
 import { ShopProductCard } from "@/features/shop/components/ShopProductCard";
 import "./shop.css";
-import { SHOP_CATEGORIES, categoryLabel } from "@/features/shop/data/categories";
-import type { Product } from "@/types";
-import { PreviewCatalogue } from "../components/PreviewCatalogue";
+import {
+  SHOP_CATEGORIES,
+  categoryLabel,
+} from "@/features/shop/data/categories";
 
 type Sort =
   | "recommended"
@@ -43,8 +43,6 @@ const SERVER_SORT: Record<Sort, NonNullable<CatalogueFilters["sort"]>> = {
   "price-asc": "price-asc",
   "price-desc": "price-desc",
 };
-const toCards = (items: unknown[]) =>
-  items.map((p) => toShopProduct(p as Product));
 
 const SORTS: { value: Sort; label: string }[] = [
   { value: "recommended", label: "Recommended" },
@@ -90,7 +88,7 @@ export default function ShopPage() {
   });
   const { isLoading, isError } = grid;
   const products = useMemo(
-    () => toCards(grid.data?.pages.flatMap((p) => p.items) ?? []),
+    () => grid.data?.pages.flatMap((p) => p.items) ?? [],
     [grid.data],
   );
   const total = grid.data?.pages[0]?.total ?? 0;
@@ -103,7 +101,7 @@ export default function ShopPage() {
     pageSize: 8,
   });
   const featured = useMemo(
-    () => toCards(featuredQuery.data?.items ?? []).slice(0, 8),
+    () => (featuredQuery.data?.items ?? []).slice(0, 8),
     [featuredQuery.data],
   );
   const browse = (category: string | null) => {
@@ -192,7 +190,6 @@ export default function ShopPage() {
             </span>
           </div>
 
-          <PreviewCatalogue />
           <section className="shop-discover" aria-labelledby="discover-heading">
             <div className="shop-section-heading">
               <div>
@@ -379,6 +376,17 @@ export default function ShopPage() {
                 <X size={14} aria-hidden="true" /> Clear filters
               </button>
             )}
+            {grid.data?.pages.some((page) => page.liveError) && (
+              <p role="status" className="mt-3 text-sm text-muted-foreground">
+                Some shop listings could not be loaded.{" "}
+                <button
+                  className="underline"
+                  onClick={() => void grid.refetch()}
+                >
+                  Try again
+                </button>
+              </p>
+            )}
             {/* Product grid */}
             {isLoading ? (
               <Loading label="Loading the shop…" />
@@ -408,7 +416,9 @@ export default function ShopPage() {
                   loading={grid.isFetchingNextPage}
                   error={grid.isFetchNextPageError}
                   onLoadMore={() => void grid.fetchNextPage()}
-                  endLabel={total > 48 ? "You've seen everything here." : undefined}
+                  endLabel={
+                    total > 48 ? "You've seen everything here." : undefined
+                  }
                 />
               </>
             )}

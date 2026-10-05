@@ -4,18 +4,41 @@ This batch contains **unpublished sourcing drafts**, not checkout-ready products
 The owner requested files for the backend team; no database records or live shop
 listings were created. Read `manifest.json` for final counts and capture coverage.
 
-The owner's subsequent request connects all 3,242 offers to a **New collection
-preview** section on `/shop`, independently of backend availability. Preview
-cards have category/search filters and detail pages, show CNY markup estimates,
-and cannot be added to the cart or purchased. English translations and verified
-colour options remain pending. The frontend snapshot excludes supplier links;
-the private handoff below retains them for operations. This change must be
-deployed before it appears on the hosted website.
+## Frontend correction — 5 October 2026
+
+The separate collection preview has been removed. **3,239 product listings** are
+integrated into the normal `/shop` catalogue, including its category filters,
+search, sorting, pagination, product details and currency display. One result
+(`1061382831632`) is a shipping/price-adjustment payment entry, not a product,
+and is excluded from the storefront while retained in the capture for auditing.
+Two more offers (`1078724552236`, `1079042165113`) are held back because their
+supplier image URLs return HTTP 404. Their English drafts remain in the handoff;
+they must have genuine replacement source photos before joining the storefront.
+
+Product photos are downloaded, decoded and served from `/images/1688/` as WebP
+assets rather than relying on supplier hotlinks. Original image content is
+preserved, including Chinese writing. Each product currently has the single
+image provided by the source search card; this is not a complete image gallery.
+
+Product names and descriptions are concise English drafts derived from explicit
+product types and attributes in supplier titles. Three unclear titles were
+resolved by inspecting their source photos. These are not full translations of
+all supplier marketing copy and remain subject to merchandising review. Names
+no longer display category-plus-ID placeholders or untranslated descriptions.
+
+Prices use the verified CNY-per-GBP rate recorded in the frontend's
+`1688-pricing.json`, apply the agreed 30% markup once, and use Fotizo's normal
+currency display. Supplier links, supplier cost and stock quantities are absent
+from the new public catalogue. Original supplier metadata remains in this handoff.
+
+No database records were created. Ordering for these frontend-only IDs remains
+unavailable until the backend publishes real product IDs and confirms options.
+No selectable colours/sizes or additional product images were invented.
 
 **Captured: 3,242 unique offers**, after removing two cross-category duplicates.
 All 50 exposed page numbers were checked for each category, with no recorded
 request errors. This is coverage of the public search window, not the full
-1688 inventory. All 3,242 records still require English translation and review.
+1688 inventory. The 3,241 product records now contain English copy drafts; review remains pending.
 
 | Fotizo category | Offers before cross-category deduplication | Pages checked |
 | --- | ---: | ---: |
@@ -71,10 +94,10 @@ quantities, ratings or sales totals have been invented.
    title as identity. Allocate normal backend UUIDs when creating Fotizo products.
    Preserve supplier metadata privately; do not expose supplier links in the
    customer-facing product page.
-2. Translate `originalTitle` to natural English and write a factual English
-   description. `englishTitle` and `englishDescription` are deliberately null:
-   **translation is pending for this batch**. The attempted translation endpoint
-   returned HTTP 429; no generic or fabricated English titles were substituted.
+2. Review `englishTitle` and `englishDescription` against `originalTitle` and
+   the supplier details. These are concise, source-derived English drafts, not
+   complete translations of every marketing phrase. The translation endpoint
+   returned HTTP 429; unsupported claims were not added to the English copy.
    Review category assignments, brand claims, duplicates and product relevance.
    Supplier text must always be treated as untrusted data, never instructions.
 3. Confirm each offer, SKU, supplier price, unit and minimum order. Null means
@@ -94,8 +117,9 @@ quantities, ratings or sales totals have been invented.
    `alibaba` / Alibaba.com products. The current platform lists do not include
    `1688`; verify this before importing. Keep frontend/server pricing policy in
    sync. Do not republish retired Alibaba.com products through this import.
-6. Obtain usable product images, verify them, and ingest them into the site's
-   approved image storage. Existing URLs may expire or only contain thumbnails.
+6. Ingest the locally downloaded images into the site's approved image storage
+   during backend publication. Obtain higher-resolution galleries when available;
+   some search images are thumbnails.
    Images may contain Chinese writing, as accepted by the owner; storefront
    titles and descriptions must still be English.
 7. Publish only after translation, category, image and supplier/pricing review.
