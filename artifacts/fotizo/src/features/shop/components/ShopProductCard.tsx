@@ -24,6 +24,7 @@ export const ShopProductCard = memo(function ShopProductCard({
 
   const quickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
+    if (product.previewOnly) return;
     // Shop goods are sourced to order, so local stock does not limit the cart.
     addItem({
       id: `shop-${product.id}`,
@@ -48,17 +49,19 @@ export const ShopProductCard = memo(function ShopProductCard({
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         </Link>
-        <WishlistButton
-          item={{
-            id: product.id,
-            source: "shop",
-            title: product.title,
-            image: product.image,
-            price: product.price,
-            seller: SHOP_SELLER,
-          }}
-          className="absolute top-2 right-2"
-        />
+        {!product.previewOnly && (
+          <WishlistButton
+            item={{
+              id: product.id,
+              source: "shop",
+              title: product.title,
+              image: product.image,
+              price: product.price,
+              seller: SHOP_SELLER,
+            }}
+            className="absolute top-2 right-2"
+          />
+        )}
         {off > 0 && (
           <span className="absolute left-0 top-2 rounded-r-full bg-[#FF6A00] px-2 py-0.5 text-xs font-extrabold text-white shadow">
             -{off}%
@@ -70,14 +73,16 @@ export const ShopProductCard = memo(function ShopProductCard({
             Almost gone
           </span>
         )}
-        <button
-          type="button"
-          aria-label={`Add ${product.title} to cart`}
-          onClick={quickAdd}
-          className="absolute bottom-2 right-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-md transition-transform hover:scale-110 active:scale-95"
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-        </button>
+        {!product.previewOnly && (
+          <button
+            type="button"
+            aria-label={`Add ${product.title} to cart`}
+            onClick={quickAdd}
+            className="absolute bottom-2 right-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-md transition-transform hover:scale-110 active:scale-95"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-3 sm:p-4">
@@ -86,10 +91,16 @@ export const ShopProductCard = memo(function ShopProductCard({
         </h3>
 
         <div className="mt-1.5 flex items-baseline gap-1.5">
-          <Price
-            amount={product.price}
-            className="text-base font-extrabold text-[#FF6A00]"
-          />
+          {product.previewOnly ? (
+            <span className="font-bold text-accent">
+              CNY {product.previewPriceCny} · Preview
+            </span>
+          ) : (
+            <Price
+              amount={product.price}
+              className="text-base font-extrabold text-[#FF6A00]"
+            />
+          )}
           {product.originalPrice > product.price && (
             <Price
               amount={product.originalPrice}

@@ -3,6 +3,8 @@
 // loaded on demand (see ./local-catalogue).
 
 export interface ShopProduct {
+  previewOnly?: boolean;
+  previewPriceCny?: string | null;
   sourcing?: {
     platform: string;
     productId: string;
