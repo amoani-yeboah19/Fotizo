@@ -13,6 +13,10 @@ import ShopPage from "@/features/shop/pages/ShopPage";
 import ProductsPage from "./ProductsPage";
 import { cataloguePages, type CataloguePage } from "../services/catalogue-page";
 import type { CatalogueProduct } from "@workspace/api-client-react";
+import { clearShopCatalogueCache } from "@/features/shop/services/shop-catalogue";
+vi.mock("@/features/shop/data/sourced-catalogue", () => ({
+  loadSourcedCatalogue: async () => [],
+}));
 
 const location = vi.hoisted(() => ({ search: "" }));
 vi.mock("wouter", () => ({
@@ -93,6 +97,7 @@ function mount(node: ReactNode) {
 }
 
 beforeEach(() => {
+  clearShopCatalogueCache();
   vi.resetAllMocks();
   // The price slider measures itself; jsdom has no ResizeObserver.
   vi.stubGlobal(

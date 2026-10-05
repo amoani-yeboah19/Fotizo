@@ -5,7 +5,7 @@
   "publicationStatus": "unpublished-backend-review-only",
   "uniqueProducts": 3242,
   "categoryMemberships": 3244,
-  "translationPending": 3242,
+  "translationPending": 0,
   "invalidPriceCount": 0,
   "missingImageCount": 0,
   "wholeCategoryComplete": false,
@@ -69,13 +69,19 @@
   ],
   "files": {
     "products.json": {
-      "sha256": "3197de5ac062ebe759b9dc66538d0a5f1b26eb756721903794a4f66c9b190fba"
+      "sha256": "4a7e9e0f1f303073b4e257ff0a71dbae5a96ee24810d16da8221c67f223b5ecc"
     },
     "coverage.json": {
       "sha256": "b0ca9e7944a6ee376a85905e0b4c3dbc8fb2acde5608cf0bebfb31c83effb435"
     },
     "review.csv": {
-      "sha256": "c4af937d513122898646ee565d909bb7c4f4b1dc659e1401328092ef3dcd35df"
+      "sha256": "1e766fe697d4663d85a4f4614c13b98fd937db5c2be22107d8fc65ad51ae73a1"
     }
-  }
+  },
+  "englishDrafts": 3241,
+  "merchandisingReviewPending": 3241,
+  "excludedNonProducts": 1,
+  "frontendProductCount": 3239,
+  "frontendUpdatedAt": "2026-10-05T00:24:28.208555+00:00",
+  "missingHostedImageCount": 2
 }

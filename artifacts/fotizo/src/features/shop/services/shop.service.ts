@@ -1,5 +1,5 @@
 import { visibleProduct } from "@/features/catalogue/launch-policy";
-import { loadPreviewCatalogue } from "../data/preview-catalogue";
+import { loadSourcedCatalogue } from "../data/sourced-catalogue";
 import { api, ApiError, SHOP_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
 import type { Product } from "@/types";
@@ -87,21 +87,31 @@ export function toShopProduct(p: Product): ShopProduct {
 
 export const shopService = {
   async relatedProducts(id: string): Promise<ShopProduct[]> {
-    if (id.startsWith("preview-1688-")) {
-      const rows = await loadPreviewCatalogue();
-      const current = rows.find((p) => p.id === id);
+    if (id.startsWith("1688-") || id.startsWith("preview-1688-")) {
+      const rows = await loadSourcedCatalogue();
+      const current = rows.find((p) => p.id === id.replace(/^preview-/, ""));
       return current
         ? rows
-            .filter((p) => p.category === current.category && p.id !== id)
+            .filter(
+              (p) =>
+                p.category === current.category &&
+                p.id !== id.replace(/^preview-/, ""),
+            )
             .slice(0, 6)
         : [];
     }
     if (SHOP_USE_MOCKS) {
       const products = await loadLocalCatalogue();
-      const product = products.find((p) => p.id === id);
+      const product = products.find(
+        (p) => p.id === id.replace(/^preview-/, ""),
+      );
       return product
         ? products
-            .filter((p) => p.category === product.category && p.id !== id)
+            .filter(
+              (p) =>
+                p.category === product.category &&
+                p.id !== id.replace(/^preview-/, ""),
+            )
             .slice(0, 6)
         : [];
     }
@@ -111,11 +121,19 @@ export const shopService = {
   },
 
   async getProduct(id: string): Promise<ShopProduct | null> {
-    if (id.startsWith("preview-1688-"))
-      return (await loadPreviewCatalogue()).find((p) => p.id === id) ?? null;
+    if (id.startsWith("1688-") || id.startsWith("preview-1688-"))
+      return (
+        (await loadSourcedCatalogue()).find(
+          (p) => p.id === id.replace(/^preview-/, ""),
+        ) ?? null
+      );
     if (SHOP_USE_MOCKS) {
       await delay();
-      return (await loadLocalCatalogue()).find((p) => p.id === id) ?? null;
+      return (
+        (await loadLocalCatalogue()).find(
+          (p) => p.id === id.replace(/^preview-/, ""),
+        ) ?? null
+      );
     }
     try {
       const product = await api.get<Product>(`/products/${id}`);

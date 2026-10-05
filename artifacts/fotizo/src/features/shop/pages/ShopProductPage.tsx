@@ -63,7 +63,7 @@ export default function ShopProductPage() {
 
   // Shop goods are sourced to order, so local stock does not limit the cart.
   const add = (goToCart: boolean) => {
-    if (product.previewOnly) return;
+    if (product.requiresPublication) return;
     for (let i = 0; i < qty; i++) {
       addItem({
         id: `shop-${product.id}`,
@@ -131,7 +131,7 @@ export default function ShopProductPage() {
           <h1 className="text-xl font-bold leading-snug text-foreground sm:text-2xl">
             {product.title}
           </h1>
-          {!product.previewOnly && (
+          {!product.requiresPublication && (
             <WishlistButton
               item={{
                 id: product.id,
@@ -145,7 +145,7 @@ export default function ShopProductPage() {
             />
           )}
 
-          {!product.previewOnly && (
+          {!product.requiresPublication && (
             <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1">
                 <Star
@@ -161,16 +161,10 @@ export default function ShopProductPage() {
             </div>
           )}
           <div className="mt-4 flex items-end gap-3">
-            {product.previewOnly ? (
-              <span className="text-3xl font-bold text-accent">
-                CNY {product.previewPriceCny}
-              </span>
-            ) : (
-              <Price
-                amount={product.price}
-                className="text-3xl font-extrabold text-[#FF6A00]"
-              />
-            )}
+            <Price
+              amount={product.price}
+              className="text-3xl font-extrabold text-[#FF6A00]"
+            />
             {product.originalPrice > product.price && (
               <Price
                 amount={product.originalPrice}
@@ -184,12 +178,10 @@ export default function ShopProductPage() {
             )}
           </div>
 
-          {product.previewOnly && (
+          {product.requiresPublication && (
             <p className="mt-3 rounded-lg border p-3 text-sm text-muted-foreground">
-              Collection preview. This CNY estimate includes a 30% markup,
-              excluding delivery. English translation, colours, sizes and final
-              pricing are awaiting confirmation. Purchasing will open after
-              review.
+              Estimated price; delivery extra. Ordering opens once product
+              options and availability are confirmed.
             </p>
           )}
           {product.sourcing && (
@@ -262,7 +254,7 @@ export default function ShopProductPage() {
             <Button
               variant="outline"
               className="flex-1 gap-2"
-              disabled={product.previewOnly}
+              disabled={product.requiresPublication}
               onClick={() => add(false)}
             >
               <ShoppingCart className="h-4 w-4" aria-hidden="true" /> Add to
@@ -270,10 +262,10 @@ export default function ShopProductPage() {
             </Button>
             <Button
               className="flex-1 bg-[#FF6A00] text-white hover:bg-[#FF6A00]/90"
-              disabled={product.previewOnly}
+              disabled={product.requiresPublication}
               onClick={() => add(true)}
             >
-              Buy now
+              {product.requiresPublication ? "Available soon" : "Buy now"}
             </Button>
           </div>
 
