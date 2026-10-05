@@ -3,9 +3,10 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import ShopProductPage from "./ShopProductPage";
+import catalogue from "../data/1688-products.json";
 import detailed from "../data/1688-detail-products.json";
 
-const mocks = vi.hoisted(() => ({ addItem: vi.fn() }));
+const mocks = vi.hoisted(() => ({ addItem: vi.fn(), basic: false }));
 vi.mock("wouter", () => ({
   useRoute: () => [true, { id: "1688-973074422128" }],
   useLocation: () => ["", vi.fn()],
@@ -14,7 +15,10 @@ vi.mock("wouter", () => ({
   ),
 }));
 vi.mock("@/features/shop/hooks", () => ({
-  useShopProduct: () => ({ data: detailed[0], isLoading: false }),
+  useShopProduct: () => ({
+    data: mocks.basic ? catalogue[0] : detailed[0],
+    isLoading: false,
+  }),
   useShopRelatedProducts: () => ({ data: [] }),
 }));
 vi.mock("@/components/layout/PageLayout", () => ({
@@ -30,6 +34,7 @@ vi.mock("@/components/common/Price", () => ({
   Price: ({ amount }: { amount: number }) => <span>£{amount.toFixed(2)}</span>,
 }));
 afterEach(() => {
+  mocks.basic = false;
   cleanup();
   vi.clearAllMocks();
 });
@@ -69,4 +74,29 @@ it("labels body-weight guidance without inventing garment measurements", () => {
   expect(screen.getByText(/These are not garment measurements/)).toBeTruthy();
   expect(detailed[0].variants).toHaveLength(8);
   expect(new Set(detailed[0].variants.map((v) => v.id)).size).toBe(8);
+});
+
+it("gives ordinary sourced products the shared detail layout without invented options", () => {
+  mocks.basic = true;
+  render(<ShopProductPage />);
+  expect(
+    screen.getByRole("region", { name: "Product information" }),
+  ).toBeTruthy();
+  expect(screen.getByText(catalogue[0].description)).toBeTruthy();
+  expect(screen.getByAltText(catalogue[0].title).getAttribute("src")).toBe(
+    catalogue[0].image,
+  );
+  expect(screen.queryByRole("button", { name: "XL" })).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: "Increase quantity" }),
+  ).toBeNull();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Enlarge product photo" }),
+  );
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  expect(screen.getByAltText("Enlarged product view").getAttribute("src")).toBe(
+    catalogue[0].image,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
 });

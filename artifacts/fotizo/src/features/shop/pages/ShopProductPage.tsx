@@ -1,5 +1,11 @@
 import { WishlistButton } from "@/features/wishlist/components/WishlistButton";
 import { useEffect, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { ProductOptions } from "../components/ProductOptions";
 import { useRoute, useLocation, Link } from "wouter";
 import {
@@ -119,31 +125,60 @@ export default function ShopProductPage() {
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         {/* Gallery */}
-        <div>
-          <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-muted">
-            <img
-              src={product.images[activeImg] ?? product.image}
-              alt={product.title}
-              className="h-full w-full object-cover"
-            />
-          </div>
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
-            {product.images.map((src, i) => (
+        <div className="min-w-0">
+          <Dialog>
+            <DialogTrigger asChild>
               <button
-                key={i}
                 type="button"
-                onClick={() => setActiveImg(i)}
-                aria-label={`View image ${i + 1}`}
-                className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 ${i === activeImg ? "border-primary" : "border-transparent"}`}
+                aria-label="Enlarge product photo"
+                className="relative block aspect-square w-full cursor-zoom-in overflow-hidden rounded-2xl border border-border bg-white"
               >
-                <img src={src} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={product.images[activeImg] ?? product.image}
+                  alt={product.title}
+                  className="h-full w-full object-contain"
+                />
+                <span className="absolute bottom-3 right-3 rounded-full bg-background/90 px-3 py-1 text-xs text-foreground">
+                  Enlarge photo
+                </span>
               </button>
-            ))}
-          </div>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl">
+              <DialogTitle className="pr-6">{product.title}</DialogTitle>
+              <img
+                src={product.images[activeImg] ?? product.image}
+                alt="Enlarged product view"
+                className="max-h-[75vh] w-full object-contain"
+              />
+            </DialogContent>
+          </Dialog>
+          {product.images.length > 1 && (
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
+              {product.images.map((src, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setActiveImg(i)}
+                  aria-label={`View image ${i + 1}`}
+                  aria-pressed={i === activeImg}
+                  className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 ${i === activeImg ? "border-primary" : "border-transparent"}`}
+                >
+                  <img
+                    src={src}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Info */}
-        <div>
+        <div className="min-w-0 rounded-2xl border border-border bg-card p-5 sm:p-7">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Fotizo Shop · {categoryLabel(product.category)}
+          </p>
           <h1 className="text-xl font-bold leading-snug text-foreground sm:text-2xl">
             {product.title}
           </h1>
@@ -258,33 +293,35 @@ export default function ShopProductPage() {
             }}
           />
           {/* Quantity */}
-          <div className="mt-6 flex items-center gap-4">
-            <span className="text-sm font-medium text-foreground">
-              Quantity
-            </span>
-            <div className="flex items-center rounded-lg border border-border">
-              <button
-                type="button"
-                aria-label="Decrease quantity"
-                onClick={() => setQty((q) => Math.max(1, q - 1))}
-                className="px-3 py-2 text-muted-foreground hover:text-foreground disabled:opacity-40"
-                disabled={qty <= 1}
-              >
-                <Minus className="h-4 w-4" aria-hidden="true" />
-              </button>
-              <span className="w-10 text-center text-sm font-semibold">
-                {qty}
+          {!orderingUnavailable && (
+            <div className="mt-6 flex items-center gap-4">
+              <span className="text-sm font-medium text-foreground">
+                Quantity
               </span>
-              <button
-                type="button"
-                aria-label="Increase quantity"
-                onClick={() => setQty((q) => Math.min(99, q + 1))}
-                className="px-3 py-2 text-muted-foreground hover:text-foreground"
-              >
-                <Plus className="h-4 w-4" aria-hidden="true" />
-              </button>
+              <div className="flex items-center rounded-lg border border-border">
+                <button
+                  type="button"
+                  aria-label="Decrease quantity"
+                  onClick={() => setQty((q) => Math.max(1, q - 1))}
+                  className="px-3 py-2 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                  disabled={qty <= 1}
+                >
+                  <Minus className="h-4 w-4" aria-hidden="true" />
+                </button>
+                <span className="w-10 text-center text-sm font-semibold">
+                  {qty}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Increase quantity"
+                  onClick={() => setQty((q) => Math.min(99, q + 1))}
+                  className="px-3 py-2 text-muted-foreground hover:text-foreground"
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Actions */}
           <div className="mt-6 flex gap-3">
@@ -305,14 +342,30 @@ export default function ShopProductPage() {
               {orderingUnavailable ? "Available soon" : "Buy now"}
             </Button>
           </div>
+        </div>
+      </div>
 
-          <div className="mt-6 border-t border-border pt-5">
+      <section
+        aria-label="Product information"
+        className="mt-8 rounded-2xl border border-border bg-card p-5 sm:p-8"
+      >
+        <div className="grid gap-8 md:grid-cols-2">
+          <div>
             <h2 className="mb-2 text-sm font-bold text-foreground">
               Description
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
               {product.description}
             </p>
+          </div>
+          <div>
+            <h2 className="text-sm font-bold">Product details</h2>
+            <dl className="mt-3 text-sm">
+              <dt className="font-semibold">Category</dt>
+              <dd className="mt-1 text-muted-foreground">
+                {categoryLabel(product.category)}
+              </dd>
+            </dl>
             {!!product.specifications?.length && (
               <dl className="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                 {product.specifications.map((spec) => (
@@ -323,36 +376,36 @@ export default function ShopProductPage() {
                 ))}
               </dl>
             )}
-            {product.video && (
-              <video
-                controls
-                preload="none"
-                poster={product.image}
-                className="mt-6 w-full rounded-xl"
-                aria-label="Product video"
-              >
-                <source src={product.video} type="video/mp4" />
-              </video>
-            )}
-            {!!product.detailImages?.length && (
-              <section
-                className="mt-6 space-y-3"
-                aria-label="Product detail photos"
-              >
-                {product.detailImages.map((src, i) => (
-                  <img
-                    key={src}
-                    src={src}
-                    alt={`Product detail ${i + 1}`}
-                    loading="lazy"
-                    className="h-auto w-full rounded-lg"
-                  />
-                ))}
-              </section>
-            )}
           </div>
         </div>
-      </div>
+        {product.video && (
+          <video
+            controls
+            preload="none"
+            poster={product.image}
+            className="mx-auto mt-6 max-h-[70vh] w-full max-w-3xl rounded-xl"
+            aria-label="Product video"
+          >
+            <source src={product.video} type="video/mp4" />
+          </video>
+        )}
+        {!!product.detailImages?.length && (
+          <section
+            className="mx-auto mt-6 max-w-3xl space-y-3"
+            aria-label="Product detail photos"
+          >
+            {product.detailImages.map((src, i) => (
+              <img
+                key={src}
+                src={src}
+                alt={`Product detail ${i + 1}`}
+                loading="lazy"
+                className="h-auto w-full rounded-lg"
+              />
+            ))}
+          </section>
+        )}
+      </section>
 
       {/* Related */}
       {related.length > 0 && (
