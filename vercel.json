@@ -17,7 +17,7 @@
       "destination": "https://fotizo.onrender.com/api/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!.*\\.[^/]+$).*)",
       "destination": "/index.html"
     }
   ]
