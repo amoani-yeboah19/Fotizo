@@ -1,0 +1,111 @@
+{
+  "capturedUnique": 4221,
+  "frontendAdded": 4171,
+  "held": 50,
+  "heldReasons": {
+    "invalid-price": 6,
+    "outside-household-merchandising-scope": 36,
+    "english-product-identification-pending": 7,
+    "image-not-saved": 1
+  },
+  "categories": [
+    {
+      "sourceCategory": "pets-garden",
+      "query": "宠物及园艺",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "visibleWindowCompleted": true,
+      "captured": 502,
+      "frontendIncluded": 502,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "sourceCategory": "daily-essentials",
+      "query": "日用百货",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "visibleWindowCompleted": true,
+      "captured": 569,
+      "frontendIncluded": 521,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "sourceCategory": "hair-styling",
+      "query": "美发造型市场",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "visibleWindowCompleted": true,
+      "captured": 527,
+      "frontendIncluded": 527,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "sourceCategory": "home-cleaning",
+      "query": "家庭清洁市场",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "visibleWindowCompleted": true,
+      "captured": 548,
+      "frontendIncluded": 547,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "sourceCategory": "computers",
+      "query": "数码/电脑",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "visibleWindowCompleted": true,
+      "captured": 529,
+      "frontendIncluded": 529,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "sourceCategory": "car-accessories",
+      "query": "汽车用品",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "visibleWindowCompleted": true,
+      "captured": 540,
+      "frontendIncluded": 539,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "sourceCategory": "home-appliances",
+      "query": "家用电器",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "visibleWindowCompleted": true,
+      "captured": 1006,
+      "frontendIncluded": 1006,
+      "stopReason": "visible-page-range-completed"
+    }
+  ],
+  "frontendCategories": {
+    "improvement": 372,
+    "pets": 130,
+    "general": 1068,
+    "wigs": 527,
+    "computers": 525,
+    "office": 4,
+    "car": 539,
+    "appliances": 1001,
+    "industrial": 5
+  },
+  "pricing": {
+    "supplierCurrency": "CNY",
+    "baseCurrency": "GBP",
+    "cnyPerGbp": 8.884899,
+    "markupPercent": 30,
+    "rateDate": "Mon, 05 Oct 2026 00:02:31 +0000",
+    "rateSource": "https://open.er-api.com/v6/latest/GBP",
+    "priceStatus": "estimate"
+  },
+  "all1688Inventory": false,
+  "checkoutEnabled": false,
+  "files": {
+    "products.json": "27960429e0489cfa0e2a38cf4ddbcff9cf8e2f7341cd23eeec467f287f8a3499",
+    "coverage.json": "0988a7cc669febd0dfb21a05d62f6e1c2e17238d8dca6aeb5d51673b2117be99",
+    "review.csv": "b54690dfd8ef49eb714d1bab2990fc278c5aa683b6c476938eedefdce821f711",
+    "1688-home-products.json": "9d7a6d32a29c7c64fb5e70a1aa13ef49b3d73f13e5fa0d292f56647d97930703"
+  }
+}

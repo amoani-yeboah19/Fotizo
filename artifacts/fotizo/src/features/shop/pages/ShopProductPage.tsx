@@ -1,5 +1,12 @@
 import { WishlistButton } from "@/features/wishlist/components/WishlistButton";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ProductOptions } from "../components/ProductOptions";
 import { useRoute, useLocation, Link } from "wouter";
 import {
   Star,
@@ -36,6 +43,14 @@ export default function ShopProductPage() {
   const { data: related = [] } = useShopRelatedProducts(params?.id ?? "");
   const [activeImg, setActiveImg] = useState(0);
   const [qty, setQty] = useState(1);
+  const [colour, setColour] = useState("");
+  const [size, setSize] = useState("");
+  useEffect(() => {
+    setColour("");
+    setSize("");
+    setActiveImg(0);
+    setQty(1);
+  }, [params?.id]);
 
   if (isLoading) {
     return (
@@ -59,11 +74,18 @@ export default function ShopProductPage() {
     );
   }
 
-  const off = discountPct(product);
+  const selectedVariant = product.variants?.find(
+    (v) => v.colour === colour && v.size === size,
+  );
+  const displayPrice = selectedVariant?.price ?? product.price;
+  const off = product.variants?.length ? 0 : discountPct(product);
+  // SKU persistence is not supported by the cart API yet; never discard a chosen option.
+  const orderingUnavailable =
+    product.requiresPublication || !!product.variants?.length;
 
   // Shop goods are sourced to order, so local stock does not limit the cart.
   const add = (goToCart: boolean) => {
-    if (product.requiresPublication) return;
+    if (orderingUnavailable) return;
     for (let i = 0; i < qty; i++) {
       addItem({
         id: `shop-${product.id}`,
@@ -103,31 +125,60 @@ export default function ShopProductPage() {
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         {/* Gallery */}
-        <div>
-          <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-muted">
-            <img
-              src={product.images[activeImg] ?? product.image}
-              alt={product.title}
-              className="h-full w-full object-cover"
-            />
-          </div>
-          <div className="mt-3 flex gap-2">
-            {product.images.map((src, i) => (
+        <div className="min-w-0">
+          <Dialog>
+            <DialogTrigger asChild>
               <button
-                key={i}
                 type="button"
-                onClick={() => setActiveImg(i)}
-                aria-label={`View image ${i + 1}`}
-                className={`h-16 w-16 overflow-hidden rounded-lg border-2 ${i === activeImg ? "border-primary" : "border-transparent"}`}
+                aria-label="Enlarge product photo"
+                className="relative block aspect-square w-full cursor-zoom-in overflow-hidden rounded-2xl border border-border bg-white"
               >
-                <img src={src} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={product.images[activeImg] ?? product.image}
+                  alt={product.title}
+                  className="h-full w-full object-contain"
+                />
+                <span className="absolute bottom-3 right-3 rounded-full bg-background/90 px-3 py-1 text-xs text-foreground">
+                  Enlarge photo
+                </span>
               </button>
-            ))}
-          </div>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl">
+              <DialogTitle className="pr-6">{product.title}</DialogTitle>
+              <img
+                src={product.images[activeImg] ?? product.image}
+                alt="Enlarged product view"
+                className="max-h-[75vh] w-full object-contain"
+              />
+            </DialogContent>
+          </Dialog>
+          {product.images.length > 1 && (
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
+              {product.images.map((src, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setActiveImg(i)}
+                  aria-label={`View image ${i + 1}`}
+                  aria-pressed={i === activeImg}
+                  className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 ${i === activeImg ? "border-primary" : "border-transparent"}`}
+                >
+                  <img
+                    src={src}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Info */}
-        <div>
+        <div className="min-w-0 rounded-2xl border border-border bg-card p-5 sm:p-7">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Fotizo Shop · {categoryLabel(product.category)}
+          </p>
           <h1 className="text-xl font-bold leading-snug text-foreground sm:text-2xl">
             {product.title}
           </h1>
@@ -162,7 +213,7 @@ export default function ShopProductPage() {
           )}
           <div className="mt-4 flex items-end gap-3">
             <Price
-              amount={product.price}
+              amount={displayPrice}
               className="text-3xl font-extrabold text-[#FF6A00]"
             />
             {product.originalPrice > product.price && (
@@ -220,41 +271,64 @@ export default function ShopProductPage() {
             )}
           </div>
 
+          <ProductOptions
+            product={product}
+            colour={colour}
+            size={size}
+            onSize={setSize}
+            onColour={(value) => {
+              setColour(value);
+              if (
+                size &&
+                !product.variants?.some(
+                  (v) => v.colour === value && v.size === size,
+                )
+              )
+                setSize("");
+              const image = product.variants?.find(
+                (v) => v.colour === value,
+              )?.image;
+              const index = product.images.indexOf(image ?? "");
+              if (index >= 0) setActiveImg(index);
+            }}
+          />
           {/* Quantity */}
-          <div className="mt-6 flex items-center gap-4">
-            <span className="text-sm font-medium text-foreground">
-              Quantity
-            </span>
-            <div className="flex items-center rounded-lg border border-border">
-              <button
-                type="button"
-                aria-label="Decrease quantity"
-                onClick={() => setQty((q) => Math.max(1, q - 1))}
-                className="px-3 py-2 text-muted-foreground hover:text-foreground disabled:opacity-40"
-                disabled={qty <= 1}
-              >
-                <Minus className="h-4 w-4" aria-hidden="true" />
-              </button>
-              <span className="w-10 text-center text-sm font-semibold">
-                {qty}
+          {!orderingUnavailable && (
+            <div className="mt-6 flex items-center gap-4">
+              <span className="text-sm font-medium text-foreground">
+                Quantity
               </span>
-              <button
-                type="button"
-                aria-label="Increase quantity"
-                onClick={() => setQty((q) => Math.min(99, q + 1))}
-                className="px-3 py-2 text-muted-foreground hover:text-foreground"
-              >
-                <Plus className="h-4 w-4" aria-hidden="true" />
-              </button>
+              <div className="flex items-center rounded-lg border border-border">
+                <button
+                  type="button"
+                  aria-label="Decrease quantity"
+                  onClick={() => setQty((q) => Math.max(1, q - 1))}
+                  className="px-3 py-2 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                  disabled={qty <= 1}
+                >
+                  <Minus className="h-4 w-4" aria-hidden="true" />
+                </button>
+                <span className="w-10 text-center text-sm font-semibold">
+                  {qty}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Increase quantity"
+                  onClick={() => setQty((q) => Math.min(99, q + 1))}
+                  className="px-3 py-2 text-muted-foreground hover:text-foreground"
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Actions */}
           <div className="mt-6 flex gap-3">
             <Button
               variant="outline"
               className="flex-1 gap-2"
-              disabled={product.requiresPublication}
+              disabled={orderingUnavailable}
               onClick={() => add(false)}
             >
               <ShoppingCart className="h-4 w-4" aria-hidden="true" /> Add to
@@ -262,14 +336,21 @@ export default function ShopProductPage() {
             </Button>
             <Button
               className="flex-1 bg-[#FF6A00] text-white hover:bg-[#FF6A00]/90"
-              disabled={product.requiresPublication}
+              disabled={orderingUnavailable}
               onClick={() => add(true)}
             >
-              {product.requiresPublication ? "Available soon" : "Buy now"}
+              {orderingUnavailable ? "Available soon" : "Buy now"}
             </Button>
           </div>
+        </div>
+      </div>
 
-          <div className="mt-6 border-t border-border pt-5">
+      <section
+        aria-label="Product information"
+        className="mt-8 rounded-2xl border border-border bg-card p-5 sm:p-8"
+      >
+        <div className="grid gap-8 md:grid-cols-2">
+          <div>
             <h2 className="mb-2 text-sm font-bold text-foreground">
               Description
             </h2>
@@ -277,8 +358,54 @@ export default function ShopProductPage() {
               {product.description}
             </p>
           </div>
+          <div>
+            <h2 className="text-sm font-bold">Product details</h2>
+            <dl className="mt-3 text-sm">
+              <dt className="font-semibold">Category</dt>
+              <dd className="mt-1 text-muted-foreground">
+                {categoryLabel(product.category)}
+              </dd>
+            </dl>
+            {!!product.specifications?.length && (
+              <dl className="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                {product.specifications.map((spec) => (
+                  <div key={spec.label}>
+                    <dt className="font-semibold">{spec.label}</dt>
+                    <dd className="mt-1 text-muted-foreground">{spec.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </div>
         </div>
-      </div>
+        {product.video && (
+          <video
+            controls
+            preload="none"
+            poster={product.image}
+            className="mx-auto mt-6 max-h-[70vh] w-full max-w-3xl rounded-xl"
+            aria-label="Product video"
+          >
+            <source src={product.video} type="video/mp4" />
+          </video>
+        )}
+        {!!product.detailImages?.length && (
+          <section
+            className="mx-auto mt-6 max-w-3xl space-y-3"
+            aria-label="Product detail photos"
+          >
+            {product.detailImages.map((src, i) => (
+              <img
+                key={src}
+                src={src}
+                alt={`Product detail ${i + 1}`}
+                loading="lazy"
+                className="h-auto w-full rounded-lg"
+              />
+            ))}
+          </section>
+        )}
+      </section>
 
       {/* Related */}
       {related.length > 0 && (
