@@ -1,5 +1,6 @@
 import { WishlistButton } from "@/features/wishlist/components/WishlistButton";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ProductOptions } from "../components/ProductOptions";
 import { useRoute, useLocation, Link } from "wouter";
 import {
   Star,
@@ -36,6 +37,14 @@ export default function ShopProductPage() {
   const { data: related = [] } = useShopRelatedProducts(params?.id ?? "");
   const [activeImg, setActiveImg] = useState(0);
   const [qty, setQty] = useState(1);
+  const [colour, setColour] = useState("");
+  const [size, setSize] = useState("");
+  useEffect(() => {
+    setColour("");
+    setSize("");
+    setActiveImg(0);
+    setQty(1);
+  }, [params?.id]);
 
   if (isLoading) {
     return (
@@ -59,11 +68,18 @@ export default function ShopProductPage() {
     );
   }
 
-  const off = discountPct(product);
+  const selectedVariant = product.variants?.find(
+    (v) => v.colour === colour && v.size === size,
+  );
+  const displayPrice = selectedVariant?.price ?? product.price;
+  const off = product.variants?.length ? 0 : discountPct(product);
+  // SKU persistence is not supported by the cart API yet; never discard a chosen option.
+  const orderingUnavailable =
+    product.requiresPublication || !!product.variants?.length;
 
   // Shop goods are sourced to order, so local stock does not limit the cart.
   const add = (goToCart: boolean) => {
-    if (product.requiresPublication) return;
+    if (orderingUnavailable) return;
     for (let i = 0; i < qty; i++) {
       addItem({
         id: `shop-${product.id}`,
@@ -111,14 +127,14 @@ export default function ShopProductPage() {
               className="h-full w-full object-cover"
             />
           </div>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
             {product.images.map((src, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => setActiveImg(i)}
                 aria-label={`View image ${i + 1}`}
-                className={`h-16 w-16 overflow-hidden rounded-lg border-2 ${i === activeImg ? "border-primary" : "border-transparent"}`}
+                className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 ${i === activeImg ? "border-primary" : "border-transparent"}`}
               >
                 <img src={src} alt="" className="h-full w-full object-cover" />
               </button>
@@ -162,7 +178,7 @@ export default function ShopProductPage() {
           )}
           <div className="mt-4 flex items-end gap-3">
             <Price
-              amount={product.price}
+              amount={displayPrice}
               className="text-3xl font-extrabold text-[#FF6A00]"
             />
             {product.originalPrice > product.price && (
@@ -220,6 +236,27 @@ export default function ShopProductPage() {
             )}
           </div>
 
+          <ProductOptions
+            product={product}
+            colour={colour}
+            size={size}
+            onSize={setSize}
+            onColour={(value) => {
+              setColour(value);
+              if (
+                size &&
+                !product.variants?.some(
+                  (v) => v.colour === value && v.size === size,
+                )
+              )
+                setSize("");
+              const image = product.variants?.find(
+                (v) => v.colour === value,
+              )?.image;
+              const index = product.images.indexOf(image ?? "");
+              if (index >= 0) setActiveImg(index);
+            }}
+          />
           {/* Quantity */}
           <div className="mt-6 flex items-center gap-4">
             <span className="text-sm font-medium text-foreground">
@@ -254,7 +291,7 @@ export default function ShopProductPage() {
             <Button
               variant="outline"
               className="flex-1 gap-2"
-              disabled={product.requiresPublication}
+              disabled={orderingUnavailable}
               onClick={() => add(false)}
             >
               <ShoppingCart className="h-4 w-4" aria-hidden="true" /> Add to
@@ -262,10 +299,10 @@ export default function ShopProductPage() {
             </Button>
             <Button
               className="flex-1 bg-[#FF6A00] text-white hover:bg-[#FF6A00]/90"
-              disabled={product.requiresPublication}
+              disabled={orderingUnavailable}
               onClick={() => add(true)}
             >
-              {product.requiresPublication ? "Available soon" : "Buy now"}
+              {orderingUnavailable ? "Available soon" : "Buy now"}
             </Button>
           </div>
 
@@ -276,6 +313,43 @@ export default function ShopProductPage() {
             <p className="text-sm leading-relaxed text-muted-foreground">
               {product.description}
             </p>
+            {!!product.specifications?.length && (
+              <dl className="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                {product.specifications.map((spec) => (
+                  <div key={spec.label}>
+                    <dt className="font-semibold">{spec.label}</dt>
+                    <dd className="mt-1 text-muted-foreground">{spec.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            {product.video && (
+              <video
+                controls
+                preload="none"
+                poster={product.image}
+                className="mt-6 w-full rounded-xl"
+                aria-label="Product video"
+              >
+                <source src={product.video} type="video/mp4" />
+              </video>
+            )}
+            {!!product.detailImages?.length && (
+              <section
+                className="mt-6 space-y-3"
+                aria-label="Product detail photos"
+              >
+                {product.detailImages.map((src, i) => (
+                  <img
+                    key={src}
+                    src={src}
+                    alt={`Product detail ${i + 1}`}
+                    loading="lazy"
+                    className="h-auto w-full rounded-lg"
+                  />
+                ))}
+              </section>
+            )}
           </div>
         </div>
       </div>

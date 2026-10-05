@@ -3,6 +3,17 @@
 // loaded on demand (see ./local-catalogue).
 
 export interface ShopProduct {
+  variants?: {
+    id: string;
+    colour: string;
+    size: string;
+    image: string;
+    price: number;
+  }[];
+  sizeGuide?: { size: string; suggestedWeightKg: string }[];
+  specifications?: { label: string; value: string }[];
+  detailImages?: string[];
+  video?: string;
   requiresPublication?: boolean;
   sourcing?: {
     platform: string;
@@ -42,13 +53,16 @@ export interface ShopProduct {
   sourceUrl?: string;
 }
 
-export function discountPct(p: Pick<ShopProduct, "price" | "originalPrice">): number {
+export function discountPct(
+  p: Pick<ShopProduct, "price" | "originalPrice">,
+): number {
   if (p.originalPrice <= p.price) return 0;
   return Math.round((1 - p.price / p.originalPrice) * 100);
 }
 
 // Formats a sold count Temu-style: 9500 → "9.5k+ sold".
 export function soldLabel(sold: number): string {
-  if (sold >= 1000) return `${(sold / 1000).toFixed(1).replace(/\.0$/, "")}k+ sold`;
+  if (sold >= 1000)
+    return `${(sold / 1000).toFixed(1).replace(/\.0$/, "")}k+ sold`;
   return `${sold} sold`;
 }

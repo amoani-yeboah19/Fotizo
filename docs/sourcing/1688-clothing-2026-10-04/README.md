@@ -56,6 +56,20 @@ cross-category deduplication, invalid-price holds and CSV formula escaping.
 
 ## Files
 
+- `973074422128-details.json`: a subsequent full-page import from the owner's
+  saved tracksuit listing. Includes eight actual SKUs (Dark Grey/Oatmeal ×
+  M/L/XL/2XL), seven gallery images, six detail images, a video, English
+  specifications and supplier body-weight size guidance. This adds one new
+  product, bringing the displayed frontend catalogue from 3,239 to 3,240 sourced
+  products. The original search-capture counts below remain unchanged.
+  Frontend colour/size selection works, but ordering stays disabled until the
+  backend supports SKU-specific cart lines, price validation and order snapshots.
+
+- [PRODUCT-DETAILS-REQUEST.md](PRODUCT-DETAILS-REQUEST.md): supplier request in
+  English and Chinese for full galleries, descriptions, sizes, colours, SKU
+  combinations and size charts. The direct detail-page check returned a CAPTCHA;
+  these details have not yet been captured.
+
 - `products.json`: one record per 1688 offer ID, deduplicated across categories.
 - `review.csv`: spreadsheet for English translation and merchandising review.
 - `coverage.json`: attempted pages, scroll batches, returned IDs and errors.
