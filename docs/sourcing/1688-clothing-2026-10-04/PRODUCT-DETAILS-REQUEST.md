@@ -8,6 +8,11 @@ not imported supplier options or a claim of stock. Men's and women's jeans and
 trousers use waist labels in inches; other clothing uses XS–3XL. Accessories are
 excluded. Existing verified variants always take priority.
 
+Footwear also supports standard EU size requests: EU 35–48 for adult listings
+and EU 16–35 for listings explicitly described as children's footwear. The size
+system is shown on every option. Bags, storage and shoe-care accessories are
+excluded. These ranges do not establish which supplier sizes are available.
+
 The selector explains that fit and availability require confirmation. It does
 not fabricate garment measurements or create supplier SKUs. Product cards link
 to size selection instead of allowing quick-add to skip it. Requested sizes are

@@ -32,7 +32,7 @@ import {
 } from "@/features/shop/components/ShopProductCard";
 import { discountPct, soldLabel } from "@/features/shop/data/shop-product";
 import { categoryLabel } from "@/features/shop/data/categories";
-import { clothingSizeRequest } from "../data/clothing-sizes";
+import { productSizeRequest } from "../data/product-sizes";
 
 export default function ShopProductPage() {
   const [, params] = useRoute("/shop/:id");
@@ -84,7 +84,7 @@ export default function ShopProductPage() {
   const orderingUnavailable =
     product.requiresPublication ||
     !!product.variants?.length ||
-    !!clothingSizeRequest(product);
+    !!productSizeRequest(product);
 
   // Shop goods are sourced to order, so local stock does not limit the cart.
   const add = (goToCart: boolean) => {
