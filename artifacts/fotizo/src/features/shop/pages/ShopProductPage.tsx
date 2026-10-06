@@ -32,6 +32,7 @@ import {
 } from "@/features/shop/components/ShopProductCard";
 import { discountPct, soldLabel } from "@/features/shop/data/shop-product";
 import { categoryLabel } from "@/features/shop/data/categories";
+import { clothingSizeRequest } from "../data/clothing-sizes";
 
 export default function ShopProductPage() {
   const [, params] = useRoute("/shop/:id");
@@ -81,7 +82,9 @@ export default function ShopProductPage() {
   const off = product.variants?.length ? 0 : discountPct(product);
   // SKU persistence is not supported by the cart API yet; never discard a chosen option.
   const orderingUnavailable =
-    product.requiresPublication || !!product.variants?.length;
+    product.requiresPublication ||
+    !!product.variants?.length ||
+    !!clothingSizeRequest(product);
 
   // Shop goods are sourced to order, so local stock does not limit the cart.
   const add = (goToCart: boolean) => {

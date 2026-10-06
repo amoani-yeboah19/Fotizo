@@ -1,5 +1,21 @@
 # Full product details needed from the 1688 supplier
 
+## Fotizo size requests — 6 October 2026
+
+At the owner's request, clothing without verified variants now displays standard
+Fotizo size-request controls in the frontend. These are shopper preferences,
+not imported supplier options or a claim of stock. Men's and women's jeans and
+trousers use waist labels in inches; other clothing uses XS–3XL. Accessories are
+excluded. Existing verified variants always take priority.
+
+The selector explains that fit and availability require confirmation. It does
+not fabricate garment measurements or create supplier SKUs. Product cards link
+to size selection instead of allowing quick-add to skip it. Requested sizes are
+currently page-local selections; they are not submitted to the backend. Checkout
+remains unavailable for these products until the backend can persist and confirm
+the chosen option. The cart and order work in requirements 5–6 below is still
+needed before customers can buy a particular size.
+
 ## Current access result — 5 October 2026
 
 The full listing for offer `38412292988` returned a CAPTCHA redirect instead of
@@ -53,8 +69,9 @@ offer IDs and SKU IDs unchanged so options stay attached to the correct product.
    customer pages must not link buyers to 1688.
 2. Translate product details, option labels and chart headings into English,
    preserving original labels internally. Never invent missing measurements,
-   certifications, materials or selectable options.
-3. Show selectable colours and sizes only for verified SKU combinations. Changing
+   certifications, materials or supplier options.
+3. Show confirmed colours and sizes only for verified SKU combinations. Standard
+   Fotizo size requests must remain explicitly distinct from confirmed options. Changing
    a colour should show its associated real photo when one is provided. Disable
    unavailable combinations; never form a Cartesian product of unrelated lists.
 4. Calculate the price for the selected SKU using its supplier cost, the 30%
