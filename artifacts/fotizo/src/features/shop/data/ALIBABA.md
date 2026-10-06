@@ -1,5 +1,26 @@
 # Alibaba frontend catalogue
 
+## Selective frontend restoration — 6 October 2026
+
+The owner requested Wigs & Hair, Pet Supplies, Winter Jackets and Jewellery back
+in the shop. `restored-alibaba-products.json` contains 362 archived listings:
+100 wigs/hair, 100 pet supplies, 100 winter jackets and 62 jewellery items.
+Jewellery is selected from the old accessories titles and has its own category;
+watches, sunglasses, gold bars and other Alibaba departments remain excluded.
+The normal sourced shop feed, product details and related products now load
+this snapshot. Customer data omits supplier links and stock quantities.
+
+This restoration changes the frontend only. Archived price estimates and image
+galleries are retained; one photo per restored category was checked successfully.
+`requiresPublication` stays true until the backend team restores/reviews the
+matching records and confirms prices, supplier terms and orderable options.
+The API launch filter still excludes retired Alibaba database records; it should
+be replaced with an approved per-product allowlist when backend publication is
+ready. Preserve the private supplier IDs in `alibaba-products.json` for that work.
+
+The original sourcing notes below describe the earlier import, not its current
+publication status.
+
 The Alibaba homepage supplied for this task is a marketplace entry point, not a single seller's shop. This batch contains 1,967 selected listings across all 21 active Fotizo departments. The expansion adds 1,488 listings while retaining all 479 previously sourced listings and their IDs. This is a category-covering selection, not an exhaustive Alibaba mirror.
 
 - `alibaba-products.json` contains English supplier titles, image galleries, source product links and supplier metadata. Original image content is retained, including any Chinese writing. `sourcing.originalImage` retains the full-size source; gallery URLs request Alibaba's 720px rendition.

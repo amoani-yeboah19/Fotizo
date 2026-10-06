@@ -64,6 +64,7 @@ export const SHOP_CATEGORIES: ShopCategory[] = [
   { id: "beauty", label: "Beauty", icon: Sparkles },
   { id: "womens", label: "Women's Clothing", icon: Venus },
   { id: "accessories", label: "Accessories", icon: Watch },
+  { id: "jewellery", label: "Jewellery", icon: Sparkles },
   { id: "phones", label: "Phones", icon: Smartphone },
   { id: "appliances", label: "Home Appliances", icon: Zap },
   { id: "furniture", label: "Furniture", icon: Sofa },
