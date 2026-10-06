@@ -1,17 +1,18 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import ShopProductPage from "./ShopProductPage";
 import catalogue from "../data/1688-products.json";
 import detailed from "../data/1688-detail-products.json";
+import { ShopProductCard } from "../components/ShopProductCard";
 
 const mocks = vi.hoisted(() => ({ addItem: vi.fn(), basic: false }));
 vi.mock("wouter", () => ({
   useRoute: () => [true, { id: "1688-973074422128" }],
   useLocation: () => ["", vi.fn()],
-  Link: ({ href, children }: { href: string; children: ReactNode }) => (
-    <a href={href}>{children}</a>
+  Link: ({ children, ...props }: ComponentProps<"a">) => (
+    <a {...props}>{children}</a>
   ),
 }));
 vi.mock("@/features/shop/hooks", () => ({
@@ -76,7 +77,7 @@ it("labels body-weight guidance without inventing garment measurements", () => {
   expect(new Set(detailed[0].variants.map((v) => v.id)).size).toBe(8);
 });
 
-it("gives ordinary sourced products the shared detail layout without invented options", () => {
+it("lets shoppers request a standard clothing size without claiming a supplier variant", () => {
   mocks.basic = true;
   render(<ShopProductPage />);
   expect(
@@ -86,7 +87,17 @@ it("gives ordinary sourced products the shared detail layout without invented op
   expect(screen.getByAltText(catalogue[0].title).getAttribute("src")).toBe(
     catalogue[0].image,
   );
-  expect(screen.queryByRole("button", { name: "XL" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "XL" }));
+  expect(
+    screen.getByRole("button", { name: "XL" }).getAttribute("aria-pressed"),
+  ).toBe("true");
+  expect(screen.getByRole("status").textContent).toBe("Requested size: XL");
+  expect(screen.getByText(/Standard size requests/)).toBeTruthy();
+  expect(
+    (screen.getByRole("button", { name: /Add to cart/i }) as HTMLButtonElement)
+      .disabled,
+  ).toBe(true);
+  expect(mocks.addItem).not.toHaveBeenCalled();
   expect(
     screen.queryByRole("button", { name: "Increase quantity" }),
   ).toBeNull();
@@ -99,4 +110,13 @@ it("gives ordinary sourced products the shared detail layout without invented op
   );
   fireEvent.click(screen.getByRole("button", { name: "Close" }));
   expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+it("takes clothing shoppers from the card to size selection", () => {
+  render(<ShopProductCard product={catalogue[0]} />);
+  const link = screen.getByRole("link", {
+    name: `Choose size for ${catalogue[0].title}`,
+  });
+  expect(link.getAttribute("href")).toBe(`/shop/${catalogue[0].id}`);
+  expect(screen.queryByRole("button", { name: /Add .* to cart/ })).toBeNull();
 });
