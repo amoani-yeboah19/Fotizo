@@ -4,10 +4,61 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 import { ProductOptions } from "./ProductOptions";
 import { clothingSizeRequest } from "../data/clothing-sizes";
+import { productSizeRequest } from "../data/product-sizes";
 import type { ShopProduct } from "../data/shop-product";
 import catalogue from "../data/1688-products.json";
 
 afterEach(cleanup);
+
+it("offers EU shoe-size requests and updates the selected size", () => {
+  render(<Sizes category="shoes-bags" title="Men’s Running Sneakers" />);
+  expect(screen.getByRole("group", { name: /Shoe size \(EU\)/ })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "EU 42" }));
+  expect(screen.getByRole("status").textContent).toBe("Requested size: EU 42");
+  fireEvent.click(screen.getByRole("button", { name: "EU 43" }));
+  expect(
+    screen.getByRole("button", { name: "EU 42" }).getAttribute("aria-pressed"),
+  ).toBe("false");
+  expect(screen.getByRole("status").textContent).toBe("Requested size: EU 43");
+  expect(screen.queryByRole("button", { name: "XL" })).toBeNull();
+});
+
+it("uses children's sizes for children's shoes", () => {
+  render(<Sizes category="baby" title="Children’s Sandals" />);
+  fireEvent.click(screen.getByRole("button", { name: "EU 24" }));
+  expect(screen.getByRole("status").textContent).toBe("Requested size: EU 24");
+  expect(screen.queryByRole("button", { name: "EU 42" })).toBeNull();
+});
+
+it.each([
+  "Travel Shoe Storage Bag",
+  "Leather Shoulder Bag",
+  "Shoe Cleaning Brush",
+  "Boot Rack",
+  "Shoe Insoles",
+])("does not add shoe sizes to %s", (title) => {
+  render(<Sizes category="shoes-bags" title={title} />);
+  expect(screen.queryByRole("group")).toBeNull();
+});
+
+it("preserves verified shoe variants", () => {
+  expect(
+    productSizeRequest({
+      ...catalogue[0],
+      category: "shoes-bags",
+      title: "Sneakers",
+      variants: [
+        {
+          id: "shoe-sku",
+          colour: "Black",
+          size: "EU 42",
+          price: 20,
+          image: "/shoe.webp",
+        },
+      ],
+    }),
+  ).toBeNull();
+});
 
 function Sizes({ category, title }: { category: string; title: string }) {
   const [size, setSize] = useState("");

@@ -1,5 +1,5 @@
 import type { ShopProduct } from "../data/shop-product";
-import { clothingSizeRequest } from "../data/clothing-sizes";
+import { productSizeRequest } from "../data/product-sizes";
 
 export function ProductOptions({
   product,
@@ -15,7 +15,7 @@ export function ProductOptions({
   onSize: (value: string) => void;
 }) {
   const variants = product.variants ?? [];
-  const request = clothingSizeRequest(product);
+  const request = productSizeRequest(product);
   if (request) {
     return (
       <div className="mt-6 space-y-3 rounded-xl border border-border bg-card p-4">

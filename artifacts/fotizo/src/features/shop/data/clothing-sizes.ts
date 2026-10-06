@@ -3,10 +3,14 @@ import type { ShopProduct } from "./shop-product";
 /** Fotizo sizing preferences, never supplier SKUs or a claim of available stock. */
 export function clothingSizeRequest(product: ShopProduct) {
   if (product.variants?.length) return null;
-  if (!["mens", "womens", "gymwear", "underwear"].includes(product.category))
+  if (
+    !["mens", "womens", "gymwear", "underwear", "jackets"].includes(
+      product.category,
+    )
+  )
     return null;
   if (
-    /\b(shoes?|boots?|sandals?|bags?|belts?|hats?|caps?|scarves|scarfs?|socks?|jewellery|jewelry)\b/i.test(
+    /\b(shoes?|boots?|sandals?|bags?|belts?|hats?|caps?|scarves|scarfs?|socks?|jewellery|jewelry|dogs?|cats?|pets?)\b/i.test(
       product.title,
     )
   )

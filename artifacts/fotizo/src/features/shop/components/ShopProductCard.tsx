@@ -5,7 +5,7 @@ import { Star, Plus, Truck, Flame } from "lucide-react";
 import { Price } from "@/components/common/Price";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
-import { clothingSizeRequest } from "../data/clothing-sizes";
+import { productSizeRequest } from "../data/product-sizes";
 import {
   discountPct,
   soldLabel,
@@ -23,7 +23,7 @@ export const ShopProductCard = memo(function ShopProductCard({
   const { toast } = useToast();
   const off = discountPct(product);
   const needsOptions =
-    !!product.variants?.length || !!clothingSizeRequest(product);
+    !!product.variants?.length || !!productSizeRequest(product);
 
   const quickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
