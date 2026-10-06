@@ -42,7 +42,7 @@ export async function shopCataloguePage(filters: CatalogueFilters = {}) {
       (filters.minPrice === undefined || p.price >= filters.minPrice) &&
       (filters.maxPrice === undefined || p.price <= filters.maxPrice) &&
       (!filters.minRating || p.rating >= filters.minRating) &&
-      !filters.discounted,
+      (!filters.discounted || p.originalPrice > p.price),
   );
   const first = await Promise.allSettled([
     serverPage({ ...filters, page: 0, pageSize }),

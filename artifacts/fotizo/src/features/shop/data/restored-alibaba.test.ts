@@ -11,15 +11,62 @@ vi.mock("@/api", () => ({
   SHOP_USE_MOCKS: false,
 }));
 
+it("takes 10% off only the newly restored empty departments, once", () => {
+  const discounted = new Set([
+    "baby",
+    "beauty",
+    "textiles",
+    "phones",
+    "sports",
+    "global",
+    "entertainment",
+  ]);
+  const originals = new Map(archived.map((p) => [p.id, p]));
+  for (const p of restored) {
+    const original = originals.get(p.id)!;
+    expect(p.originalPrice).toBe(original.price);
+    expect(p.price).toBe(
+      discounted.has(p.category)
+        ? Math.round((original.price * 0.9 + Number.EPSILON) * 100) / 100
+        : original.price,
+    );
+  }
+  expect(restored.filter((p) => p.price < p.originalPrice)).toHaveLength(617);
+});
+
 it("restores only the requested archive departments, with jewellery separate from other accessories", async () => {
   const catalogue = await loadSourcedCatalogue();
   const counts = Object.fromEntries(
-    ["wigs", "pets", "jackets", "jewellery"].map((category) => [
+    [
+      "wigs",
+      "pets",
+      "jackets",
+      "jewellery",
+      "baby",
+      "beauty",
+      "textiles",
+      "phones",
+      "sports",
+      "global",
+      "entertainment",
+    ].map((category) => [
       category,
       restored.filter((p) => p.category === category).length,
     ]),
   );
-  expect(counts).toEqual({ wigs: 100, pets: 100, jackets: 100, jewellery: 62 });
+  expect(counts).toEqual({
+    wigs: 100,
+    pets: 100,
+    jackets: 100,
+    jewellery: 62,
+    baby: 100,
+    beauty: 64,
+    textiles: 93,
+    phones: 95,
+    sports: 75,
+    global: 100,
+    entertainment: 90,
+  });
   const ids = new Set(restored.map((p) => p.id));
   for (const p of archived)
     expect(catalogue.some((row) => row.id === p.id)).toBe(ids.has(p.id));
@@ -33,11 +80,24 @@ it("restores only the requested archive departments, with jewellery separate fro
     expect(p).not.toHaveProperty("sourcing");
     expect(p).not.toHaveProperty("stockCount");
     expect(p.title).not.toMatch(/\b(gold\s*bars?|bullion|ingots?)\b/i);
-    if (p.category === "jewellery") expect(p.title).not.toMatch(/\b(watches|watch|sunglasses)\b/i);
+    if (p.category === "jewellery")
+      expect(p.title).not.toMatch(/\b(watches|watch|sunglasses)\b/i);
   }
 });
 
-it.each(["wigs", "pets", "jackets", "jewellery"])(
+it.each([
+  "wigs",
+  "pets",
+  "jackets",
+  "jewellery",
+  "baby",
+  "beauty",
+  "textiles",
+  "phones",
+  "sports",
+  "global",
+  "entertainment",
+])(
   "opens restored %s details and related listings without a backend record",
   async (category) => {
     const product = restored.find((p) => p.category === category)!;
@@ -53,7 +113,7 @@ it.each(["wigs", "pets", "jackets", "jewellery"])(
 it("keeps other archived Alibaba product pages hidden", async () => {
   expect(
     await shopService.getProduct(
-      archived.find((p) => p.category === "phones")!.id,
+      archived.find((p) => p.category === "mens")!.id,
     ),
   ).toBeNull();
 });

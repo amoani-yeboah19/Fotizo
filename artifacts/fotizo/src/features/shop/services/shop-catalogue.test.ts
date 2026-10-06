@@ -67,6 +67,22 @@ it("merges sorted server and sourced pages without skipping or repeating product
   expect(pages.map((p) => p.total)).toEqual([6, 6, 6]);
   expect(pages[2].hasMore).toBe(false);
 });
+
+it("includes restored discounts in the discounted filter", async () => {
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([
+    { ...item("alibaba-sale", 9), originalPrice: 10 },
+    item("alibaba-full-price", 10),
+  ]);
+  vi.mocked(cataloguePages.list).mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 0,
+    pageSize: 48,
+    hasMore: false,
+  });
+  const result = await shopCataloguePage({ discounted: true });
+  expect(result.items.map((p) => p.id)).toEqual(["alibaba-sale"]);
+});
 it("keeps sourced products available when the backend fails and reports the failure", async () => {
   vi.mocked(cataloguePages.list).mockRejectedValue(new Error("offline"));
   const result = await shopCataloguePage({

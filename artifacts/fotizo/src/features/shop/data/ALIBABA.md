@@ -2,6 +2,18 @@
 
 ## Selective frontend restoration — 6 October 2026
 
+The owner's follow-up restores another 617 listings from previously empty
+departments: Mum & Baby 100, Beauty 64, Home Textiles 93, Phones 95, Sports
+Furniture 75, Global 100 and Entertainment 90. Furniture and Clocks have no
+archived records to restore. The restored snapshot now contains 979 listings.
+Only these 617 additions receive the approved 10% reduction: the archived GBP
+selling estimate is multiplied by 0.90 and rounded half-up to two decimals.
+`originalPrice` retains the archived selling estimate, so the storefront shows
+the reduction and includes these products in discount filters. GHS display uses
+the existing currency conversion; the exchange rate itself is not discounted.
+The previously restored 362 listings retain their prices. These remain frontend
+estimates pending backend publication and supplier confirmation.
+
 The owner requested Wigs & Hair, Pet Supplies, Winter Jackets and Jewellery back
 in the shop. `restored-alibaba-products.json` contains 362 archived listings:
 100 wigs/hair, 100 pet supplies, 100 winter jackets and 62 jewellery items.
