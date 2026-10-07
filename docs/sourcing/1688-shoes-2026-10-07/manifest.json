@@ -1,0 +1,48 @@
+{
+  "capturedUnique": 2311,
+  "frontendAdded": 2309,
+  "held": 2,
+  "heldReasons": {
+    "image-or-price-verification-failed": 2
+  },
+  "categories": [
+    {
+      "category": "loafers",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "completeVisibleWindow": true,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "category": "running-shoes",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "completeVisibleWindow": true,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "category": "sports-shoes",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "completeVisibleWindow": true,
+      "stopReason": "visible-page-range-completed"
+    }
+  ],
+  "all1688Inventory": false,
+  "checkoutEnabled": false,
+  "pricing": {
+    "supplierCurrency": "CNY",
+    "baseCurrency": "GBP",
+    "cnyPerGbp": 8.903272,
+    "markupPercent": 30,
+    "rateDate": "Wed, 07 Oct 2026 00:02:32 +0000",
+    "rateSource": "https://open.er-api.com/v6/latest/GBP",
+    "priceStatus": "estimate"
+  },
+  "files": {
+    "products.json": "097cf758e8e8ec78dceb67b90aac28f3431a2c05e90b1e2474b2cf4b5d1cf40a",
+    "coverage.json": "c4f00e02f0d9eb26529339c8266eac77e22380151474c4450881c4aaf1b88381",
+    "review.csv": "1cd0d163b4da1d9aff252185ee05339676a8289fa8637aa24bef84d60ffe7911",
+    "1688-shoes-products.json": "0a84b34cfee8bff8dc15e2669b6d2d28b7d0441164743a5e34ba6fbca7863f2a"
+  }
+}

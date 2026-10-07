@@ -5,7 +5,7 @@ import { clothingSizeRequest } from "./clothing-sizes";
 export function productSizeRequest(product: ShopProduct) {
   if (product.variants?.length) return null;
   const footwear =
-    /\b(shoes?|boots?|sneakers?|trainers?|sandals?|slippers?|loafers?|heels|footwear|flip[ -]?flops?|espadrilles?|moccasins?)\b/i.test(
+    /\b(shoes?|boots?|sneakers?|trainers?|sandals?|slippers?|loafers?|clogs?|flats|pumps|heels|footwear|flip[ -]?flops?|espadrilles?|moccasins?)\b/i.test(
       product.title,
     );
   if (!footwear) return clothingSizeRequest(product);
@@ -23,7 +23,7 @@ export function productSizeRequest(product: ShopProduct) {
     return null;
   // The combined department includes many shoe storage bags and shoe-care items.
   if (
-    /\b(bags?|storage|racks?|boxes|box|organisers?|organizers?|cleaners?|cleaning|polish|insoles?|laces?|covers?|shoehorns?|socks?|charms?)\b/i.test(
+    /\b(bags?|storage|racks?|boxes|box|organisers?|organizers?|cleaners?|cleaning|polish|insoles?|shoelaces?|shoe[ -]laces?|laces|covers?|shoehorns?|socks?|charms?)\b/i.test(
       product.title,
     )
   )

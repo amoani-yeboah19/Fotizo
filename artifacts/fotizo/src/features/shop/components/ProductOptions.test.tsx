@@ -10,6 +10,18 @@ import catalogue from "../data/1688-products.json";
 
 afterEach(cleanup);
 
+it("offers shoe sizes for lace-up shoes without treating them as spare laces", () => {
+  render(<Sizes category="shoes-bags" title="Women’s Lace-Up Running Shoes" />);
+  expect(screen.getByRole("button", { name: "EU 38" })).toBeTruthy();
+  expect(
+    productSizeRequest({
+      ...catalogue[0],
+      category: "shoes-bags",
+      title: "Replacement Shoe Laces",
+    }),
+  ).toBeNull();
+});
+
 it("offers EU shoe-size requests and updates the selected size", () => {
   render(<Sizes category="shoes-bags" title="Men’s Running Sneakers" />);
   expect(screen.getByRole("group", { name: /Shoe size \(EU\)/ })).toBeTruthy();

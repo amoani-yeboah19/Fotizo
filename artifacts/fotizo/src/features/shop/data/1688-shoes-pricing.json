@@ -1,0 +1,9 @@
+{
+  "supplierCurrency": "CNY",
+  "baseCurrency": "GBP",
+  "cnyPerGbp": 8.903272,
+  "markupPercent": 30,
+  "rateDate": "Wed, 07 Oct 2026 00:02:32 +0000",
+  "rateSource": "https://open.er-api.com/v6/latest/GBP",
+  "priceStatus": "estimate"
+}
