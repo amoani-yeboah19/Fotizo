@@ -95,3 +95,61 @@ it("keeps sourced products available when the backend fails and reports the fail
   expect(result.liveError).toBe(true);
   expect((await shopCataloguePage({ category: "womens" })).items).toEqual([]);
 });
+
+it("filters complete departments before paging a women’s shoe collection", async () => {
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([
+    {
+      ...item("woman-local", 3),
+      category: "shoes-bags",
+      title: "Women’s Running Shoes",
+    },
+    {
+      ...item("bag", 2),
+      category: "shoes-bags",
+      title: "Women’s Shoulder Bag",
+    },
+  ]);
+  const live = [
+    { ...item("male", 1), category: "shoes-bags", title: "Men’s Shoes" },
+    { ...item("child", 2), category: "shoes-bags", title: "Girls’ Shoes" },
+    {
+      ...item("woman-live", 4),
+      category: "shoes-bags",
+      title: "Women’s Loafers",
+    },
+  ];
+  vi.mocked(cataloguePages.list).mockImplementation(
+    async (_channel, f = {}) => ({
+      items: live.slice(
+        (f.page ?? 0) * (f.pageSize ?? 1),
+        ((f.page ?? 0) + 1) * (f.pageSize ?? 1),
+      ) as never[],
+      total: 3,
+      page: f.page ?? 0,
+      pageSize: f.pageSize ?? 1,
+      hasMore: (f.page ?? 0) < 2,
+    }),
+  );
+  const first = await shopCataloguePage({
+    category: "shoes-bags",
+    collection: "women-shoes",
+    sort: "price-asc",
+    pageSize: 1,
+  });
+  const second = await shopCataloguePage({
+    category: "shoes-bags",
+    collection: "women-shoes",
+    sort: "price-asc",
+    pageSize: 1,
+    page: 1,
+  });
+  expect(first.items.map((p) => p.id)).toEqual(["woman-local"]);
+  expect(second.items.map((p) => p.id)).toEqual(["woman-live"]);
+  expect(first.total).toBe(2);
+  expect(second.hasMore).toBe(false);
+  expect(
+    vi
+      .mocked(cataloguePages.list)
+      .mock.calls.every(([, f]) => !("collection" in (f ?? {}))),
+  ).toBe(true);
+});

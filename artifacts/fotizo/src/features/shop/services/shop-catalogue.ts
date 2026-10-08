@@ -5,6 +5,8 @@ import {
 } from "@/features/marketplace/services/catalogue-page";
 import { loadSourcedCatalogue } from "../data/sourced-catalogue";
 import { toShopProduct } from "./shop.service";
+import { matchesCollection } from "../data/shop-discovery";
+export type ShopCatalogueFilters = CatalogueFilters & { collection?: string };
 import type { ShopProduct } from "../data/shop-product";
 
 // Temporary frontend sourcing overlay. Marketplace queries remain server-only.
@@ -26,12 +28,15 @@ function serverPage(filters: CatalogueFilters) {
   return value;
 }
 
-export async function shopCataloguePage(filters: CatalogueFilters = {}) {
+export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
+  const { collection, ...filters } = input;
   const page = filters.page ?? 0,
     pageSize = filters.pageSize ?? 48;
+  const livePageSize = collection ? Math.max(96, pageSize) : pageSize;
   const q = (filters.q ?? "").trim().toLowerCase();
   const imported = (await loadSourcedCatalogue()).filter(
     (p) =>
+      matchesCollection(p, collection) &&
       !filters.sellerId &&
       !filters.inStock &&
       (!filters.category || p.category === filters.category) &&
@@ -45,27 +50,34 @@ export async function shopCataloguePage(filters: CatalogueFilters = {}) {
       (!filters.discounted || p.originalPrice > p.price),
   );
   const first = await Promise.allSettled([
-    serverPage({ ...filters, page: 0, pageSize }),
+    serverPage({ ...filters, page: 0, pageSize: livePageSize }),
   ]);
   const serverTotal =
     first[0].status === "fulfilled" ? first[0].value.total : 0;
-  const needed =
-    filters.sort === "newest" && imported.length >= (page + 1) * pageSize
+  const needed = collection
+    ? Math.ceil(serverTotal / livePageSize)
+    : filters.sort === "newest" && imported.length >= (page + 1) * pageSize
       ? 1
       : page + 1;
-  const count = Math.min(needed, Math.ceil(serverTotal / pageSize));
-  const responses = [
-    ...first,
-    ...(await Promise.allSettled(
-      Array.from({ length: Math.max(0, count - 1) }, (_, index) =>
-        serverPage({ ...filters, page: index + 1, pageSize }),
-      ),
-    )),
-  ];
+  const count = Math.min(needed, Math.ceil(serverTotal / livePageSize));
+  const responses = [...first];
+  // Subcollections are frontend facets until the API supports taxonomy filters.
+  // Filter the complete department before pagination, never just loaded cards.
+  for (let start = 1; start < count; start += 4) {
+    responses.push(
+      ...(await Promise.allSettled(
+        Array.from({ length: Math.min(4, count - start) }, (_, i) =>
+          serverPage({ ...filters, page: start + i, pageSize: livePageSize }),
+        ),
+      )),
+    );
+  }
   const pages = responses.flatMap((r) =>
     r.status === "fulfilled" ? [r.value] : [],
   );
-  const live = pages.flatMap((p) => p.items.map(toShopProduct));
+  const live = pages
+    .flatMap((p) => p.items.map(toShopProduct))
+    .filter((p) => matchesCollection(p, collection));
   const liveSources = new Set(
     live
       .filter((p) => p.sourcing?.platform === "1688")
@@ -91,7 +103,7 @@ export async function shopCataloguePage(filters: CatalogueFilters = {}) {
               ? b.sold - a.sold
               : discount(b) - discount(a),
     );
-  const total = local.length + (pages[0]?.total ?? 0);
+  const total = collection ? all.length : local.length + (pages[0]?.total ?? 0);
   return {
     items: all.slice(page * pageSize, (page + 1) * pageSize),
     total,
@@ -104,7 +116,7 @@ export async function shopCataloguePage(filters: CatalogueFilters = {}) {
 
 export function useShopCatalogueInfinite(
   _channel: "shop",
-  filters: CatalogueFilters,
+  filters: ShopCatalogueFilters,
 ) {
   return useInfiniteQuery({
     queryKey: ["shop", "combined", filters],
@@ -116,7 +128,7 @@ export function useShopCatalogueInfinite(
 }
 export function useShopCataloguePage(
   _channel: "shop",
-  filters: CatalogueFilters,
+  filters: ShopCatalogueFilters,
 ) {
   return useQuery({
     queryKey: ["shop", "combined-page", filters],

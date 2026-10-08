@@ -33,6 +33,7 @@ import {
 import { discountPct, soldLabel } from "@/features/shop/data/shop-product";
 import { categoryLabel } from "@/features/shop/data/categories";
 import { productSizeRequest } from "../data/product-sizes";
+import { recordShopView } from "../hooks/useShopHistory";
 
 export default function ShopProductPage() {
   const [, params] = useRoute("/shop/:id");
@@ -42,6 +43,9 @@ export default function ShopProductPage() {
 
   const { data: product, isLoading } = useShopProduct(params?.id ?? "");
   const { data: related = [] } = useShopRelatedProducts(params?.id ?? "");
+  useEffect(() => {
+    if (product) recordShopView(product);
+  }, [product]);
   const [activeImg, setActiveImg] = useState(0);
   const [qty, setQty] = useState(1);
   const [colour, setColour] = useState("");
