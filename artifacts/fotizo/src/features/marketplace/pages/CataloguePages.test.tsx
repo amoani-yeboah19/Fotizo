@@ -18,15 +18,19 @@ vi.mock("@/features/shop/data/sourced-catalogue", () => ({
   loadSourcedCatalogue: async () => [],
 }));
 
-const location = vi.hoisted(() => ({ search: "" }));
+const location = vi.hoisted(() => ({ search: "", navigate: vi.fn() }));
 vi.mock("wouter", () => ({
   Link: ({ href, children }: { href: string; children: ReactNode }) => (
     <a href={href}>{children}</a>
   ),
   useSearch: () => location.search,
+  useLocation: () => ["/shop", location.navigate],
 }));
 vi.mock("../services/catalogue-page", () => ({
   cataloguePages: { list: vi.fn(), categories: vi.fn() },
+}));
+vi.mock("@/components/common/Price", () => ({
+  Price: ({ amount }: { amount: number }) => <span>{amount}</span>,
 }));
 vi.mock("@/components/layout/PageLayout", () => ({
   PageLayout: ({ children }: { children: ReactNode }) => (
@@ -74,16 +78,17 @@ const page = (
   channel: "shop" | "marketplace",
   pageNo: number,
   total: number,
+  pageSize = 48,
 ): CataloguePage => {
-  const count = Math.max(0, Math.min(48, total - pageNo * 48));
+  const count = Math.max(0, Math.min(pageSize, total - pageNo * pageSize));
   return {
     items: Array.from({ length: count }, (_, i) =>
-      product(pageNo * 48 + i, channel),
+      product(pageNo * pageSize + i, channel),
     ),
     page: pageNo,
-    pageSize: 48,
+    pageSize,
     total,
-    hasMore: (pageNo + 1) * 48 < total,
+    hasMore: (pageNo + 1) * pageSize < total,
   };
 };
 
@@ -110,7 +115,12 @@ beforeEach(() => {
   );
   location.search = "";
   vi.mocked(cataloguePages.list).mockImplementation(async (channel, filters) =>
-    page(channel, filters?.page ?? 0, filters?.discounted ? 3 : 60),
+    page(
+      channel,
+      filters?.page ?? 0,
+      filters?.discounted ? 3 : 60,
+      filters?.pageSize ?? 48,
+    ),
   );
   vi.mocked(cataloguePages.categories).mockResolvedValue([
     { category: "phones", count: 17, image: "" },
@@ -125,7 +135,7 @@ afterEach(() => {
 it("loads the shop department from the link and shows the server total", async () => {
   location.search = "?category=phones";
   mount(<ShopPage />);
-  await screen.findByText("(60)");
+  await screen.findByText("60 products");
   expect(cataloguePages.list).toHaveBeenCalledWith(
     "shop",
     expect.objectContaining({
@@ -139,14 +149,13 @@ it("loads the shop department from the link and shows the server total", async (
 
 it("maps shop sorting and debounced search to server queries", async () => {
   mount(<ShopPage />);
-  await screen.findByText("(60)");
-  // Featured collections use real department listings.
+  await screen.findByText("60 products");
+  // Lowest-price discovery is calculated through the sorted catalogue service.
   expect(cataloguePages.list).toHaveBeenCalledWith(
     "shop",
     expect.objectContaining({
-      category: "furniture",
-      sort: "newest",
-      pageSize: 8,
+      sort: "price-asc",
+      pageSize: 3,
     }),
   );
   fireEvent.change(screen.getByLabelText("Sort products"), {
@@ -228,22 +237,14 @@ it("shows the marketplace error state instead of an empty catalogue", async () =
   expect(screen.queryByText("No seller listings yet")).toBeNull();
 });
 
-it("switches featured collections without applying a catalogue filter", async () => {
+it("keeps department shortcuts in a shareable URL", async () => {
+  location.search = "?category=shoes-bags";
   mount(<ShopPage />);
-  await screen.findByText("(60)");
-  fireEvent.click(screen.getByRole("button", { name: "Smart upgrades" }));
-  await waitFor(() =>
-    expect(cataloguePages.list).toHaveBeenCalledWith(
-      "shop",
-      expect.objectContaining({ category: "computers", pageSize: 8 }),
-    ),
+  await screen.findByText("60 products");
+  fireEvent.click(screen.getByRole("button", { name: "Women’s shoes" }));
+  expect(location.navigate).toHaveBeenCalledWith(
+    "/shop?category=shoes-bags&collection=women-shoes",
   );
-  expect(
-    screen
-      .getByRole("button", { name: "Smart upgrades" })
-      .getAttribute("aria-pressed"),
-  ).toBe("true");
-  expect(screen.getByRole("heading", { name: /All products/ })).toBeTruthy();
   expect(screen.queryByText("Ends soon")).toBeNull();
 });
 

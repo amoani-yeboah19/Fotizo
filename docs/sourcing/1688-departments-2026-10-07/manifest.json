@@ -1,0 +1,57 @@
+{
+  "capturedUnique": 2574,
+  "frontendAdded": 2234,
+  "held": 340,
+  "heldReasons": {
+    "product-identification-or-relevance-review": 338,
+    "image-or-price-verification-failed": 1,
+    "already-in-existing-catalogue": 1
+  },
+  "categories": [
+    {
+      "category": "furniture",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "completeVisibleWindow": true,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "category": "clocks",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "completeVisibleWindow": true,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "category": "industrial",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "completeVisibleWindow": true,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "category": "smart-home",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "completeVisibleWindow": true,
+      "stopReason": "visible-page-range-completed"
+    }
+  ],
+  "all1688Inventory": false,
+  "checkoutEnabled": false,
+  "pricing": {
+    "supplierCurrency": "CNY",
+    "baseCurrency": "GBP",
+    "cnyPerGbp": 8.903272,
+    "markupPercent": 30,
+    "rateDate": "Wed, 07 Oct 2026 00:02:32 +0000",
+    "rateSource": "https://open.er-api.com/v6/latest/GBP",
+    "priceStatus": "estimate"
+  },
+  "files": {
+    "products.json": "d0731adfaa24861441e191b161918a00986d30d5ef0b88b9eba2a643439aae86",
+    "coverage.json": "88bf576d283f548dc22d952518e2f4c5ec6bbb8d3baa16b51abcb8bea68eb7a8",
+    "review.csv": "e20253f7d911a2dc7a68d37a904b992e520043c703e79f0c3c65132ad7842792",
+    "1688-departments-products.json": "58fd7bf19f07d11a210e69fcfee9fa7bf0ce3684b39bfb72e7eaca3e3699c3a8"
+  }
+}

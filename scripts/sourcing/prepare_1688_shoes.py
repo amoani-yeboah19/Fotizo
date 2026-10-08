@@ -18,6 +18,8 @@ CAPTURE = Path('/tmp/fotizo-1688-shoes-2026-10-07')
 OUT = Path('docs/sourcing/1688-shoes-2026-10-07')
 DATA = Path('artifacts/fotizo/src/features/shop/data')
 IMAGES = Path('artifacts/fotizo/public/images/1688-shoes')
+DATA_STEM = '1688-shoes'
+RATE_PATH = Path('/private/tmp/fotizo-shoes-rates.json')
 CATEGORIES = ['loafers', 'running-shoes', 'sports-shoes']
 EXCLUDED = r'鞋垫|鞋盒|鞋撑|鞋刷|鞋套(?!脚)|鞋花|鞋模|鞋架|鞋柜|清洁剂|宠物|狗鞋'
 TYPES = [
@@ -46,7 +48,7 @@ def write(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n')
 
 def existing_ids():
-    return {p['id'] for f in DATA.glob('*products.json') if f.name != '1688-shoes-products.json'
+    return {p['id'] for f in DATA.glob('*products.json') if f.name != DATA_STEM + '-products.json'
             for p in json.loads(f.read_text()) if isinstance(p, dict) and 'id' in p}
 
 def english(title):
@@ -140,7 +142,7 @@ def images():
     print('Images complete:', dict(Counter(results.values())), flush=True)
 
 def export():
-    rate = json.loads(Path('/private/tmp/fotizo-shoes-rates.json').read_text())
+    rate = json.loads(RATE_PATH.read_text())
     assert rate['result'] == 'success' and rate['base_code'] == 'GBP'
     cny = Decimal(str(rate['rates']['CNY']))
     assert cny.is_finite() and cny > 0
@@ -169,18 +171,18 @@ def export():
         if reason:
             held.append({'id': ident, 'reason': reason})
             continue
-        image = '/images/1688-shoes/' + ident + '.webp'
+        image = '/images/' + IMAGES.name + '/' + ident + '.webp'
         output.append({'id': '1688-' + ident, 'title': row['englishTitle'], 'description': row['englishDescription'],
-            'category': 'shoes-bags', 'price': price, 'originalPrice': price, 'image': image, 'images': [image],
+            'category': row['proposedCategory'], 'price': price, 'originalPrice': price, 'image': image, 'images': [image],
             'rating': 0, 'sold': 0, 'freeShipping': False, 'almostGone': False, 'requiresPublication': True,
             'specifications': row['specifications']})
-    write(DATA / '1688-shoes-products.json', output)
-    write(DATA / '1688-shoes-pricing.json', pricing)
+    write(DATA / (DATA_STEM + '-products.json'), output)
+    write(DATA / (DATA_STEM + '-pricing.json'), pricing)
     write(OUT / 'products.json', rows)
     write(OUT / 'held-products.json', held)
     columns = ['productId', 'sourceCategories', 'originalTitle', 'englishTitle', 'supplierPrice', 'sellingPriceGbp', 'sourceUrl', 'frontendStatus', 'frontendHoldReason']
     with (OUT / 'review.csv').open('w', encoding='utf-8-sig', newline='') as file:
-        writer = csv.DictWriter(file, fieldnames=columns)
+        writer = csv.DictWriter(file, fieldnames=columns, lineterminator='\n')
         writer.writeheader()
         for row in rows:
             data = {k: ' | '.join(row[k]) if isinstance(row[k], list) else row[k] for k in columns}
@@ -195,7 +197,7 @@ def export():
     manifest = {'capturedUnique': len(rows), 'frontendAdded': len(output), 'held': len(held),
         'heldReasons': dict(Counter(r['reason'] for r in held)), 'categories': summary,
         'all1688Inventory': False, 'checkoutEnabled': False, 'pricing': pricing,
-        'files': {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in [OUT / 'products.json', OUT / 'coverage.json', OUT / 'review.csv', DATA / '1688-shoes-products.json']}}
+        'files': {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in [OUT / 'products.json', OUT / 'coverage.json', OUT / 'review.csv', DATA / (DATA_STEM + '-products.json')]}}
     write(OUT / 'manifest.json', manifest)
     print(json.dumps(manifest, indent=2))
 
