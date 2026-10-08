@@ -13,7 +13,7 @@ export const FEE_SCHEDULE = {
 
 /** Supplier cost x 1.30 for goods sourced from these platforms. */
 export const CHINESE_GOODS = {
-  platforms: ["alibaba", "taobao", "pinduoduo"] as const,
+  platforms: ["alibaba", "1688", "taobao", "pinduoduo"] as const,
   markupPercent: 30,
 };
 export type ChinesePlatform = (typeof CHINESE_GOODS.platforms)[number];

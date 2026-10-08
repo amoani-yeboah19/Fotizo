@@ -395,7 +395,7 @@ components:
       type: object
       required: [platform, productId, priceStatus]
       properties:
-        platform: { type: string, enum: [alibaba, taobao, pinduoduo, tuwa] }
+        platform: { type: string, enum: [alibaba, '1688', taobao, pinduoduo, tuwa] }
         productId: { type: string }
         sourceUrl: { type: [string, "null"] }
         currency: { type: [string, "null"] }

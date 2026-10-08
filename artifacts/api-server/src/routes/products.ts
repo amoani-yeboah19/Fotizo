@@ -91,15 +91,16 @@ export function toPublicProduct(
     inStock: row.channel === "shop" || row.stockCount > 0,
     stockCount: row.stockCount,
     tags: row.tags,
-    specs: row.specs,
+    // Supplier links stay private (staff see them in the confirmation queue).
+    specs: publicSpecs(row.specs),
     ...(row.sourcePlatform && row.sourceProductId
       ? {
           // Supplier prices, variants, minimums and delivery are confirmed
           // before purchase, so the listed price stays an estimate.
           sourcing: {
-            platform: row.sourcePlatform as "alibaba" | "taobao" | "pinduoduo" | "tuwa",
+            platform: row.sourcePlatform as "alibaba" | "1688" | "taobao" | "pinduoduo" | "tuwa",
             productId: row.sourceProductId,
-            sourceUrl: row.sourceUrl,
+            sourceUrl: null,
             currency: row.supplierCurrency,
             priceRange: row.specs.priceRange ?? null,
             minimumOrder: row.specs.minimumOrder ?? null,
@@ -110,6 +111,11 @@ export function toPublicProduct(
         }
       : {}),
   };
+}
+
+function publicSpecs(specs: Record<string, string>) {
+  const { supplierListing: _supplierListing, ...rest } = specs;
+  return rest;
 }
 
 router.get("/products", async (req, res) => {
