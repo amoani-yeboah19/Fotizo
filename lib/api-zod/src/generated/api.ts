@@ -259,7 +259,13 @@ export const ListCatalogueProductsResponse = zod.object({
       specs: zod.record(zod.string(), zod.string()),
       sourcing: zod
         .object({
-          platform: zod.enum(["alibaba", "taobao", "pinduoduo", "tuwa"]),
+          platform: zod.enum([
+            "alibaba",
+            "1688",
+            "taobao",
+            "pinduoduo",
+            "tuwa",
+          ]),
           productId: zod.string(),
           sourceUrl: zod.string().nullish(),
           currency: zod.string().nullish(),
