@@ -38,6 +38,9 @@ import {
   BriefcaseBusiness,
   Clock,
   Cpu,
+  Boxes,
+  Lightbulb,
+  CircuitBoard,
 } from "lucide-react";
 
 export interface ShopCategory {
@@ -49,6 +52,9 @@ export interface ShopCategory {
 export const SHOP_CATEGORIES: ShopCategory[] = [
   { id: "shoes-bags", label: "Shoes & Bags", icon: ShoppingBag },
   { id: "general", label: "General Merchandise", icon: Package },
+  { id: "packaging", label: "Packaging", icon: Boxes },
+  { id: "lighting", label: "Lighting", icon: Lightbulb },
+  { id: "electronics", label: "Electronics", icon: CircuitBoard },
   { id: "wigs", label: "Wigs & Hair", icon: Scissors },
   { id: "jackets", label: "Winter Jackets", icon: Snowflake },
   { id: "pets", label: "Pet Supplies", icon: PawPrint },
@@ -58,6 +64,7 @@ export const SHOP_CATEGORIES: ShopCategory[] = [
   { id: "beauty", label: "Beauty", icon: Sparkles },
   { id: "womens", label: "Women's Clothing", icon: Venus },
   { id: "accessories", label: "Accessories", icon: Watch },
+  { id: "jewellery", label: "Jewellery", icon: Sparkles },
   { id: "phones", label: "Phones", icon: Smartphone },
   { id: "appliances", label: "Home Appliances", icon: Zap },
   { id: "furniture", label: "Furniture", icon: Sofa },

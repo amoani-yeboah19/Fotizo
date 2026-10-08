@@ -1,0 +1,136 @@
+[
+  {
+    "id": "1688-973074422128",
+    "title": "Women’s Hooded Half-Zip Two-Piece Tracksuit",
+    "description": "A two-piece tracksuit with a long-sleeved, hooded half-zip top and matching full-length trousers. The top has a contrasting faux-layered design. The supplier lists polyester fabric, pockets and drawstring detailing, with machine or hand washing. Available in Dark Grey and Oatmeal. Confirm fit and availability before ordering.",
+    "category": "womens",
+    "price": 3.8,
+    "originalPrice": 3.8,
+    "image": "/images/1688/973074422128/1.webp",
+    "images": [
+      "/images/1688/973074422128/1.webp",
+      "/images/1688/973074422128/2.webp",
+      "/images/1688/973074422128/3.webp",
+      "/images/1688/973074422128/4.webp",
+      "/images/1688/973074422128/5.webp",
+      "/images/1688/973074422128/6.webp",
+      "/images/1688/973074422128/7.webp"
+    ],
+    "rating": 0,
+    "sold": 0,
+    "freeShipping": false,
+    "almostGone": false,
+    "requiresPublication": true,
+    "variants": [
+      {
+        "id": "6091609383255",
+        "colour": "Dark Grey",
+        "size": "M",
+        "image": "/images/1688/973074422128/7.webp",
+        "price": 3.8
+      },
+      {
+        "id": "6091609383257",
+        "colour": "Dark Grey",
+        "size": "XL",
+        "image": "/images/1688/973074422128/7.webp",
+        "price": 3.8
+      },
+      {
+        "id": "6041433841971",
+        "colour": "Oatmeal",
+        "size": "M",
+        "image": "/images/1688/973074422128/6.webp",
+        "price": 3.8
+      },
+      {
+        "id": "6091609383258",
+        "colour": "Dark Grey",
+        "size": "2XL",
+        "image": "/images/1688/973074422128/7.webp",
+        "price": 3.8
+      },
+      {
+        "id": "6041433841972",
+        "colour": "Oatmeal",
+        "size": "L",
+        "image": "/images/1688/973074422128/6.webp",
+        "price": 3.8
+      },
+      {
+        "id": "6041433841974",
+        "colour": "Oatmeal",
+        "size": "2XL",
+        "image": "/images/1688/973074422128/6.webp",
+        "price": 3.8
+      },
+      {
+        "id": "6041433841973",
+        "colour": "Oatmeal",
+        "size": "XL",
+        "image": "/images/1688/973074422128/6.webp",
+        "price": 3.8
+      },
+      {
+        "id": "6091609383256",
+        "colour": "Dark Grey",
+        "size": "L",
+        "image": "/images/1688/973074422128/7.webp",
+        "price": 3.8
+      }
+    ],
+    "sizeGuide": [
+      {
+        "size": "M",
+        "suggestedWeightKg": "40–47.5"
+      },
+      {
+        "size": "L",
+        "suggestedWeightKg": "47.5–55"
+      },
+      {
+        "size": "XL",
+        "suggestedWeightKg": "55–62.5"
+      },
+      {
+        "size": "2XL",
+        "suggestedWeightKg": "62.5–75"
+      }
+    ],
+    "specifications": [
+      {
+        "label": "Set",
+        "value": "Top and full-length trousers"
+      },
+      {
+        "label": "Fabric",
+        "value": "Polyester; exact composition to be confirmed"
+      },
+      {
+        "label": "Sleeves",
+        "value": "Long sleeves"
+      },
+      {
+        "label": "Top",
+        "value": "Hooded, half-zip, faux-layered design"
+      },
+      {
+        "label": "Details",
+        "value": "Pockets and drawstring detailing"
+      },
+      {
+        "label": "Care",
+        "value": "Machine or hand wash; follow the garment label"
+      }
+    ],
+    "detailImages": [
+      "/images/1688/973074422128/detail-1.webp",
+      "/images/1688/973074422128/detail-2.webp",
+      "/images/1688/973074422128/detail-3.webp",
+      "/images/1688/973074422128/detail-4.webp",
+      "/images/1688/973074422128/detail-5.webp",
+      "/images/1688/973074422128/detail-6.webp"
+    ],
+    "video": "/images/1688/973074422128/product.mp4"
+  }
+]

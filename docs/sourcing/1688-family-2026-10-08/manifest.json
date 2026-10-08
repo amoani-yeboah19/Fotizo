@@ -1,0 +1,85 @@
+{
+  "capturedUnique": 4508,
+  "frontendAdded": 4014,
+  "held": 494,
+  "heldReasons": {
+    "product-identification-or-relevance-review": 467,
+    "image-or-price-verification-failed": 1,
+    "already-in-existing-catalogue": 26
+  },
+  "categories": [
+    {
+      "category": "baby-care",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "completeVisibleWindow": true,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "category": "baby-clothing",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "completeVisibleWindow": true,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "category": "beauty-tools",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "completeVisibleWindow": true,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "category": "kitchen-appliances",
+      "pagesAttempted": 24,
+      "successfulPages": 23,
+      "completeVisibleWindow": false,
+      "stopReason": "unexpected response; access may be restricted"
+    },
+    {
+      "category": "mens-shirts",
+      "pagesAttempted": 22,
+      "successfulPages": 21,
+      "completeVisibleWindow": false,
+      "stopReason": "unexpected response; access may be restricted"
+    },
+    {
+      "category": "womens-dresses",
+      "pagesAttempted": 20,
+      "successfulPages": 19,
+      "completeVisibleWindow": false,
+      "stopReason": "unexpected response; access may be restricted"
+    },
+    {
+      "category": "mens-jeans",
+      "pagesAttempted": 13,
+      "successfulPages": 12,
+      "completeVisibleWindow": false,
+      "stopReason": "unexpected response; access may be restricted"
+    },
+    {
+      "category": "womens-tops",
+      "pagesAttempted": 14,
+      "successfulPages": 13,
+      "completeVisibleWindow": false,
+      "stopReason": "unexpected response; access may be restricted"
+    }
+  ],
+  "all1688Inventory": false,
+  "checkoutEnabled": false,
+  "pricing": {
+    "supplierCurrency": "CNY",
+    "baseCurrency": "GBP",
+    "cnyPerGbp": 8.865991,
+    "markupPercent": 30,
+    "rateDate": "Thu, 08 Oct 2026 00:02:31 +0000",
+    "rateSource": "https://open.er-api.com/v6/latest/GBP",
+    "priceStatus": "estimate"
+  },
+  "files": {
+    "products.json": "521ace3b9dd71fd2ce9f4b8b9ac2da85ab53fac3109f2a9f3c04f38abd056511",
+    "coverage.json": "4563436a7f40af395fd4d4f550443b2bcb5854ec2b73a646b71b95a6275474b6",
+    "review.csv": "f33324c03b5970d94aba1059d95361153168ea1ad24f24c7c99a92ca815513ad",
+    "1688-family-products.json": "4dfc788ce3d70ece6c912637918eabf97c0861dc74dacfaee83001909ba80a1e"
+  }
+}

@@ -87,7 +87,12 @@ export function toShopProduct(p: Product): ShopProduct {
 
 export const shopService = {
   async relatedProducts(id: string): Promise<ShopProduct[]> {
-    if (id.startsWith("1688-") || id.startsWith("preview-1688-")) {
+    if (
+      id.startsWith("1688-") ||
+      id.startsWith("preview-1688-") ||
+      id.startsWith("ali-") ||
+      id.startsWith("alibaba-")
+    ) {
       const rows = await loadSourcedCatalogue();
       const current = rows.find((p) => p.id === id.replace(/^preview-/, ""));
       return current
@@ -121,7 +126,12 @@ export const shopService = {
   },
 
   async getProduct(id: string): Promise<ShopProduct | null> {
-    if (id.startsWith("1688-") || id.startsWith("preview-1688-"))
+    if (
+      id.startsWith("1688-") ||
+      id.startsWith("preview-1688-") ||
+      id.startsWith("ali-") ||
+      id.startsWith("alibaba-")
+    )
       return (
         (await loadSourcedCatalogue()).find(
           (p) => p.id === id.replace(/^preview-/, ""),

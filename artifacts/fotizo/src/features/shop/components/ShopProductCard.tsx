@@ -5,6 +5,7 @@ import { Star, Plus, Truck, Flame } from "lucide-react";
 import { Price } from "@/components/common/Price";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
+import { productSizeRequest } from "../data/product-sizes";
 import {
   discountPct,
   soldLabel,
@@ -21,10 +22,12 @@ export const ShopProductCard = memo(function ShopProductCard({
   const { addItem } = useCart();
   const { toast } = useToast();
   const off = discountPct(product);
+  const needsOptions =
+    !!product.variants?.length || !!productSizeRequest(product);
 
   const quickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (product.requiresPublication) return;
+    if (product.requiresPublication || needsOptions) return;
     // Shop goods are sourced to order, so local stock does not limit the cart.
     addItem({
       id: `shop-${product.id}`,
@@ -73,15 +76,25 @@ export const ShopProductCard = memo(function ShopProductCard({
             Almost gone
           </span>
         )}
-        {!product.requiresPublication && (
-          <button
-            type="button"
-            aria-label={`Add ${product.title} to cart`}
-            onClick={quickAdd}
-            className="absolute bottom-2 right-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-md transition-transform hover:scale-110 active:scale-95"
+        {needsOptions ? (
+          <Link
+            href={`/shop/${product.id}`}
+            aria-label={`Choose size for ${product.title}`}
+            className="absolute bottom-2 right-2 rounded-full bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground shadow-md hover:bg-primary/90"
           >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-          </button>
+            Choose size
+          </Link>
+        ) : (
+          !product.requiresPublication && (
+            <button
+              type="button"
+              aria-label={`Add ${product.title} to cart`}
+              onClick={quickAdd}
+              className="absolute bottom-2 right-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-md transition-transform hover:scale-110 active:scale-95"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )
         )}
       </div>
 

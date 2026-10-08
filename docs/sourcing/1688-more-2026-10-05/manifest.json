@@ -1,0 +1,110 @@
+{
+  "capturedUnique": 3216,
+  "frontendAdded": 3148,
+  "held": 68,
+  "heldReasons": {
+    "image-not-saved": 4,
+    "invalid-price": 17,
+    "english-product-identification-pending": 33,
+    "service-or-assortment": 14
+  },
+  "categories": [
+    {
+      "sourceCategory": "packaging",
+      "query": "包装",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "visibleWindowCompleted": true,
+      "captured": 657,
+      "frontendIncluded": 646,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "sourceCategory": "office-education",
+      "query": "办公文教",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "visibleWindowCompleted": true,
+      "captured": 635,
+      "frontendIncluded": 635,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "sourceCategory": "logistics-packaging",
+      "query": "物流包装/辅材市场",
+      "pagesAttempted": 8,
+      "successfulPages": 8,
+      "visibleWindowCompleted": false,
+      "captured": 145,
+      "frontendIncluded": 142,
+      "stopReason": "empty-results"
+    },
+    {
+      "sourceCategory": "lighting",
+      "query": "照明",
+      "pagesAttempted": 50,
+      "successfulPages": 50,
+      "visibleWindowCompleted": true,
+      "captured": 669,
+      "frontendIncluded": 669,
+      "stopReason": "visible-page-range-completed"
+    },
+    {
+      "sourceCategory": "lighting-market",
+      "query": "照明市场",
+      "pagesAttempted": 27,
+      "successfulPages": 26,
+      "visibleWindowCompleted": false,
+      "captured": 611,
+      "frontendIncluded": 610,
+      "stopReason": "unexpected response; access may be restricted"
+    },
+    {
+      "sourceCategory": "electronics-market",
+      "query": "电子市场",
+      "pagesAttempted": 21,
+      "successfulPages": 20,
+      "visibleWindowCompleted": false,
+      "captured": 518,
+      "frontendIncluded": 466,
+      "stopReason": "unexpected response; access may be restricted"
+    },
+    {
+      "sourceCategory": "furniture-lighting",
+      "query": "家具灯具",
+      "pagesAttempted": 12,
+      "successfulPages": 11,
+      "visibleWindowCompleted": false,
+      "captured": 380,
+      "frontendIncluded": 379,
+      "stopReason": "unexpected response; access may be restricted"
+    }
+  ],
+  "frontendCategories": {
+    "packaging": 779,
+    "office": 635,
+    "improvement": 6,
+    "lighting": 1262,
+    "accessories": 65,
+    "general": 127,
+    "electronics": 273,
+    "smart-devices": 1
+  },
+  "pricing": {
+    "supplierCurrency": "CNY",
+    "baseCurrency": "GBP",
+    "cnyPerGbp": 8.884899,
+    "markupPercent": 30,
+    "rateDate": "Mon, 05 Oct 2026 00:02:31 +0000",
+    "rateSource": "https://open.er-api.com/v6/latest/GBP",
+    "priceStatus": "estimate"
+  },
+  "all1688Inventory": false,
+  "checkoutEnabled": false,
+  "files": {
+    "products.json": "8b5ef7db5e1c97fbd2f4b7bf0904d1fc8fd142f23cdc2bbe86f4256780066229",
+    "coverage.json": "4a25d83354c4c4bd066e4ca07fe74af9ce2e7125dcffeff6111f1fccf028d408",
+    "review.csv": "6002253a22db1f6aaa11197fadb1d97461dec7e7a9beb07f1d10acef805c15c3",
+    "1688-more-products.json": "c3ddbf01789632cbb6e977fa1e4c36ee0ee9969dd0f54e5dbe9fd41f218a8ce2"
+  }
+}

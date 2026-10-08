@@ -1,435 +1,473 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearch } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUpRight,
+  ChevronDown,
   LayoutGrid,
   Search,
-  ArrowUpRight,
-  ArrowRight,
-  Globe2,
-  Heart,
-  Package,
+  SlidersHorizontal,
+  Sparkles,
+  History,
   X,
+  Tag,
 } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Loading, ErrorState } from "@/components/common/QueryStates";
 import { LoadMoreSentinel } from "@/components/common/LoadMoreSentinel";
+import { Price } from "@/components/common/Price";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useFeedScrollRestore } from "@/hooks/useFeedScrollRestore";
 import {
-  useShopCatalogueInfinite as useCatalogueInfinite,
-  useShopCataloguePage as useCataloguePage,
-} from "@/features/shop/services/shop-catalogue";
-import type { CatalogueFilters } from "@/features/marketplace/services/catalogue-page";
-import { ShopProductCard } from "@/features/shop/components/ShopProductCard";
-import "./shop.css";
+  useShopCatalogueInfinite,
+  useShopCataloguePage,
+} from "../services/shop-catalogue";
+import { ShopProductCard } from "../components/ShopProductCard";
+import { SHOP_CATEGORIES, categoryLabel } from "../data/categories";
 import {
-  SHOP_CATEGORIES,
-  categoryLabel,
-} from "@/features/shop/data/categories";
+  SHOP_COLLECTIONS,
+  matchesCollection,
+  discoveryPicks,
+} from "../data/shop-discovery";
+import { loadSourcedCatalogue } from "../data/sourced-catalogue";
+import type { ShopProduct } from "../data/shop-product";
+import { useShopHistory } from "../hooks/useShopHistory";
+import "./shop.css";
 
-type Sort =
-  | "recommended"
-  | "price-asc"
-  | "price-desc"
-  | "best-selling"
-  | "discount";
-
-// Sorting, search and department filtering run on the server over the whole
-// published shop; the grid appends 48-item pages as it scrolls.
-const SERVER_SORT: Record<Sort, NonNullable<CatalogueFilters["sort"]>> = {
-  recommended: "newest",
-  "best-selling": "best-selling",
-  discount: "discount",
-  "price-asc": "price-asc",
-  "price-desc": "price-desc",
-};
-
+type Sort = "newest" | "price-asc" | "price-desc" | "best-selling" | "discount";
 const SORTS: { value: Sort; label: string }[] = [
-  { value: "recommended", label: "Recommended" },
+  { value: "newest", label: "Newest finds" },
+  { value: "price-asc", label: "Lowest price" },
+  { value: "price-desc", label: "Highest price" },
   { value: "best-selling", label: "Best selling" },
   { value: "discount", label: "Biggest discount" },
-  { value: "price-asc", label: "Price: Low to High" },
-  { value: "price-desc", label: "Price: High to Low" },
 ];
-
-// ?category=wigs — how the hero chips and marketing links land straight in a
-// department. An unknown id falls back to the full catalogue rather than an
-// empty page.
-function categoryFromQuery(query: string): string | null {
-  const id = new URLSearchParams(query).get("category");
-  return id && SHOP_CATEGORIES.some((c) => c.id === id) ? id : null;
-}
-
+const scrollTo = (id: string) =>
+  document.getElementById(id)?.scrollIntoView({ block: "start" });
 export default function ShopPage() {
   const query = useSearch();
-  const [activeCat, setActiveCat] = useState<string | null>(() =>
-    categoryFromQuery(query),
-  );
-  const [sort, setSort] = useState<Sort>("recommended");
-  const [search, setSearch] = useState(
-    () => new URLSearchParams(query).get("q") ?? "",
-  );
+  const [, navigate] = useLocation();
+  const params = new URLSearchParams(query);
+  const category = params.get("category");
+  const activeCat = SHOP_CATEGORIES.some((c) => c.id === category)
+    ? category
+    : null;
+  const collections = activeCat ? (SHOP_COLLECTIONS[activeCat] ?? []) : [];
+  const activeCollection = collections.some(
+    (c) => c.id === params.get("collection"),
+  )
+    ? params.get("collection")!
+    : undefined;
+  const [search, setSearch] = useState(params.get("q") ?? "");
+  const [sort, setSort] = useState<Sort>("newest");
+  const [mobileCategories, setMobileCategories] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    const q = new URLSearchParams(query).get("q");
-    setSearch(q ?? "");
-  }, [query]);
-
-  // Re-sync when the URL changes under us (another chip clicked while already
-  // on the page, or back/forward), without fighting in-page tab changes.
+    const media = window.matchMedia?.("(max-width: 767px)");
+    if (!media) return;
+    const sync = () => setIsMobile(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
   useEffect(() => {
-    setActiveCat(categoryFromQuery(query));
+    setSearch(new URLSearchParams(query).get("q") ?? "");
   }, [query]);
-
   const q = useDebouncedValue(search.trim());
-  const grid = useCatalogueInfinite("shop", {
+  const browsing = useShopHistory();
+  const grid = useShopCatalogueInfinite("shop", {
     category: activeCat ?? undefined,
+    collection: activeCollection,
     q: q || undefined,
-    sort: SERVER_SORT[sort],
+    sort,
   });
-  const { isLoading, isError } = grid;
   const products = useMemo(
     () => grid.data?.pages.flatMap((p) => p.items) ?? [],
     [grid.data],
   );
   const total = grid.data?.pages[0]?.total ?? 0;
   useFeedScrollRestore(products.length > 0);
-
-  const [edit, setEdit] = useState("furniture");
-  const featuredQuery = useCataloguePage("shop", {
-    category: edit,
-    sort: "newest",
-    pageSize: 8,
+  const snapshot = useQuery({
+    queryKey: ["shop", "discovery-source"],
+    queryFn: loadSourcedCatalogue,
+    staleTime: Infinity,
   });
-  const featured = useMemo(
-    () => (featuredQuery.data?.items ?? []).slice(0, 8),
-    [featuredQuery.data],
+  const live = useShopCataloguePage("shop", {
+    category: activeCat ?? undefined,
+    sort: "newest",
+    pageSize: 48,
+  });
+  const pool = useMemo(() => {
+    const map = new Map<string, ShopProduct>();
+    for (const p of [...(snapshot.data ?? []), ...(live.data?.items ?? [])]) {
+      const key =
+        p.sourcing?.platform === "1688" ? `1688-${p.sourcing.productId}` : p.id;
+      map.set(key, p);
+    }
+    return [...map.values()].filter(
+      (p) =>
+        p.price > 0 &&
+        p.image &&
+        (!activeCat || p.category === activeCat) &&
+        matchesCollection(p, activeCollection) &&
+        (!q ||
+          `${p.title} ${p.description}`
+            .toLowerCase()
+            .includes(q.toLowerCase())),
+    );
+  }, [snapshot.data, live.data, activeCat, activeCollection, q]);
+  const lowestQuery = useShopCataloguePage("shop", {
+    category: activeCat ?? undefined,
+    collection: activeCollection,
+    sort: "price-asc",
+    pageSize: 3,
+  });
+  const lowest = useMemo(
+    () => lowestQuery.data?.items ?? [],
+    [lowestQuery.data],
   );
-  const browse = (category: string | null) => {
-    setActiveCat(category);
+  const top = useMemo(
+    () =>
+      discoveryPicks(
+        pool.filter((p) => !lowest.some((l) => l.id === p.id)),
+        [],
+        3,
+      ),
+    [pool, lowest],
+  );
+  const suggested = useMemo(
+    () => discoveryPicks(pool, browsing.history, 12),
+    [pool, browsing.history],
+  );
+  const recent = useMemo(() => {
+    const map = new Map(
+      (snapshot.data ?? [])
+        .concat(live.data?.items ?? [])
+        .map((p) => [p.id, p]),
+    );
+    return browsing.history
+      .flatMap((h) => (map.get(h.id) ? [map.get(h.id)!] : []))
+      .slice(0, 6);
+  }, [browsing.history, snapshot.data, live.data]);
+  function choose(cat: string | null, collection?: string) {
+    const next = new URLSearchParams();
+    if (cat) next.set("category", cat);
+    if (collection) next.set("collection", collection);
+    navigate(`/shop${next.size ? "?" + next.toString() : ""}`);
     setSearch("");
-    document
-      .getElementById("shop-catalogue")
-      ?.scrollIntoView({ block: "start" });
-  };
-
+    setMobileCategories(false);
+    setSort("newest");
+  }
+  const selection =
+    collections.find((c) => c.id === activeCollection)?.label ??
+    (activeCat ? categoryLabel(activeCat) : "All discoveries");
   return (
     <PageLayout mainClassName="pt-20">
-      <div className="fotizo-shop">
-        <div className="shop-announcement">
-          <Globe2 size={14} aria-hidden="true" /> Global finds. A little more
-          you.
-        </div>
+      <div className="fotizo-shop shop-discovery-page">
         <div className="container-app">
-          <section className="shop-hero" aria-labelledby="shop-heading">
-            <div className="shop-hero-copy">
+          <header className="discovery-welcome">
+            <div>
               <p className="shop-eyebrow">THE FOTIZO SHOP</p>
-              <h1 id="shop-heading">
-                Good finds.
-                <br />
-                Great <em>feeling.</em>
+              <h1>
+                Find your <em>next favourite.</em>
               </h1>
-              <p className="shop-hero-description">
-                For your space, your style, and everything in between. Discover
-                your next favourite thing.
+              <p>
+                A little inspiration. A great find. Something that feels like
+                you.
               </p>
-              <button className="shop-primary" onClick={() => browse(null)}>
-                Explore the shop <ArrowRight size={18} aria-hidden="true" />
+            </div>
+            <a href="#shop-catalogue" className="discovery-explore">
+              Explore the shop <ArrowDown size={17} />
+            </a>
+          </header>
+          <div className="discovery-layout">
+            <aside className="discovery-sidebar" aria-label="Shop departments">
+              <button
+                className="discovery-sidebar-heading"
+                aria-expanded={!isMobile || mobileCategories}
+                aria-controls="shop-department-navigation"
+                onClick={() => setMobileCategories(!mobileCategories)}
+              >
+                <LayoutGrid size={18} />
+                <strong>Categories</strong>
+                <ChevronDown size={16} />
               </button>
-              <div className="shop-hero-footnote">
-                <span /> A world of possibilities, in one place
-              </div>
-            </div>
-            <button
-              className="shop-hero-photo"
-              onClick={() => browse("furniture")}
-              aria-label="Explore furniture"
-            >
-              <img
-                src="/images/taobao/751554742379.webp"
-                alt="White sofa in a warm contemporary living room"
-                fetchPriority="high"
-              />
-              <span className="shop-photo-label">
-                <span>
-                  <small>THE HOME EDIT</small>
-                  <strong>Make room for lovely.</strong>
-                </span>
-                <ArrowUpRight size={25} aria-hidden="true" />
-              </span>
-            </button>
-            <span className="shop-hero-stamp" aria-hidden="true">
-              Find it.
-              <br />
-              Love it.
-              <br />
-              <Heart size={19} />
-            </span>
-          </section>
-
-          <div className="shop-service-strip">
-            <span>
-              <Globe2 size={18} aria-hidden="true" />
-              <span>
-                <strong>Discover beyond the everyday</strong>
-                <small>Goods from global suppliers</small>
-              </span>
-            </span>
-            <span>
-              <Heart size={18} aria-hidden="true" />
-              <span>
-                <strong>Keep your favourites close</strong>
-                <small>Tap the heart to save a find</small>
-              </span>
-            </span>
-            <span>
-              <Package size={18} aria-hidden="true" />
-              <span>
-                <strong>A little planning, a great find</strong>
-                <small>Imported prices are estimates; delivery extra</small>
-              </span>
-            </span>
-          </div>
-
-          <section className="shop-discover" aria-labelledby="discover-heading">
-            <div className="shop-section-heading">
-              <div>
-                <p className="shop-eyebrow">FOLLOW YOUR CURIOSITY</p>
-                <h2 id="discover-heading">What are you shopping for?</h2>
-              </div>
-              <a href="#shop-catalogue">
-                Browse everything <ArrowUpRight size={17} aria-hidden="true" />
-              </a>
-            </div>
-            <div className="shop-edits">
-              {[
-                {
-                  category: "furniture",
-                  label: "A space to love",
-                  detail: "HOME & LIVING",
-                  image: "/images/taobao/715620281290.webp",
-                  colour: "home",
-                },
-                {
-                  category: "shoes-bags",
-                  label: "Go your own way",
-                  detail: "BAGS & EVERYDAY STYLE",
-                  image: "/images/taobao/1057339107842.webp",
-                  colour: "style",
-                },
-                {
-                  category: "computers",
-                  label: "Upgrade the everyday",
-                  detail: "TECH & ACCESSORIES",
-                  image: "/images/taobao/977177423432.webp",
-                  colour: "tech",
-                },
-              ].map((item) => (
+              <nav
+                className={`discovery-category-list ${mobileCategories ? "is-open" : ""}`}
+                id="shop-department-navigation"
+                aria-label="Choose a department"
+              >
                 <button
-                  key={item.category}
-                  className={`shop-edit shop-edit-${item.colour}`}
-                  onClick={() => browse(item.category)}
+                  className={!activeCat ? "is-active" : ""}
+                  aria-pressed={!activeCat}
+                  onClick={() => choose(null)}
                 >
-                  <img loading="lazy" src={item.image} alt="" />
-                  <span>
-                    <small>{item.detail}</small>
-                    <strong>{item.label}</strong>
-                    <span className="shop-edit-link">
-                      Discover the edit{" "}
-                      <ArrowUpRight size={16} aria-hidden="true" />
-                    </span>
-                  </span>
+                  <LayoutGrid size={17} />
+                  All categories <ArrowUpRight size={14} />
                 </button>
-              ))}
-            </div>
-          </section>
-
-          {activeCat === null && !search && (
-            <section
-              className="shop-featured"
-              aria-labelledby="featured-heading"
-            >
-              <div className="shop-section-heading">
-                <div>
-                  <p className="shop-eyebrow">PAUSE. SCROLL. FALL IN LOVE.</p>
-                  <h2 id="featured-heading">Worth a closer look.</h2>
-                </div>
-                <div
-                  className="shop-edit-tabs"
-                  aria-label="Featured collections"
-                >
-                  {[
-                    { id: "furniture", label: "The home edit" },
-                    { id: "shoes-bags", label: "Everyday style" },
-                    { id: "computers", label: "Smart upgrades" },
-                  ].map((tab) => (
+                {SHOP_CATEGORIES.map((c) => {
+                  const Icon = c.icon;
+                  return (
                     <button
-                      key={tab.id}
-                      aria-pressed={edit === tab.id}
-                      onClick={() => setEdit(tab.id)}
+                      key={c.id}
+                      className={activeCat === c.id ? "is-active" : ""}
+                      aria-pressed={activeCat === c.id}
+                      onClick={() => choose(c.id)}
                     >
-                      {tab.label}
+                      <Icon size={17} />
+                      <span>{c.label}</span>
+                      {activeCat === c.id && <ArrowRight size={14} />}
+                    </button>
+                  );
+                })}
+              </nav>
+              <div className="discovery-sidebar-note">
+                <Sparkles size={18} />
+                <strong>More you. Less searching.</strong>
+                <p>Open a few favourites and discover more of what you love.</p>
+              </div>
+            </aside>
+            <div className="discovery-content">
+              <div className="discovery-searchbar">
+                <Search size={20} aria-hidden="true" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={
+                    activeCat
+                      ? `Search ${categoryLabel(activeCat).toLowerCase()}…`
+                      : "What would you love to find?"
+                  }
+                  aria-label="Search the shop"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    aria-label="Clear search"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
+                <button
+                  className="discovery-search-button"
+                  onClick={() => scrollTo("shop-catalogue")}
+                >
+                  Search <ArrowRight size={15} />
+                </button>
+              </div>
+              <div className="discovery-breadcrumb">
+                <button onClick={() => choose(null)}>Shop</button>
+                <span>/</span>
+                <span>{selection}</span>
+                {activeCat && (
+                  <button
+                    className="discovery-reset"
+                    onClick={() => choose(null)}
+                  >
+                    <X size={13} />
+                    Clear filters
+                  </button>
+                )}
+              </div>
+              {collections.length > 0 && (
+                <div
+                  className="discovery-subcategories"
+                  aria-label={`${categoryLabel(activeCat!)} collections`}
+                >
+                  <button
+                    aria-pressed={!activeCollection}
+                    onClick={() => choose(activeCat)}
+                  >
+                    All {categoryLabel(activeCat!).toLowerCase()}
+                  </button>
+                  {collections.map((c) => (
+                    <button
+                      key={c.id}
+                      aria-pressed={activeCollection === c.id}
+                      onClick={() => choose(activeCat, c.id)}
+                    >
+                      {c.label}
                     </button>
                   ))}
                 </div>
-              </div>
-              {featuredQuery.isLoading ? (
-                <Loading label="Finding your next favourite…" />
-              ) : featuredQuery.isError ? (
-                <div className="py-6 text-sm">
-                  These finds could not be loaded.{" "}
-                  <button
-                    className="underline"
-                    onClick={() => void featuredQuery.refetch()}
-                  >
-                    Try again
-                  </button>
-                </div>
-              ) : featured.length ? (
-                <div className="shop-featured-track">
-                  {featured.map((product) => (
-                    <ShopProductCard key={product.id} product={product} />
-                  ))}
-                </div>
-              ) : (
-                <p className="py-6 text-sm">
-                  More finds are on their way. Explore the catalogue below.
-                </p>
               )}
-              <button className="shop-text-link" onClick={() => browse(edit)}>
-                Explore this collection{" "}
-                <ArrowRight size={16} aria-hidden="true" />
-              </button>
-            </section>
-          )}
-
-          <section
-            id="shop-catalogue"
-            className="shop-catalogue"
-            aria-label="Shop catalogue"
-          >
-            <p className="shop-eyebrow">YOUR NEXT FIND STARTS HERE</p>
-            <div className="shop-category-strip" aria-label="Shop departments">
-              <CategoryTile
-                label="All"
-                icon={<LayoutGrid size={17} aria-hidden="true" />}
-                active={activeCat === null}
-                onClick={() => setActiveCat(null)}
-              />
-              {SHOP_CATEGORIES.map((c) => {
-                const Icon = c.icon;
-                return (
-                  <CategoryTile
-                    key={c.id}
-                    label={c.label}
-                    icon={<Icon size={17} aria-hidden="true" />}
-                    active={activeCat === c.id}
-                    onClick={() => setActiveCat(c.id)}
+              {!q && (
+                <div className="discovery-highlights">
+                  <Highlight
+                    title="Lowest prices"
+                    eyebrow="SMALL PRICES. GOOD FINDS."
+                    icon={<Tag size={18} />}
+                    products={lowest}
+                    tone="value"
+                    loading={lowestQuery.isLoading}
+                    description="Lowest listed prices in this selection."
+                    onExplore={() => {
+                      setSort("price-asc");
+                      scrollTo("shop-catalogue");
+                    }}
                   />
-                );
-              })}
-            </div>
-            {/* Grid header: title + search + sort */}
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="text-xl font-bold text-foreground">
-                {activeCat ? categoryLabel(activeCat) : "All products"}
-                <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  ({total})
-                </span>
-              </h2>
-              <div className="flex items-center gap-2">
-                <div className="relative min-w-0 flex-1">
-                  <Search
-                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search the shop…"
-                    aria-label="Search the shop"
-                    className="w-full min-w-0 rounded-lg border border-border bg-white py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 sm:w-64"
+                  <Highlight
+                    title="Top picks"
+                    eyebrow="A LITTLE INSPIRATION"
+                    icon={<Sparkles size={18} />}
+                    products={top}
+                    tone="picks"
+                    loading={snapshot.isLoading}
+                    description="A fresh mix worth a closer look."
+                    onExplore={() => scrollTo("shop-for-you")}
                   />
                 </div>
-                <select
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value as Sort)}
-                  aria-label="Sort products"
-                  className="rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              )}
+              {!q && suggested.length > 0 && (
+                <section
+                  id="shop-for-you"
+                  className="discovery-recommendations"
+                  aria-labelledby="for-you-heading"
                 >
-                  {SORTS.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {(search || activeCat) && (
-              <button
-                className="shop-text-link"
-                onClick={() => {
-                  setSearch("");
-                  setActiveCat(null);
-                }}
+                  <div className="discovery-section-heading">
+                    <div>
+                      <p className="shop-eyebrow">
+                        {browsing.history.length
+                          ? "INSPIRED BY YOUR FINDS"
+                          : "A GOOD PLACE TO START"}
+                      </p>
+                      <h2 id="for-you-heading">
+                        {browsing.history.length
+                          ? "More your kind of thing."
+                          : "Discover something you’ll love."}
+                      </h2>
+                      <p>
+                        {browsing.history.length
+                          ? "Inspired by products you’ve viewed on this device."
+                          : "A fresh mix of styles, home finds and everyday essentials."}
+                      </p>
+                    </div>
+                    <Sparkles className="discovery-heading-icon" size={26} />
+                  </div>
+                  <div className="discovery-product-track">
+                    {suggested.map((p) => (
+                      <ShopProductCard key={p.id} product={p} />
+                    ))}
+                  </div>
+                  <div className="discovery-history-controls">
+                    <span>
+                      <History size={14} />{" "}
+                      {browsing.isEnabled
+                        ? "Views from the last 30 days · this device"
+                        : "Personalisation paused"}
+                    </span>
+                    <button onClick={browsing.toggle}>
+                      {browsing.isEnabled
+                        ? "Pause personalisation"
+                        : "Enable personalisation"}
+                    </button>
+                    {browsing.history.length > 0 && (
+                      <button onClick={browsing.clear}>
+                        Clear viewing history
+                      </button>
+                    )}
+                  </div>
+                </section>
+              )}
+              {recent.length > 0 && !q && (
+                <section
+                  className="discovery-recent"
+                  aria-label="Recently viewed"
+                >
+                  <div>
+                    <History size={17} />
+                    <strong>Recently viewed</strong>
+                    <span>Pick up where you left off</span>
+                  </div>
+                  <div className="discovery-recent-items">
+                    {recent.map((p) => (
+                      <Link key={p.id} href={`/shop/${p.id}`} title={p.title}>
+                        <img src={p.image} alt={p.title} loading="lazy" />
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              )}
+              <section
+                id="shop-catalogue"
+                className="discovery-catalogue"
+                aria-labelledby="catalogue-heading"
               >
-                <X size={14} aria-hidden="true" /> Clear filters
-              </button>
-            )}
-            {grid.data?.pages.some((page) => page.liveError) && (
-              <p role="status" className="mt-3 text-sm text-muted-foreground">
-                Some shop listings could not be loaded.{" "}
-                <button
-                  className="underline"
-                  onClick={() => void grid.refetch()}
-                >
-                  Try again
-                </button>
-              </p>
-            )}
-            {/* Product grid */}
-            {isLoading ? (
-              <Loading label="Loading the shop…" />
-            ) : isError ? (
-              <ErrorState label="The shop could not be loaded. Please try again." />
-            ) : products.length === 0 ? (
-              <div className="py-20 text-center text-muted-foreground">
-                <Search
-                  className="mx-auto mb-3 h-8 w-8 opacity-40"
-                  aria-hidden="true"
-                />
-                <p>
-                  {activeCat === null && !q
-                    ? "No products are listed yet."
-                    : "No products match your search."}
-                </p>
-              </div>
-            ) : (
-              <>
-                <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
-                  {products.map((p) => (
-                    <ShopProductCard key={p.id} product={p} />
-                  ))}
+                <div className="discovery-catalogue-heading">
+                  <div>
+                    <p className="shop-eyebrow">KEEP EXPLORING</p>
+                    <h2 id="catalogue-heading">
+                      {q ? `Results for “${q}”` : selection}
+                    </h2>
+                    {!grid.isLoading && (
+                      <p>{total.toLocaleString()} products</p>
+                    )}
+                  </div>
+                  <label className="discovery-sort">
+                    <SlidersHorizontal size={16} />
+                    <span className="sr-only">Sort products</span>
+                    <select
+                      aria-label="Sort products"
+                      value={sort}
+                      onChange={(e) => setSort(e.target.value as Sort)}
+                    >
+                      {SORTS.map((s) => (
+                        <option key={s.value} value={s.value}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
-                <LoadMoreSentinel
-                  hasMore={Boolean(grid.hasNextPage)}
-                  loading={grid.isFetchingNextPage}
-                  error={grid.isFetchNextPageError}
-                  onLoadMore={() => void grid.fetchNextPage()}
-                  endLabel={
-                    total > 48 ? "You've seen everything here." : undefined
-                  }
-                />
-              </>
-            )}
-          </section>
-          <div className="shop-bottom-note">
-            <Globe2 size={24} aria-hidden="true" />
-            <div>
-              <strong>Global discoveries. Thoughtful shopping.</strong>
-              <p>
-                Supplier images may contain Chinese text. Confirm options, final
-                pricing and delivery before ordering imported goods.
+                {grid.data?.pages.some((p) => p.liveError) && (
+                  <p role="status" className="discovery-status">
+                    Some listings could not be loaded.{" "}
+                    <button onClick={() => void grid.refetch()}>
+                      Try again
+                    </button>
+                  </p>
+                )}
+                {grid.isLoading ? (
+                  <Loading label="Finding your next favourite…" />
+                ) : grid.isError ? (
+                  <ErrorState label="The shop could not be loaded. Please try again." />
+                ) : !products.length ? (
+                  <div className="discovery-empty">
+                    <Search size={30} />
+                    <h3>No finds here just yet.</h3>
+                    <p>
+                      Try a different search or explore the whole department.
+                    </p>
+                    <button onClick={() => choose(activeCat)}>
+                      Reset this selection <ArrowRight size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="discovery-product-grid">
+                      {products.map((p) => (
+                        <ShopProductCard key={p.id} product={p} />
+                      ))}
+                    </div>
+                    <LoadMoreSentinel
+                      hasMore={Boolean(grid.hasNextPage)}
+                      loading={grid.isFetchingNextPage}
+                      error={grid.isFetchNextPageError}
+                      onLoadMore={() => void grid.fetchNextPage()}
+                      endLabel={
+                        total > 48
+                          ? "You’ve seen everything in this selection."
+                          : undefined
+                      }
+                    />
+                  </>
+                )}
+              </section>
+              <p className="discovery-footer-note">
+                Imported prices are estimates. Confirm product options, final
+                pricing and delivery before ordering.
               </p>
             </div>
           </div>
@@ -438,27 +476,70 @@ export default function ShopPage() {
     </PageLayout>
   );
 }
-
-function CategoryTile({
-  label,
+function Highlight({
+  title,
+  eyebrow,
   icon,
-  active,
-  onClick,
+  products,
+  tone,
+  description,
+  loading,
+  onExplore,
 }: {
-  label: string;
+  title: string;
+  eyebrow: string;
   icon: React.ReactNode;
-  active: boolean;
-  onClick: () => void;
+  products: ShopProduct[];
+  tone: string;
+  description: string;
+  loading: boolean;
+  onExplore: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`shop-category ${active ? "is-active" : ""}`}
+    <section
+      className={`discovery-highlight discovery-highlight-${tone}`}
+      aria-label={title}
     >
-      {icon}
-      <span>{label}</span>
-    </button>
+      <div className="discovery-highlight-heading">
+        <div>
+          <p>{eyebrow}</p>
+          <h2>
+            {icon}
+            {title}
+          </h2>
+        </div>
+        <button
+          onClick={onExplore}
+          aria-label={`Explore ${title.toLowerCase()}`}
+        >
+          <ArrowUpRight size={21} />
+        </button>
+      </div>
+      <div className="discovery-mini-products">
+        {products.map((p) => (
+          <Link
+            key={p.id}
+            href={`/shop/${p.id}`}
+            className="discovery-mini-product"
+          >
+            <div>
+              <img src={p.image} alt={p.title} loading="lazy" />
+            </div>
+            <Price amount={p.price} />
+            <span>{p.title}</span>
+          </Link>
+        ))}
+      </div>
+      {!products.length && (
+        <p className="discovery-highlight-empty">
+          {loading ? "Finding good things…" : "More finds are on their way."}
+        </p>
+      )}
+      <p className="discovery-highlight-caption">
+        {description}
+        {products.some((p) => p.requiresPublication) &&
+          " Prices are estimates; delivery extra."}
+      </p>
+    </section>
   );
 }
