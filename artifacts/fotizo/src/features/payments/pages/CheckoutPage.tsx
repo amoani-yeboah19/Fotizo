@@ -139,6 +139,9 @@ export default function CheckoutPage() {
   // says which options they want, and pays once they accept the confirmed total.
   const [options, setOptions] = useState<Record<string, string>>({});
   const needsConfirmation = items.some((i) => i.needsConfirmation);
+  /** A line's options: as edited here for imported goods, else as chosen in the cart. */
+  const lineOptions = (i: (typeof items)[number]) =>
+    ((i.needsConfirmation ? options[i.id] : undefined) ?? i.options ?? "").trim();
 
   const shipping = total > FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE;
   const grandTotal = total + (items.length > 0 ? shipping : 0);
@@ -187,7 +190,8 @@ export default function CheckoutPage() {
         items: items.map((i) => ({
           productId: i.productId,
           quantity: i.quantity,
-          ...(i.needsConfirmation && options[i.productId]?.trim() ? { options: options[i.productId].trim() } : {}),
+          // The options chosen on the product page, or edited here for imported goods.
+          ...(lineOptions(i) ? { options: lineOptions(i) } : {}),
         })),
         delivery,
         paymentMethod,
@@ -409,6 +413,9 @@ export default function CheckoutPage() {
                           <span>{item.quantity}x {item.title}</span>
                           <Price amount={item.price * item.quantity} className="font-medium shrink-0" />
                         </div>
+                        {item.options && !item.needsConfirmation && (
+                          <p className="mt-1 text-xs text-muted-foreground">{item.options}</p>
+                        )}
                         {item.needsConfirmation && (
                           <div className="mt-2 space-y-1.5 rounded-lg bg-muted/50 p-3">
                             {item.minimumOrder && (
@@ -416,15 +423,15 @@ export default function CheckoutPage() {
                                 Supplier minimum order: {item.minimumOrder}. Smaller orders may cost more per item; we'll confirm.
                               </p>
                             )}
-                            <Label htmlFor={`options-${item.productId}`} className="text-xs">
-                              Options you want (optional)
+                            <Label htmlFor={`options-${item.id}`} className="text-xs">
+                              {item.options ? "Options you chose (add anything else we should know)" : "Options you want (optional)"}
                             </Label>
                             <Input
-                              id={`options-${item.productId}`}
+                              id={`options-${item.id}`}
                               placeholder="e.g. colour, size, model"
                               maxLength={300}
-                              value={options[item.productId] ?? ""}
-                              onChange={(e) => setOptions((o) => ({ ...o, [item.productId]: e.target.value }))}
+                              value={options[item.id] ?? item.options ?? ""}
+                              onChange={(e) => setOptions((o) => ({ ...o, [item.id]: e.target.value }))}
                               className="h-9 bg-white"
                             />
                           </div>

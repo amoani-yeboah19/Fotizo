@@ -105,15 +105,16 @@ const placeOrderSchema = z
           .object({
             productId: productIdSchema,
             quantity: z.number().int().min(1).max(99),
-            // Colour, size, model and so on, for imported goods confirmed with the supplier.
+            // The colour, size and so on chosen; imported goods are confirmed with the supplier.
             options: z.string().trim().max(300).optional(),
           })
           .strict(),
       )
       .min(1)
       .max(50)
-      .refine((items) => new Set(items.map((i) => i.productId)).size === items.length, {
-        message: "Each product may appear once.",
+      // The same product may appear once per choice of options (two sizes).
+      .refine((items) => new Set(items.map((i) => `${i.productId}|${i.options ?? ""}`)).size === items.length, {
+        message: "Each product and choice of options may appear once.",
       }),
     delivery: z
       .object({
@@ -204,7 +205,10 @@ router.post("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
   }
   try {
     const order = await db.transaction(async (tx) => {
-      const ids = input.items.map((i) => i.productId);
+      const ids = [...new Set(input.items.map((i) => i.productId))];
+      // Stock is held per product, across every option line of it.
+      const wanted = new Map<string, number>();
+      for (const i of input.items) wanted.set(i.productId, (wanted.get(i.productId) ?? 0) + i.quantity);
       const products = await tx
         .select({ product: productsTable, sellerName: usersTable.name })
         .from(productsTable)
@@ -220,13 +224,13 @@ router.post("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
           throw new CheckoutError(409, "An item in your cart is no longer available. Remove it and try again.");
         if (found.product.sellerId === buyerId)
           throw new CheckoutError(409, `You cannot buy your own listing: ${found.product.title}.`);
-        if (found.product.channel === "marketplace" && found.product.stockCount < item.quantity)
+        if (found.product.channel === "marketplace" && found.product.stockCount < (wanted.get(item.productId) ?? item.quantity))
           throw new CheckoutError(
             409,
             `Only ${found.product.stockCount} of "${found.product.title}" left. Update your cart and try again.`,
           );
         const sourced = needsSupplierConfirmation(found.product);
-        return { ...found, quantity: item.quantity, sourced, options: sourced ? item.options || null : null };
+        return { ...found, quantity: item.quantity, sourced, options: item.options || null };
       });
       const confirmationStatus = lines.some((l) => l.sourced) ? ("awaiting" as const) : null;
       const subtotal = round2(lines.reduce((sum, l) => sum + l.product.price * l.quantity, 0));
