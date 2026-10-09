@@ -95,8 +95,10 @@ export const serviceSnapshot = (s: ServiceRow): ListingSnapshot => ({
   description: s.description,
   category: s.category,
   price: s.hourlyRate,
+  serviceDetails: s.details,
+  packages: s.packages,
   currency: "GBP",
-  images: s.avatar ? [s.avatar] : [],
+  images: [...(s.avatar ? [s.avatar] : []), ...(s.details?.gallery ?? [])].slice(0, SNAPSHOT_IMAGES),
 });
 
 export const sameSnapshot = (a: ListingSnapshot, b: ListingSnapshot) => JSON.stringify(a) === JSON.stringify(b);

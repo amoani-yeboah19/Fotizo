@@ -33,6 +33,8 @@ export interface ListingSnapshot {
   price: number;
   currency: string;
   images: string[];
+  serviceDetails?: unknown;
+  packages?: unknown;
 }
 
 export const listingReviewsTable = pgTable("listing_reviews", {

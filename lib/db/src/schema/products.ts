@@ -66,6 +66,7 @@ export const productsTable = pgTable(
     specs: jsonb("specs").$type<Record<string, string>>().notNull().default({}),
     status: productStatusEnum("status").notNull().default("active"),
     // Set by staff when they unpublish or reject a listing; the owner cannot clear it.
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     moderationHold: boolean("moderation_hold").notNull().default(false),
     // Imported goods (migration 0015): where they came from and what they cost.
     sourcePlatform: text("source_platform"),

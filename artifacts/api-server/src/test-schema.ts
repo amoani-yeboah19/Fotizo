@@ -57,8 +57,7 @@ export async function createTestSchema(database: PGlite): Promise<void> {
     "0015_pricing_and_fees.sql",
     "0016_supplier_confirmation.sql",
     "0017_identity_verification.sql",
-    "0018_platform_1688.sql",
-    "0019_cart_options.sql",
+    "0018_service_details_and_product_deletion.sql",
   ]) {
     const sql = await migration(name);
     await database.exec(sql);

@@ -1,368 +1,836 @@
+import { useQuery } from "@tanstack/react-query";
+import { currencyService } from "@/services/currency.service";
+import { servicePrice, validUsdRate } from "../lib/service-pricing";
 import { useEffect, useState } from "react";
 import { useLocation, useRoute } from "wouter";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Plus, Trash2, Briefcase } from "lucide-react";
+import { Briefcase, Plus, Trash2, Save, Eye } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { WizardShell } from "@/components/common/Wizard";
-import { Field, NativeSelect, GroupedNativeSelect, TagsInput, AvatarUploadInput } from "@/components/common/FormControls";
+import {
+  Field,
+  NativeSelect,
+  GroupedNativeSelect,
+  TagsInput,
+  AvatarUploadInput,
+  ImageUploadInput,
+} from "@/components/common/FormControls";
 import {
   groupedServiceCategories,
-  groupForCategory,
-  getServiceGroup,
   isServiceCategoryId,
   serviceCategoryLabel,
 } from "@workspace/service-taxonomy";
 import { AiAssistButton } from "@/components/common/AiAssistButton";
+import { aiService } from "@/services";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Price } from "@/components/common/Price";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { aiService } from "@/services";
-import { useCreateService, useMyService, useUpdateService } from "@/features/artisans/hooks";
+import { useCreateService, useMyService, useUpdateService } from "../hooks";
 import { Loading } from "@/components/common/QueryStates";
 import { apiErrorMessage } from "@/api";
-import type { NewServiceInput } from "@/types";
+import type { NewServiceInput, ServiceDetails } from "@/types";
+import { ServiceOfferPreview } from "../components/ServiceOfferPreview";
 
-// Categories come from the shared taxonomy, bucketed by provider group. Picking
-// "Plumbing" is all a provider does — the group (Artisans & Trades) is derived
-// from it here for the preview and again on the server when the listing saves.
-const CATEGORY_GROUPS = groupedServiceCategories().map(({ group, categories }) => ({
+const GROUPS = groupedServiceCategories().map(({ group, categories }) => ({
   label: group.label,
   options: categories.map((c) => ({ value: c.id, label: c.label })),
 }));
-const EXPERIENCE = ["Less than 1 year", "1–3 years", "3–5 years", "5–10 years", "10+ years"];
-const AVAILABILITY = ["Available now", "Within a few days", "Within a week", "Booking 2+ weeks out"];
-
-const STEPS = ["Service overview", "Expertise & availability", "Packages & deliverables", "Review & publish"];
-
-const schema = z.object({
-  title: z.string().min(3, "Give your service a clear title (min 3 characters)"),
-  category: z.string().refine(isServiceCategoryId, "Choose a category"),
-  description: z.string().min(20, "Describe your service in at least 20 characters"),
-  experience: z.string().min(1, "Select your experience level"),
-  hourlyRate: z.string().refine((v) => Number(v) > 0, "Enter an hourly rate greater than 0"),
-  availability: z.string().min(1, "Select your availability"),
+const STEPS = [
+  "Overview",
+  "Pricing",
+  "Description & FAQ",
+  "Requirements",
+  "Gallery",
+  "Preview & publish",
+];
+const TIERS = ["Basic", "Standard", "Premium"];
+type PackageDraft = {
+  name: string;
+  price: string;
+  delivery: string;
+  description: string;
+  revisions: string;
+  features: string[];
+};
+const newPackage = (name: string): PackageDraft => ({
+  name,
+  price: "",
+  delivery: "",
+  description: "",
+  revisions: "0",
+  features: [],
 });
-type FormValues = z.infer<typeof schema>;
-
-const STEP_FIELDS: Record<number, (keyof FormValues)[]> = {
-  0: ["title", "category", "description", "experience"],
-  1: ["hourlyRate", "availability"],
+const EMPTY = {
+  title: "",
+  category: "",
+  experience: "",
+  hourlyRate: "",
+  availability: "",
+  description: "",
 };
 
-type PackageDraft = { name: string; price: string; delivery: string; description: string };
-const emptyPackage: PackageDraft = { name: "", price: "", delivery: "", description: "" };
-
 export default function OfferServicePage() {
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
-  const createService = useCreateService();
-  const updateService = useUpdateService();
-  // The same wizard edits an existing listing at /dashboard/seller/services/:id/edit.
-  const [isEditRoute, editParams] = useRoute("/dashboard/seller/services/:id/edit");
-  const editingId = isEditRoute ? editParams?.id : undefined;
+  const [editing, params] = useRoute("/dashboard/seller/services/:id/edit");
+  const editingId = editing ? params?.id : undefined;
   const existing = useMyService(editingId);
-  const [loadedId, setLoadedId] = useState<string>();
-
-  const [step, setStep] = useState(0);
-  const [skills, setSkills] = useState<string[]>([]);
-  const [packages, setPackages] = useState<PackageDraft[]>([{ ...emptyPackage }]);
-  const [avatar, setAvatar] = useState(user?.avatar ?? "");
-  const [stepError, setStepError] = useState<string>();
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: { title: "", category: "", description: "", experience: "", hourlyRate: "", availability: "" },
+  const exchange = useQuery({
+    queryKey: ["service-editor-rates"],
+    queryFn: currencyService.getRates,
+    staleTime: Infinity,
+    retry: 1,
   });
-  const { register, formState: { errors }, watch, setValue } = form;
-
-  // Fill the wizard once with the listing being edited.
+  const usdRate =
+    exchange.data?.GBP === 1 && validUsdRate(exchange.data?.USD)
+      ? exchange.data.USD
+      : undefined;
+  const toBase = (amount: string) =>
+    usdRate ? servicePrice(Number(amount), usdRate, "to-base") : 0;
+  const create = useCreateService();
+  const update = useUpdateService();
+  const [loadedId, setLoadedId] = useState<string>();
+  const [step, setStep] = useState(0);
+  const [v, setV] = useState(EMPTY);
+  const [skills, setSkills] = useState<string[]>([]);
+  const [packages, setPackages] = useState<PackageDraft[]>([
+    newPackage("Basic"),
+  ]);
+  const [details, setDetails] = useState<ServiceDetails>({
+    faqs: [],
+    requirements: [],
+    gallery: [],
+  });
+  const [avatar, setAvatar] = useState(user?.avatar ?? "");
+  const [error, setError] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [galleryUploading, setGalleryUploading] = useState(false);
+  const uploading = avatarUploading || galleryUploading;
+  const [draftAvailable, setDraftAvailable] = useState(false);
+  const draftKey = `fotizo.service-draft.v2:${user?.id ?? "guest"}:${editingId ?? "new"}`;
   useEffect(() => {
-    const service = existing.data;
-    if (!service || loadedId === service.id) return;
-    form.reset({
-      title: service.title,
-      category: service.category,
-      description: service.description,
-      experience: service.experience,
-      hourlyRate: String(service.hourlyRate),
-      availability: service.availability,
+    try {
+      setDraftAvailable(!!localStorage.getItem(draftKey));
+    } catch {}
+  }, [draftKey]);
+  useEffect(() => {
+    const s = existing.data;
+    if (!s || s.id === loadedId || !usdRate) return;
+    setV({
+      title: s.title,
+      category: s.category,
+      experience: s.experience,
+      hourlyRate: String(servicePrice(s.hourlyRate, usdRate, "to-usd")),
+      availability: s.availability,
+      description: s.description,
     });
-    setSkills(service.skills);
+    setSkills(s.skills);
+    setAvatar(s.avatar);
+    setDetails(s.details ?? { faqs: [], requirements: [], gallery: [] });
     setPackages(
-      service.packages.map((p) => ({
-        name: p.name,
-        price: String(p.price),
-        delivery: p.delivery,
-        description: p.description,
+      s.packages.map((p) => ({
+        ...p,
+        price: String(servicePrice(p.price, usdRate, "to-usd")),
+        revisions: String(p.revisions ?? 0),
+        features: p.features ?? [],
       })),
     );
-    setAvatar(service.avatar);
-    setLoadedId(service.id);
-  }, [existing.data, loadedId, form]);
-
-  // Draft the "about this service" copy + skills from the title, category and
-  // any notes typed so far. Skills land in the (later) Expertise step pre-filled.
+    setLoadedId(s.id);
+  }, [existing.data, loadedId, usdRate]);
+  const set = (key: keyof typeof EMPTY, value: string) =>
+    setV((prev) => ({ ...prev, [key]: value }));
+  const changePackage = (i: number, patch: Partial<PackageDraft>) =>
+    setPackages((prev) =>
+      prev.map((p, n) => (n === i ? { ...p, ...patch } : p)),
+    );
+  const validation = (s: number) => {
+    if (s === 1 && !usdRate)
+      return "Dollar pricing is temporarily unavailable. Please retry loading exchange rates before continuing.";
+    if (
+      s === 0 &&
+      (v.title.trim().length < 3 ||
+        !isServiceCategoryId(v.category) ||
+        !v.experience ||
+        !v.availability ||
+        !skills.length)
+    )
+      return "Add a service title, category, experience, availability and at least one skill.";
+    if (
+      s === 1 &&
+      (!Number.isFinite(Number(v.hourlyRate)) || Number(v.hourlyRate) <= 0)
+    )
+      return "Enter an hourly rate greater than zero. Package prices are fixed totals, separate from your hourly rate.";
+    if (
+      s === 1 &&
+      (!packages.length ||
+        packages.some(
+          (p) =>
+            !p.name.trim() ||
+            !Number.isFinite(Number(p.price)) ||
+            Number(p.price) <= 0 ||
+            !p.delivery.trim() ||
+            !p.description.trim() ||
+            !/^\d+$/.test(p.revisions) ||
+            Number(p.revisions) > 100,
+        ))
+    )
+      return "Complete every package: name, price, delivery time, scope and revisions (0–100).";
+    if (
+      s === 1 &&
+      new Set(packages.map((p) => p.name.trim().toLowerCase())).size !==
+        packages.length
+    )
+      return "Give each package a different name so buyers can identify it.";
+    if (
+      s === 2 &&
+      (v.description.trim().length < 20 ||
+        details.faqs.some((f) => !f.question.trim() || !f.answer.trim()))
+    )
+      return "Write at least 20 characters about your service and complete or remove unfinished FAQs.";
+    if (s === 3 && details.requirements.some((r) => !r.trim()))
+      return "Complete or remove empty buyer requirements.";
+    if (s === 4 && (!avatar || uploading))
+      return uploading
+        ? "Wait for your photos to finish uploading."
+        : "Add a profile photo or business logo.";
+    return "";
+  };
   const writeWithAi = async () => {
-    const { title, category, description } = form.getValues();
     const draft = await aiService.writeServiceListing({
-      title,
-      category: serviceCategoryLabel(category),
-      notes: description,
+      title: v.title,
+      category: serviceCategoryLabel(v.category),
+      notes: v.description,
     });
-    setValue("description", draft.description, { shouldValidate: true });
-    if (draft.skills.length) setSkills(draft.skills);
+    set("description", draft.description);
+    if (draft.skills.length) setSkills(draft.skills.slice(0, 20));
   };
-
-  const validPackages = packages.filter((p) => p.name.trim() && Number(p.price) > 0);
-
-  const next = async () => {
-    const fields = STEP_FIELDS[step];
-    if (fields && !(await form.trigger(fields))) return;
-    if (step === 1 && skills.length === 0) {
-      setStepError("Add at least one skill");
-      return;
-    }
-    if (step === 2 && validPackages.length === 0) {
-      setStepError("Add at least one package with a name and price");
-      return;
-    }
-    setStepError(undefined);
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  const next = () => {
+    const message = validation(step);
+    setError(message);
+    if (!message) setStep((s) => s + 1);
   };
-  const back = () => {
-    setStepError(undefined);
-    setStep((s) => Math.max(s - 1, 0));
-  };
-
-  const submit = form.handleSubmit(async (data) => {
-    if (skills.length === 0) return setStep(1), setStepError("Add at least one skill");
-    if (validPackages.length === 0) return setStep(2), setStepError("Add at least one package");
-    if (!avatar.trim()) return setStepError("Add a profile photo");
-
-    const input: NewServiceInput = {
-      title: data.title,
-      category: data.category,
-      description: data.description,
-      experience: data.experience,
-      hourlyRate: Number(data.hourlyRate),
-      availability: data.availability,
-      skills,
-      avatar: avatar.trim(),
-      packages: validPackages.map((p) => ({
-        name: p.name.trim(),
-        price: Number(p.price),
-        delivery: p.delivery.trim() || "Flexible",
-        description: p.description.trim(),
-      })),
-      provider: user?.name ?? "You",
-      providerId: user?.id ?? "me",
-    };
+  const saveDraft = () => {
     try {
-      if (editingId) {
-        const updated = await updateService.mutateAsync({ id: editingId, input });
-        toast({ title: "Service updated", description: `${updated.title} has been saved.` });
-        setLocation("/dashboard/seller?tab=services");
-        return;
-      }
-      const created = await createService.mutateAsync(input);
-      toast({ title: "Service published!", description: `${created.title} is now live on Fotizo.` });
-      setLocation("/dashboard/seller?tab=services");
-    } catch (error) {
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({
+          v,
+          skills,
+          packages,
+          details,
+          avatar,
+          currency: "USD",
+        }),
+      );
+      setDraftAvailable(true);
+      toast({ title: "Draft saved on this device" });
+    } catch {
       toast({
+        title: "Couldn't save draft",
+        description: "Your browser storage may be full or unavailable.",
         variant: "destructive",
-        title: editingId ? "Couldn't save changes" : "Couldn't publish",
-        description: apiErrorMessage(error, "Please try again."),
       });
     }
-  });
-
-  const setPackage = (i: number, patch: Partial<PackageDraft>) =>
-    setPackages((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
-
-  const v = watch();
-  const landingGroup = v.category ? getServiceGroup(groupForCategory(v.category) ?? "") : undefined;
-
-  if (editingId && (existing.isLoading || (existing.data && loadedId !== existing.data.id))) {
+  };
+  const restoreDraft = () => {
+    try {
+      const d = JSON.parse(localStorage.getItem(draftKey) ?? "null");
+      if (
+        !d ||
+        !d.v ||
+        !Array.isArray(d.packages) ||
+        !Array.isArray(d.skills) ||
+        !Array.isArray(d.details?.gallery) ||
+        !Array.isArray(d.details?.faqs) ||
+        !Array.isArray(d.details?.requirements)
+      )
+        throw Error();
+      if (d.currency !== "USD") {
+        if (!usdRate)
+          throw Error(
+            "Exchange rates are required to restore a previous GBP draft.",
+          );
+        d.v.hourlyRate = d.v.hourlyRate
+          ? String(servicePrice(Number(d.v.hourlyRate), usdRate, "to-usd"))
+          : "";
+        d.packages = d.packages.map((p: PackageDraft) => ({
+          ...p,
+          price: p.price
+            ? String(servicePrice(Number(p.price), usdRate, "to-usd"))
+            : "",
+        }));
+      }
+      setV({ ...EMPTY, ...d.v });
+      setSkills(d.skills);
+      setPackages(d.packages);
+      setDetails(d.details);
+      setAvatar(d.avatar ?? "");
+      setStep(0);
+      setError("");
+    } catch {
+      toast({ title: "Couldn't restore this draft", variant: "destructive" });
+    }
+  };
+  const input: NewServiceInput = {
+    ...v,
+    title: v.title.trim(),
+    description: v.description.trim(),
+    hourlyRate: toBase(v.hourlyRate),
+    skills,
+    avatar,
+    details,
+    provider: user?.name ?? "You",
+    providerId: user?.id ?? "",
+    packages: packages.map((p) => ({
+      ...p,
+      price: toBase(p.price),
+      revisions: Number(p.revisions),
+      name: p.name.trim(),
+      delivery: /^\d+$/.test(p.delivery.trim())
+        ? `${p.delivery.trim()} days`
+        : p.delivery.trim(),
+      description: p.description.trim(),
+    })),
+  };
+  const publish = async () => {
+    for (let i = 0; i < 5; i++) {
+      const message = validation(i);
+      if (message) {
+        setStep(i);
+        setError(message);
+        return;
+      }
+    }
+    try {
+      if (editingId) await update.mutateAsync({ id: editingId, input });
+      else await create.mutateAsync(input);
+      try {
+        localStorage.removeItem(draftKey);
+      } catch {}
+      toast({
+        title: editingId ? "Service updated" : "Service submitted",
+        description:
+          "Your listing has been saved. Check its status in My Services.",
+      });
+      navigate("/dashboard/seller?tab=services");
+    } catch (e) {
+      setError(
+        apiErrorMessage(
+          e,
+          "We couldn't save your service. Your entries are still here; please try again.",
+        ),
+      );
+    }
+  };
+  if (editingId && !usdRate && !exchange.isLoading)
     return (
-      <PageLayout mainClassName="container-app py-24 md:py-28">
+      <PageLayout>
+        <p role="alert">Dollar pricing could not be loaded.</p>
+        <Button onClick={() => exchange.refetch()}>Retry exchange rates</Button>
+      </PageLayout>
+    );
+  if (
+    editingId &&
+    (existing.isLoading || (existing.data && loadedId !== existing.data.id))
+  )
+    return (
+      <PageLayout>
         <Loading label="Loading your service…" />
       </PageLayout>
     );
-  }
-  if (editingId && existing.isError) {
+  if (
+    editingId &&
+    (existing.isError || (!existing.isLoading && !existing.data))
+  )
     return (
-      <PageLayout mainClassName="container-app py-24 md:py-28">
-        <p role="alert" className="mx-auto max-w-2xl text-center text-muted-foreground">
-          This service could not be loaded. It may have been removed, or it belongs to another account.
-        </p>
+      <PageLayout>
+        <p role="alert">This service could not be loaded.</p>
       </PageLayout>
     );
-  }
-
   return (
     <PageLayout mainClassName="container-app py-24 md:py-28">
-      <div className="mx-auto max-w-2xl">
-        <header className="mb-8">
-          <span className="inline-flex items-center gap-2 rounded-full bg-[#FF6A00]/10 px-3 py-1 text-xs font-semibold text-[#FF6A00]">
-            <Briefcase className="w-3.5 h-3.5" aria-hidden="true" /> For professionals
-          </span>
-          <h1 className="heading-page text-foreground mt-3">{editingId ? "Edit service" : "Offer a service"}</h1>
-          <p className="text-muted-foreground mt-1">
-            {editingId
-              ? "Update your listing. Changes show to customers as soon as you save."
-              : "Create a profile buyers can hire — artisans, freelancers and businesses welcome."}
-          </p>
+      <div className="mx-auto max-w-6xl">
+        <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-accent flex items-center gap-2">
+              <Briefcase size={16} /> MADE FOR YOUR EXPERTISE
+            </p>
+            <h1 className="heading-page mt-2">
+              {editingId
+                ? "Edit your service"
+                : "Turn your skills into a service"}
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              Set a clear scope, build your packages and see what buyers will
+              see.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            {draftAvailable && (
+              <Button variant="outline" onClick={restoreDraft}>
+                Restore draft
+              </Button>
+            )}
+            <Button variant="outline" onClick={saveDraft} disabled={uploading}>
+              <Save size={16} className="mr-2" />
+              Save draft
+            </Button>
+          </div>
         </header>
-
-        <div className="rounded-2xl border border-border bg-white p-6 sm:p-8 shadow-sm">
+        <div className="rounded-2xl border bg-white p-4 sm:p-8 shadow-sm">
           <WizardShell
             steps={STEPS}
             current={step}
-            onBack={back}
+            onBack={() => {
+              setStep((s) => s - 1);
+              setError("");
+            }}
             onNext={next}
-            onSubmit={submit}
-            submitting={createService.isPending || updateService.isPending}
+            onSubmit={publish}
+            submitting={create.isPending || update.isPending || uploading}
             submitLabel={editingId ? "Save changes" : "Publish service"}
           >
+            <h2 className="text-xl font-bold">{STEPS[step]}</h2>
+            {error && (
+              <p
+                role="alert"
+                className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+              >
+                {error}
+              </p>
+            )}
+            {!usdRate && (
+              <div role="status" className="rounded-lg bg-muted p-3 text-sm">
+                {exchange.isLoading
+                  ? "Loading dollar pricing…"
+                  : "Dollar pricing could not be loaded."}{" "}
+                {!exchange.isLoading && (
+                  <Button variant="outline" onClick={() => exchange.refetch()}>
+                    Retry exchange rates
+                  </Button>
+                )}
+              </div>
+            )}
             {step === 0 && (
-              <>
-                <Field label="Service title" htmlFor="title" required error={errors.title?.message}>
-                  <Input id="title" placeholder="e.g. Brand identity & logo design" {...register("title")} />
-                </Field>
+              <div className="max-w-3xl space-y-5">
                 <Field
-                  label="Category"
-                  htmlFor="category"
+                  label="Service title"
+                  htmlFor="title"
                   required
-                  error={errors.category?.message}
-                  hint={
-                    landingGroup
-                      ? `Listed under ${landingGroup.label} — ${landingGroup.description}`
-                      : "Pick the trade you actually do; we file you under the right side of the platform."
-                  }
+                  hint="Tell buyers exactly what you will do."
                 >
-                  <GroupedNativeSelect
-                    id="category"
-                    groups={CATEGORY_GROUPS}
-                    placeholder="Choose a category"
-                    {...register("category")}
+                  <Input
+                    id="title"
+                    maxLength={200}
+                    value={v.title}
+                    onChange={(e) => set("title", e.target.value)}
+                    placeholder="I will design and build your business website"
                   />
                 </Field>
-                <Field label="Experience" htmlFor="experience" required error={errors.experience?.message}>
-                  <NativeSelect id="experience" options={EXPERIENCE} placeholder="Select your professional experience" {...register("experience")} />
+                <Field label="Category" htmlFor="category" required>
+                  <GroupedNativeSelect
+                    id="category"
+                    groups={GROUPS}
+                    value={v.category}
+                    onChange={(e) => set("category", e.target.value)}
+                  />
                 </Field>
-                <Field
-                  label="About this service"
-                  htmlFor="description"
-                  required
-                  error={errors.description?.message}
-                  hint={
-                    !v.title || v.title.length < 3 || !v.category
-                      ? "Explain the scope of your service, your process and the outcome a client can expect."
-                      : "Include deliverables, exclusions and any information you need from the client. Review any AI suggestions before publishing."
-                  }
-                >
-                  <div className="mb-2 flex justify-end">
-                    <AiAssistButton
-                      disabled={!v.title || v.title.length < 3 || !v.category}
-                      run={writeWithAi}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <Field label="Experience" htmlFor="experience" required>
+                    <NativeSelect
+                      id="experience"
+                      options={[
+                        "Less than 1 year",
+                        "1–3 years",
+                        "3–5 years",
+                        "5–10 years",
+                        "10+ years",
+                      ]}
+                      value={v.experience}
+                      onChange={(e) => set("experience", e.target.value)}
                     />
-                  </div>
-                  <Textarea id="description" rows={5} placeholder="Describe what you deliver, who the service is for, your working process and what is included in the price." {...register("description")} />
+                  </Field>
+                  <Field label="Availability" htmlFor="availability" required>
+                    <NativeSelect
+                      id="availability"
+                      options={[
+                        "Available now",
+                        "Within a few days",
+                        "Within a week",
+                        "Booking 2+ weeks out",
+                      ]}
+                      value={v.availability}
+                      onChange={(e) => set("availability", e.target.value)}
+                    />
+                  </Field>
+                </div>
+                <Field
+                  label="Skills"
+                  required
+                  hint="Add skills buyers can search for."
+                >
+                  <TagsInput
+                    value={skills}
+                    onChange={(next) => setSkills(next.slice(0, 20))}
+                  />
                 </Field>
-              </>
+              </div>
             )}
-
             {step === 1 && (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Hourly rate (£)" htmlFor="hourlyRate" required error={errors.hourlyRate?.message}>
-                    <Input id="hourlyRate" type="number" min="0" step="1" placeholder="0" {...register("hourlyRate")} />
-                  </Field>
-                  <Field label="Availability" htmlFor="availability" required error={errors.availability?.message}>
-                    <NativeSelect id="availability" options={AVAILABILITY} placeholder="Select availability" {...register("availability")} />
-                  </Field>
-                </div>
-                <Field label="Skills" required hint="List skills, tools and specialisms directly relevant to this service." error={step === 1 ? stepError : undefined}>
-                  <TagsInput value={skills} onChange={setSkills} placeholder="e.g. Figma, Branding — press Enter" />
+                <Field
+                  label="Hourly rate ($ USD)"
+                  htmlFor="hourly-rate"
+                  required
+                  hint="For hourly bookings. Each package below has its own fixed total price."
+                >
+                  <Input
+                    className="max-w-xs"
+                    id="hourly-rate"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={v.hourlyRate}
+                    onChange={(e) => set("hourlyRate", e.target.value)}
+                  />
                 </Field>
-              </>
-            )}
-
-            {step === 2 && (
-              <>
-                <Field label="Packages" required hint="Define 1–3 packages. State the deliverables, total price and turnaround time for each." error={step === 2 ? stepError : undefined}>
-                  <div className="space-y-4">
-                    {packages.map((p, i) => (
-                      <div key={i} className="rounded-xl border border-border p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold text-foreground">Package {i + 1}</span>
-                          {packages.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => setPackages((prev) => prev.filter((_, idx) => idx !== i))}
-                              aria-label={`Remove package ${i + 1}`}
-                              className="text-muted-foreground hover:text-destructive"
-                            >
-                              <Trash2 className="w-4 h-4" aria-hidden="true" />
-                            </button>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <Input aria-label={`Package ${i + 1} name`} placeholder="Name (e.g. Essential)" value={p.name} onChange={(e) => setPackage(i, { name: e.target.value })} />
-                          <Input aria-label={`Package ${i + 1} price in GBP`} type="number" min="0" step="1" placeholder="Price (£)" value={p.price} onChange={(e) => setPackage(i, { price: e.target.value })} />
-                          <Input aria-label={`Package ${i + 1} delivery time`} placeholder="Delivery (e.g. 3 working days)" value={p.delivery} onChange={(e) => setPackage(i, { delivery: e.target.value })} />
-                        </div>
-                        <Textarea aria-label={`Package ${i + 1} deliverables`} rows={2} placeholder="List the deliverables, scope and any included revisions." value={p.description} onChange={(e) => setPackage(i, { description: e.target.value })} />
+                <p className="text-sm text-muted-foreground">
+                  Offer one package or up to three tiers. Prices are entered in
+                  US dollars; buyers see their selected currency.
+                </p>
+                <div className="grid items-start gap-4 lg:grid-cols-3">
+                  {packages.map((p, i) => (
+                    <section
+                      key={i}
+                      aria-label={`${TIERS[i]} package`}
+                      className="rounded-xl border overflow-hidden"
+                    >
+                      <div className="flex justify-between items-center bg-primary/5 px-4 py-3">
+                        <h3 className="font-bold">{TIERS[i]}</h3>
+                        {packages.length > 1 && (
+                          <button
+                            type="button"
+                            aria-label={`Remove ${TIERS[i]} package`}
+                            onClick={() =>
+                              setPackages((prev) =>
+                                prev.filter((_, n) => n !== i),
+                              )
+                            }
+                            className="p-2"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
-                    ))}
-                    {packages.length < 3 && (
-                      <button
-                        type="button"
-                        onClick={() => setPackages((prev) => [...prev, { ...emptyPackage }])}
-                        className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-                      >
-                        <Plus className="w-4 h-4" aria-hidden="true" /> Add package
-                      </button>
-                    )}
-                  </div>
-                </Field>
+                      <div className="p-4 space-y-4">
+                        <Field
+                          label="Package name"
+                          htmlFor={`name-${i}`}
+                          required
+                        >
+                          <Input
+                            id={`name-${i}`}
+                            maxLength={80}
+                            value={p.name}
+                            onChange={(e) =>
+                              changePackage(i, { name: e.target.value })
+                            }
+                          />
+                        </Field>
+                        <Field
+                          label="What's included"
+                          htmlFor={`scope-${i}`}
+                          required
+                        >
+                          <Textarea
+                            id={`scope-${i}`}
+                            maxLength={2000}
+                            rows={4}
+                            value={p.description}
+                            placeholder="Describe the scope and deliverables for this package."
+                            onChange={(e) =>
+                              changePackage(i, { description: e.target.value })
+                            }
+                          />
+                        </Field>
+                        <Field
+                          label="Delivery / contract duration"
+                          htmlFor={`delivery-${i}`}
+                          required
+                          hint="e.g. 3 working days or a 5-day contract"
+                        >
+                          <Input
+                            id={`delivery-${i}`}
+                            maxLength={80}
+                            value={p.delivery}
+                            onChange={(e) =>
+                              changePackage(i, { delivery: e.target.value })
+                            }
+                          />
+                        </Field>
+                        <Field
+                          label="Included revisions"
+                          htmlFor={`revisions-${i}`}
+                          required
+                        >
+                          <Input
+                            id={`revisions-${i}`}
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={p.revisions}
+                            onChange={(e) =>
+                              changePackage(i, { revisions: e.target.value })
+                            }
+                          />
+                        </Field>
+                        <Field
+                          label="Deliverable checklist"
+                          hint="One feature per entry. Press Enter to add."
+                        >
+                          <TagsInput
+                            value={p.features}
+                            onChange={(features) =>
+                              changePackage(i, {
+                                features: features.slice(0, 20),
+                              })
+                            }
+                            placeholder="e.g. 5 responsive pages"
+                          />
+                        </Field>
+                        <Field
+                          label="Total package price ($ USD)"
+                          htmlFor={`price-${i}`}
+                          required
+                        >
+                          <Input
+                            id={`price-${i}`}
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            value={p.price}
+                            onChange={(e) =>
+                              changePackage(i, { price: e.target.value })
+                            }
+                          />
+                        </Field>
+                      </div>
+                    </section>
+                  ))}
+                </div>
+                {packages.length < 3 && (
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      setPackages((prev) => [
+                        ...prev,
+                        newPackage(TIERS[prev.length]),
+                      ])
+                    }
+                  >
+                    <Plus size={16} className="mr-2" />
+                    Add {TIERS[packages.length]} package
+                  </Button>
+                )}
               </>
             )}
-
-            {step === 3 && (
-              <div className="space-y-5">
-                <Field label="Profile photo" required hint="A clear headshot or your business logo." error={step === 3 ? stepError : undefined}>
-                  <AvatarUploadInput value={avatar} onChange={setAvatar} />
-                </Field>
-
-                <div className="rounded-xl border border-border p-4">
-                  <h2 className="text-sm font-bold text-foreground mb-2">Review</h2>
-                  <p className="font-semibold text-foreground">{v.title || "Untitled service"}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {v.category ? serviceCategoryLabel(v.category) : "No category"} · {v.experience || "—"}
-                  </p>
-                  {landingGroup && (
-                    <p className="mt-1.5 text-xs text-muted-foreground">
-                      Publishes to{" "}
-                      <span className="font-semibold text-primary">{landingGroup.label}</span> on the
-                      services page.
-                    </p>
-                  )}
-                  <div className="mt-1 flex items-center gap-2 text-sm">
-                    <Price amount={Number(v.hourlyRate) || 0} className="font-bold text-primary" />
-                    <span className="text-muted-foreground">/hr · {v.availability || "—"}</span>
-                  </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {skills.length} skill{skills.length === 1 ? "" : "s"} · {validPackages.length} package
-                    {validPackages.length === 1 ? "" : "s"}
-                  </p>
+            {step === 2 && (
+              <div className="space-y-5 max-w-3xl">
+                <div className="flex justify-end">
+                  <AiAssistButton
+                    disabled={v.title.length < 3 || !v.category}
+                    run={writeWithAi}
+                  />
                 </div>
+                <Field
+                  label="About your service"
+                  htmlFor="description"
+                  required
+                  hint="Explain your process, deliverables and exclusions."
+                >
+                  <Textarea
+                    id="description"
+                    rows={7}
+                    maxLength={5000}
+                    value={v.description}
+                    onChange={(e) => set("description", e.target.value)}
+                  />
+                </Field>
+                <h3 className="font-bold">Frequently asked questions</h3>
+                {details.faqs.map((faq, i) => (
+                  <div key={i} className="rounded-xl border p-4 space-y-3">
+                    <Field
+                      label={`Question ${i + 1}`}
+                      htmlFor={`question-${i}`}
+                    >
+                      <Input
+                        id={`question-${i}`}
+                        value={faq.question}
+                        maxLength={300}
+                        onChange={(e) =>
+                          setDetails((d) => ({
+                            ...d,
+                            faqs: d.faqs.map((f, n) =>
+                              n === i ? { ...f, question: e.target.value } : f,
+                            ),
+                          }))
+                        }
+                      />
+                    </Field>
+                    <Field label="Answer" htmlFor={`answer-${i}`}>
+                      <Textarea
+                        id={`answer-${i}`}
+                        value={faq.answer}
+                        maxLength={2000}
+                        onChange={(e) =>
+                          setDetails((d) => ({
+                            ...d,
+                            faqs: d.faqs.map((f, n) =>
+                              n === i ? { ...f, answer: e.target.value } : f,
+                            ),
+                          }))
+                        }
+                      />
+                    </Field>
+                    <Button
+                      variant="ghost"
+                      onClick={() =>
+                        setDetails((d) => ({
+                          ...d,
+                          faqs: d.faqs.filter((_, n) => n !== i),
+                        }))
+                      }
+                    >
+                      Remove question
+                    </Button>
+                  </div>
+                ))}
+                {details.faqs.length < 10 && (
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      setDetails((d) => ({
+                        ...d,
+                        faqs: [...d.faqs, { question: "", answer: "" }],
+                      }))
+                    }
+                  >
+                    <Plus size={16} className="mr-2" />
+                    Add FAQ
+                  </Button>
+                )}
               </div>
+            )}
+            {step === 3 && (
+              <div className="space-y-4 max-w-3xl">
+                <p className="text-muted-foreground">
+                  Tell buyers what you need before work starts: a brief,
+                  measurements, reference images or access arrangements. Do not
+                  ask for passwords or payment details.
+                </p>
+                {details.requirements.map((r, i) => (
+                  <Field
+                    key={i}
+                    label={`Buyer requirement ${i + 1}`}
+                    htmlFor={`requirement-${i}`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <Textarea
+                        id={`requirement-${i}`}
+                        maxLength={1000}
+                        value={r}
+                        onChange={(e) =>
+                          setDetails((d) => ({
+                            ...d,
+                            requirements: d.requirements.map((x, n) =>
+                              n === i ? e.target.value : x,
+                            ),
+                          }))
+                        }
+                      />
+                      <Button
+                        variant="ghost"
+                        aria-label={`Remove requirement ${i + 1}`}
+                        onClick={() =>
+                          setDetails((d) => ({
+                            ...d,
+                            requirements: d.requirements.filter(
+                              (_, n) => n !== i,
+                            ),
+                          }))
+                        }
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                  </Field>
+                ))}
+                {details.requirements.length < 20 && (
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      setDetails((d) => ({
+                        ...d,
+                        requirements: [...d.requirements, ""],
+                      }))
+                    }
+                  >
+                    <Plus size={16} className="mr-2" />
+                    Add requirement
+                  </Button>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Optional. These instructions appear on your service page.
+                </p>
+              </div>
+            )}
+            {step === 4 && (
+              <div className="max-w-3xl space-y-6">
+                <Field label="Profile photo or business logo" required>
+                  <AvatarUploadInput
+                    value={avatar}
+                    onChange={setAvatar}
+                    onBusyChange={setAvatarUploading}
+                  />
+                </Field>
+                <Field
+                  label="Showcase your work"
+                  hint="Add up to six photos. Your first image is the gallery cover. Use work you own or have permission to share."
+                >
+                  <ImageUploadInput
+                    purpose="service"
+                    value={details.gallery}
+                    onChange={(gallery) =>
+                      setDetails((d) => ({ ...d, gallery }))
+                    }
+                    maxFiles={6}
+                    onBusyChange={setGalleryUploading}
+                  />
+                </Field>
+              </div>
+            )}
+            {step === 5 && (
+              <>
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Eye size={16} />
+                  Buyer preview — review your details before publishing.
+                </p>
+                <ServiceOfferPreview
+                  title={v.title}
+                  description={v.description}
+                  provider={user?.name ?? "You"}
+                  avatar={avatar}
+                  category={serviceCategoryLabel(v.category)}
+                  packages={input.packages.map((p, i) => ({
+                    ...p,
+                    price: Number(packages[i].price),
+                  }))}
+                  priceCurrency="USD"
+                  details={details}
+                />
+              </>
             )}
           </WizardShell>
         </div>

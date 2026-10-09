@@ -33,8 +33,9 @@ export const servicesTable = pgTable("services", {
   // comparison rather than an IN () over every category in that group.
   group: serviceGroupEnum("group").notNull(),
   availability: text("availability").notNull(),
+  details: jsonb("details").$type<{ faqs: { question: string; answer: string }[]; requirements: string[]; gallery: string[] }>().notNull().default({ faqs: [], requirements: [], gallery: [] }),
   packages: jsonb("packages")
-    .$type<{ name: string; price: number; delivery: string; description: string }[]>()
+    .$type<{ name: string; price: number; delivery: string; description: string; revisions?: number; features?: string[] }[]>()
     .notNull()
     .default([]),
   skills: text("skills").array().notNull().default([]),

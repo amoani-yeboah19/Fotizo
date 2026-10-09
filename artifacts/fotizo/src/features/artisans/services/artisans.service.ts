@@ -49,6 +49,7 @@ export const artisansService = {
         group,
         availability: input.availability,
         packages: input.packages,
+        details: input.details,
         skills: input.skills,
       };
       fx.services.unshift(service);
@@ -117,6 +118,7 @@ export const artisansService = {
       skills,
       avatar,
       packages,
+      details,
     } = input;
     return normalise(
       await api.patch<Service>(`/services/${id}`, {
@@ -129,6 +131,7 @@ export const artisansService = {
         skills,
         avatar,
         packages,
+        details,
       }),
     );
   },

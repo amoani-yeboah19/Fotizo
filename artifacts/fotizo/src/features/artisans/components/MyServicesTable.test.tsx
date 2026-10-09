@@ -100,6 +100,6 @@ it("saves edits with only the fields a provider may change", async () => {
   expect(path).toBe("/services/a");
   expect(body).toMatchObject({ title: "Braiding a", hourlyRate: 25 });
   expect(Object.keys(body as object).sort()).toEqual(
-    ["availability", "avatar", "category", "description", "experience", "hourlyRate", "packages", "skills", "title"],
+    ["availability", "avatar", "category", "description", "details", "experience", "hourlyRate", "packages", "skills", "title"],
   );
 });

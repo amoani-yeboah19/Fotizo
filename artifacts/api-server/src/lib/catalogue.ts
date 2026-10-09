@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, asc, desc, eq, gt, gte, ilike, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, ilike, lte, or, sql, isNull } from "drizzle-orm";
 import { productsTable as p, usersTable } from "@workspace/db";
 import { ownerVisible } from "./identity";
 
@@ -70,6 +70,7 @@ export function catalogueWhere(filter: z.infer<typeof catalogueQuery>) {
   const search = `%${filter.q.replace(/[\\%_]/g, "\\$&")}%`;
   return and(
     eq(p.status, "active"),
+    isNull(p.deletedAt),
     eq(p.channel, filter.channel),
     // Sellers' listings are public once their identity is verified.
     ownerVisible(p.sellerId),

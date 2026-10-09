@@ -99,7 +99,15 @@ export interface Product {
   };
 }
 
+export interface ServiceDetails {
+  faqs: { question: string; answer: string }[];
+  requirements: string[];
+  gallery: string[];
+}
+
 export interface ServicePackage {
+  revisions?: number;
+  features?: string[];
   name: string;
   price: number;
   delivery: string;
@@ -123,6 +131,7 @@ export interface Service {
    *  by the server, so it is read-only to the client. */
   group: ServiceGroupId;
   availability: string;
+  details?: ServiceDetails;
   packages: ServicePackage[];
   skills: string[];
   /** Withdrawn listings are hidden from customers but kept for their owner. */
@@ -263,6 +272,7 @@ export interface NewServiceInput {
   availability: string;
   skills: string[];
   avatar: string;
+  details?: ServiceDetails;
   packages: ServicePackage[];
   provider: string;
   providerId: string;

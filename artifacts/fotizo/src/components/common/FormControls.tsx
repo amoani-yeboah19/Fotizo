@@ -1,8 +1,13 @@
-import { useState, useRef, type ReactNode, type SelectHTMLAttributes } from "react";
+import {
+  useState,
+  useRef,
+  type ReactNode,
+  type SelectHTMLAttributes,
+} from "react";
 import { X, ImagePlus, Camera, Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { apiErrorMessage } from "@/api";
+import { ApiError, apiErrorMessage } from "@/api";
 import { uploadImage, type UploadPurpose } from "@/services/uploads.service";
 
 // Label + optional hint/error wrapper used by the posting wizards.
@@ -45,7 +50,10 @@ export function NativeSelect({
   options,
   placeholder = "Select…",
   ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & { options: string[]; placeholder?: string }) {
+}: SelectHTMLAttributes<HTMLSelectElement> & {
+  options: string[];
+  placeholder?: string;
+}) {
   return (
     <select className={selectClass} {...props}>
       <option value="" disabled>
@@ -72,7 +80,10 @@ export function GroupedNativeSelect({
   groups,
   placeholder = "Select…",
   ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & { groups: SelectOptionGroup[]; placeholder?: string }) {
+}: SelectHTMLAttributes<HTMLSelectElement> & {
+  groups: SelectOptionGroup[];
+  placeholder?: string;
+}) {
   return (
     <select className={selectClass} {...props}>
       <option value="" disabled>
@@ -93,22 +104,51 @@ export function GroupedNativeSelect({
 
 // Downscale a picked/captured photo on a canvas so multi-MB camera shots
 // upload quickly, then store it (Supabase Storage; inline in demo builds).
-async function uploadPhoto(file: File, purpose: UploadPurpose, maxDim = 1200, quality = 0.82): Promise<string> {
+export async function uploadPhoto(
+  file: File,
+  purpose: UploadPurpose,
+  maxDim = 1200,
+  quality = 0.82,
+): Promise<string> {
+  if (!file.size) throw new Error("This photo is empty. Choose another image.");
+  if (file.size > 25 * 1024 * 1024)
+    throw new Error("Choose a photo smaller than 25 MB.");
   const objectUrl = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const i = new Image();
       i.onload = () => resolve(i);
-      i.onerror = () => reject(new Error("Could not read image"));
+      i.onerror = () =>
+        reject(
+          new Error(
+            "This photo format could not be opened. Choose a JPEG, PNG or WebP photo, or export your iPhone photo as JPEG.",
+          ),
+        );
       i.src = objectUrl;
     });
     const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(img.width * scale));
     canvas.height = Math.max(1, Math.round(img.height * scale));
-    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const context = canvas.getContext("2d");
+    if (!context)
+      throw new Error(
+        "Your browser could not prepare this photo. Please reload and try again.",
+      );
+    context.drawImage(img, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not read image"))), "image/jpeg", quality),
+      canvas.toBlob(
+        (b) =>
+          b
+            ? resolve(b)
+            : reject(
+                new Error(
+                  "This photo format could not be opened. Choose a JPEG, PNG or WebP photo, or export your iPhone photo as JPEG.",
+                ),
+              ),
+        "image/jpeg",
+        quality,
+      ),
     );
     return await uploadImage(blob, purpose);
   } finally {
@@ -116,7 +156,21 @@ async function uploadPhoto(file: File, purpose: UploadPurpose, maxDim = 1200, qu
   }
 }
 
-const uploadFailure = (error: unknown) => apiErrorMessage(error, "We couldn't upload that photo. Please try again.");
+const uploadFailure = (error: unknown) => {
+  if (error instanceof ApiError) {
+    if (error.status >= 500)
+      return "Photo storage is temporarily unavailable. Please try again shortly. Your form has not been lost.";
+    return apiErrorMessage(
+      error,
+      "The upload was refused. Please sign in again and retry.",
+    );
+  }
+  return error instanceof TypeError
+    ? "Could not connect to photo storage. Check your connection and try again."
+    : error instanceof Error
+      ? error.message
+      : "Could not upload this photo.";
+};
 
 // Photo uploader: pick from the device, drag & drop, or take a picture on
 // phones. Previews render as removable thumbnails; the first image is the cover.
@@ -125,11 +179,15 @@ export function ImageUploadInput({
   onChange,
   error,
   purpose = "product",
+  maxFiles = 12,
+  onBusyChange,
 }: {
   value: string[];
   onChange: (next: string[]) => void;
   error?: string;
   purpose?: UploadPurpose;
+  maxFiles?: number;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const pickRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -138,17 +196,30 @@ export function ImageUploadInput({
   const [uploadError, setUploadError] = useState("");
 
   const addFiles = async (files: FileList | File[] | null) => {
-    const list = Array.from(files ?? []).filter((f) => f.type.startsWith("image/"));
+    if (busy) return;
+    const list = Array.from(files ?? []).slice(
+      0,
+      Math.max(0, maxFiles - value.length),
+    );
     if (!list.length) return;
     setBusy(true);
+    onBusyChange?.(true);
     setUploadError("");
     // Keep every photo that uploaded, and say so if any didn't.
-    const results = await Promise.allSettled(list.map((f) => uploadPhoto(f, purpose)));
-    const urls = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
-    const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
-    if (urls.length) onChange([...value, ...urls.filter((u) => !value.includes(u))]);
+    const results = await Promise.allSettled(
+      list.map((f) => uploadPhoto(f, purpose)),
+    );
+    const urls = results.flatMap((r) =>
+      r.status === "fulfilled" ? [r.value] : [],
+    );
+    const failed = results.find(
+      (r): r is PromiseRejectedResult => r.status === "rejected",
+    );
+    if (urls.length)
+      onChange([...value, ...urls.filter((u) => !value.includes(u))]);
     if (failed) setUploadError(uploadFailure(failed.reason));
     setBusy(false);
+    onBusyChange?.(false);
   };
 
   return (
@@ -181,8 +252,11 @@ export function ImageUploadInput({
         role="button"
         tabIndex={0}
         aria-label="Upload product photos"
+        aria-disabled={busy}
         onClick={() => pickRef.current?.click()}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && pickRef.current?.click()}
+        onKeyDown={(e) =>
+          (e.key === "Enter" || e.key === " ") && pickRef.current?.click()
+        }
         onDragOver={(e) => {
           e.preventDefault();
           setDragOver(true);
@@ -194,22 +268,33 @@ export function ImageUploadInput({
           void addFiles(e.dataTransfer.files);
         }}
         className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center cursor-pointer transition-colors ${
-          dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-muted/40"
+          dragOver
+            ? "border-primary bg-primary/5"
+            : "border-border hover:border-primary/50 hover:bg-muted/40"
         }`}
       >
         {busy ? (
-          <Loader2 className="w-6 h-6 animate-spin text-primary" aria-hidden="true" />
+          <Loader2
+            className="w-6 h-6 animate-spin text-primary"
+            aria-hidden="true"
+          />
         ) : (
-          <ImagePlus className="w-6 h-6 text-muted-foreground" aria-hidden="true" />
+          <ImagePlus
+            className="w-6 h-6 text-muted-foreground"
+            aria-hidden="true"
+          />
         )}
         <p className="text-sm font-medium text-foreground">
           {busy ? "Uploading photos…" : "Tap to upload photos"}
         </p>
-        <p className="text-xs text-muted-foreground">or drag &amp; drop images here</p>
+        <p className="text-xs text-muted-foreground">
+          or drag &amp; drop images here
+        </p>
       </div>
 
       <button
         type="button"
+        disabled={busy}
         onClick={() => cameraRef.current?.click()}
         className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3.5 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
       >
@@ -223,7 +308,11 @@ export function ImageUploadInput({
               key={`${i}-${src.slice(-16)}`}
               className="relative h-20 w-20 overflow-hidden rounded-lg border border-border bg-muted"
             >
-              <img src={src} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
+              <img
+                src={src}
+                alt={`Photo ${i + 1}`}
+                className="h-full w-full object-cover"
+              />
               {i === 0 && (
                 <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] font-semibold text-center py-0.5">
                   COVER
@@ -257,10 +346,12 @@ export function AvatarUploadInput({
   value,
   onChange,
   purpose = "service",
+  onBusyChange,
 }: {
   value: string;
   onChange: (next: string) => void;
   purpose?: UploadPurpose;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const pickRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -269,8 +360,9 @@ export function AvatarUploadInput({
 
   const addFile = async (files: FileList | null) => {
     const file = files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
+    if (!file || busy) return;
     setBusy(true);
+    onBusyChange?.(true);
     setUploadError("");
     try {
       onChange(await uploadPhoto(file, purpose, 600));
@@ -278,11 +370,12 @@ export function AvatarUploadInput({
       setUploadError(uploadFailure(error));
     } finally {
       setBusy(false);
+      onBusyChange?.(false);
     }
   };
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex flex-wrap items-center gap-4">
       <input
         ref={pickRef}
         type="file"
@@ -307,10 +400,18 @@ export function AvatarUploadInput({
 
       <div className="relative h-16 w-16 shrink-0">
         {value ? (
-          <img src={value} alt="Profile photo preview" className="h-16 w-16 rounded-full border border-border object-cover" />
+          <img
+            src={value}
+            alt="Profile photo preview"
+            className="h-16 w-16 rounded-full border border-border object-cover"
+          />
         ) : (
           <span className="flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-border bg-muted text-muted-foreground">
-            {busy ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : <ImagePlus className="w-5 h-5" aria-hidden="true" />}
+            {busy ? (
+              <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+            ) : (
+              <ImagePlus className="w-5 h-5" aria-hidden="true" />
+            )}
           </span>
         )}
         {value && (
@@ -328,6 +429,7 @@ export function AvatarUploadInput({
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
+          disabled={busy}
           onClick={() => pickRef.current?.click()}
           className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3.5 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
         >
@@ -335,6 +437,7 @@ export function AvatarUploadInput({
         </button>
         <button
           type="button"
+          disabled={busy}
           onClick={() => cameraRef.current?.click()}
           className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3.5 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
         >
@@ -342,7 +445,7 @@ export function AvatarUploadInput({
         </button>
       </div>
       {uploadError && (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="w-full text-sm text-destructive">
           {uploadError}
         </p>
       )}

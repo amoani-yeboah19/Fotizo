@@ -381,7 +381,7 @@ export default function DashboardSeller() {
         title="Remove product?"
         description={
           pendingDelete
-            ? `"${pendingDelete.title}" will be removed from the marketplace and buyers won't see it anymore.`
+            ? `"${pendingDelete.title}" will be removed from your products and the marketplace. Existing orders will be kept.`
             : undefined
         }
         confirmLabel="Remove"
