@@ -84,23 +84,43 @@ export default function ShopProductPage() {
   );
   const displayPrice = selectedVariant?.price ?? product.price;
   const off = product.variants?.length ? 0 : discountPct(product);
-  // SKU persistence is not supported by the cart API yet; never discard a chosen option.
-  const orderingUnavailable =
-    product.requiresPublication ||
-    !!product.variants?.length ||
-    !!productSizeRequest(product);
+  // Preview items can't be ordered until they are published.
+  const orderingUnavailable = !!product.requiresPublication;
+  // The chosen colour and size are saved with the cart line and the order.
+  const sizeRequest = productSizeRequest(product);
+  const hasVariants = !!product.variants?.length;
+  const options = hasVariants
+    ? colour && size
+      ? `Colour: ${colour} · Size: ${size}`
+      : ""
+    : sizeRequest
+      ? size
+        ? `${sizeRequest.label}: ${size}`
+        : ""
+      : "";
+  const missingChoice =
+    (hasVariants || sizeRequest) && !options
+      ? hasVariants && !colour
+        ? "Choose a colour"
+        : "Choose a size"
+      : "";
 
   // Shop goods are sourced to order, so local stock does not limit the cart.
   const add = (goToCart: boolean) => {
     if (orderingUnavailable) return;
+    if (missingChoice) {
+      toast({ title: missingChoice, description: "Pick your options above, then add to cart." });
+      return;
+    }
     for (let i = 0; i < qty; i++) {
       addItem({
         id: `shop-${product.id}`,
         productId: product.id,
         title: product.title,
-        price: product.price,
-        image: product.image,
+        price: displayPrice,
+        image: selectedVariant?.image || product.image,
         seller: SHOP_SELLER,
+        ...(options ? { options } : {}),
       });
     }
     if (goToCart) {
@@ -108,7 +128,7 @@ export default function ShopProductPage() {
     } else {
       toast({
         title: "Added to cart",
-        description: `${qty} × ${product.title}`,
+        description: `${qty} × ${product.title}${options ? ` (${options})` : ""}`,
       });
     }
   };
