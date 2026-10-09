@@ -440,6 +440,10 @@ router.post("/decisions/:id", async (req: AuthenticatedRequest, res) => {
       });
       return;
     }
+    if (d.kind === "product") {
+      const deleted = await tx.query.productsTable.findFirst({ where: eq(productsTable.id, targetId.data) });
+      if (deleted?.deletedAt) throw new AdminError(409, "This product was deleted by its seller and cannot be republished.");
+    }
     const table = d.kind === "product" ? productsTable : servicesTable;
     const [listing] = await tx
       .select({ id: table.id, title: table.title, status: table.status, hold: table.moderationHold })

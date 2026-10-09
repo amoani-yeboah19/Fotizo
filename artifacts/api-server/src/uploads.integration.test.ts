@@ -203,7 +203,14 @@ describe("image uploads to Supabase Storage", () => {
       packages: [{ name: "Basic", price: 300, delivery: "7 days", description: "Five pages" }],
     };
     expect((await send("POST", "/services", { ...service, avatar: mine }, seller.cookie)).status).toBe(400);
-    expect((await send("POST", "/services", { ...service, avatar: serviceShot }, seller.cookie)).status).toBe(201);
+    const details = { faqs: [{ question: "What is included?", answer: "A five-page responsive website." }], requirements: ["Please provide your business brief."], gallery: [serviceShot] };
+    const serviceCreated = await send("POST", "/services", { ...service, avatar: serviceShot, details, packages: [{ ...service.packages[0], revisions: 2, features: ["Responsive layout"] }] }, seller.cookie);
+    expect(serviceCreated.status).toBe(201);
+    const savedService = await serviceCreated.json() as { id: string };
+    const roundTrip = await fetch(`${base}/api/services/${savedService.id}`);
+    expect(await roundTrip.json()).toMatchObject({ details, packages: [expect.objectContaining({ revisions: 2, features: ["Responsive layout"] })] });
+    expect((await send("POST", "/services", { ...service, avatar: serviceShot, details: { ...details, gallery: [theirs] } }, seller.cookie)).status).toBe(400);
+    expect((await send("PATCH", `/services/${savedService.id}`, { ...service, avatar: serviceShot, details }, seller.cookie)).status).toBe(200);
   });
 });
 

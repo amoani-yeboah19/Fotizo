@@ -15,5 +15,6 @@ export async function uploadImage(image: Blob, purpose: UploadPurpose): Promise<
       reader.readAsDataURL(image);
     });
   const { url } = await api.post<{ url: string }>(`/uploads/images?purpose=${purpose}`, image);
+  if (typeof url !== "string" || !/^https?:\/\//.test(url)) throw new Error("Photo storage did not return a saved image. Please try again.");
   return url;
 }

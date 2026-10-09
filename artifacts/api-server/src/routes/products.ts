@@ -11,7 +11,7 @@ import {
 } from "../lib/admin";
 import { z } from "zod";
 import type { CatalogueProduct } from "@workspace/api-zod";
-import { eq, and, ne, desc, sql } from "drizzle-orm";
+import { eq, and, ne, desc, sql, isNull } from "drizzle-orm";
 import { ownerVisible } from "../lib/identity";
 import {
   db,
@@ -171,6 +171,7 @@ router.get("/products/categories", async (req, res) => {
     .where(
       and(
         eq(productsTable.status, "active"),
+        isNull(productsTable.deletedAt),
         eq(productsTable.channel, filter.data.channel),
         ownerVisible(productsTable.sellerId),
       ),
@@ -194,6 +195,7 @@ router.get("/products/:id", async (req, res) => {
       and(
         eq(productsTable.id, parsedId.data),
         eq(productsTable.status, "active"),
+        isNull(productsTable.deletedAt),
         ownerVisible(productsTable.sellerId),
       ),
     )
@@ -215,6 +217,7 @@ router.get("/products/:id/related", async (req, res) => {
     where: and(
       eq(productsTable.id, parsedId.data),
       eq(productsTable.status, "active"),
+      isNull(productsTable.deletedAt),
       ownerVisible(productsTable.sellerId),
     ),
   });
@@ -235,6 +238,7 @@ router.get("/products/:id/related", async (req, res) => {
         eq(productsTable.channel, product.channel),
         ne(productsTable.id, product.id),
         eq(productsTable.status, "active"),
+        isNull(productsTable.deletedAt),
         ownerVisible(productsTable.sellerId),
       ),
     )
@@ -310,7 +314,7 @@ router.get(
     const rows = await db
       .select()
       .from(productsTable)
-      .where(eq(productsTable.sellerId, req.auth!.userId))
+      .where(and(eq(productsTable.sellerId, req.auth!.userId), isNull(productsTable.deletedAt)))
       .orderBy(desc(productsTable.createdAt));
     // Units sold per listing from this seller's order lines, excluding cancelled.
     const sold = await db
@@ -372,7 +376,7 @@ async function loadOwnedProduct(id: string | string[], sellerId: string) {
   const product = await db.query.productsTable.findFirst({
     where: eq(productsTable.id, parsedId.data),
   });
-  if (!product) return { error: 404 as const };
+  if (!product || product.deletedAt) return { error: 404 as const };
   if (product.sellerId !== sellerId) return { error: 403 as const };
   return { product };
 }
@@ -470,9 +474,8 @@ router.patch(
   },
 );
 
-// Soft delete: marks the listing unpublished (hidden from public reads)
-// rather than removing the row, so nothing that later references this
-// product by id (e.g. past orders, once that feature exists) dangles.
+// Owner deletion is distinct from moderation unpublishing. Keep the row for
+// order history, but remove it from both public and owner catalogue reads.
 router.delete(
   "/products/:id",
   requireAuth,
@@ -493,7 +496,7 @@ router.delete(
 
     await db
       .update(productsTable)
-      .set({ status: "unpublished" })
+      .set({ status: "unpublished", deletedAt: new Date() })
       .where(eq(productsTable.id, found.product.id));
     res.status(204).end();
   },

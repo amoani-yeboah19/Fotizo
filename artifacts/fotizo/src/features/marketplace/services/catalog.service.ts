@@ -162,10 +162,7 @@ export const catalogService = {
       if (idx !== -1) fx.products.splice(idx, 1);
       const sIdx = fx.sellerProducts.findIndex((p) => p.id === id);
       if (sIdx !== -1)
-        fx.sellerProducts[sIdx] = {
-          ...fx.sellerProducts[sIdx],
-          status: "unpublished",
-        };
+        fx.sellerProducts.splice(sIdx, 1);
       return;
     }
     await api.del(`/products/${id}`);

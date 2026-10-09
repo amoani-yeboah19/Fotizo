@@ -35,9 +35,9 @@ import { runtimeState } from "./lib/readiness";
 import {
   db,
   usersTable,
+  productsTable,
   sessionsTable,
   accountAuditTable,
-  productsTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { issueSession, resolveSession } from "./lib/sessions";
@@ -304,6 +304,22 @@ describe("catalogue ownership and publication", () => {
       body: JSON.stringify(changes),
     });
   }
+  it("removes seller-deleted products from their dashboard without erasing the record", async () => {
+    const seller = await register({ ...account, role: "seller" });
+    const other = await register({ ...account, role: "seller", email: "other-delete@example.com" });
+    const created = await post("/products", listing, seller.cookie);
+    const product = await created.json() as { id: string };
+    const remove = (cookie: string) => fetch(`${base}/api/products/${product.id}`, { method: "DELETE", headers: { ...headers, Cookie: cookie } });
+    expect((await remove(other.cookie)).status).toBe(403);
+    expect((await remove(seller.cookie)).status).toBe(204);
+    const mine = await fetch(`${base}/api/seller/products`, { headers: { Cookie: seller.cookie } });
+    expect(await mine.json()).not.toEqual(expect.arrayContaining([expect.objectContaining({ id: product.id })]));
+    expect((await fetch(`${base}/api/products/${product.id}`)).status).toBe(404);
+    expect((await change(product.id, seller.cookie, { status: "active" })).status).toBe(404);
+    const kept = await db.query.productsTable.findFirst({ where: eq(productsTable.id, product.id) });
+    expect(kept?.deletedAt).toBeTruthy();
+    expect(kept?.status).toBe("unpublished");
+  });
   it("keeps unpublished details private while allowing owner editing and republishing", async () => {
     const seller = await register({ ...account, role: "seller" });
     const other = await register({

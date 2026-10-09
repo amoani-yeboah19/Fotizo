@@ -9,6 +9,7 @@ export const useCreateService = () => {
     mutationFn: artisansService.createService,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["services"] });
+      qc.invalidateQueries({ queryKey: ["my-services"] });
     },
   });
 };

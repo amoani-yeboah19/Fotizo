@@ -19,6 +19,8 @@ const router: IRouter = Router();
 const GROUP_IDS = SERVICE_GROUPS.map((g) => g.id) as [ServiceGroupId, ...ServiceGroupId[]];
 
 const packageSchema = z.object({
+  revisions: z.number().int().min(0).max(100).optional(),
+  features: z.array(z.string().trim().min(1).max(200)).max(20).optional(),
   name: z.string().trim().min(1).max(80),
   price: z.number().positive(),
   delivery: z.string().trim().min(1).max(80),
@@ -37,6 +39,11 @@ const newServiceSchema = z.object({
   skills: z.array(z.string().trim().min(1)).min(1).max(20),
   avatar: z.string().trim().min(1),
   packages: z.array(packageSchema).min(1).max(3),
+  details: z.object({
+    faqs: z.array(z.object({ question: z.string().trim().min(1).max(300), answer: z.string().trim().min(1).max(2000) })).max(10),
+    requirements: z.array(z.string().trim().min(1).max(1000)).max(20),
+    gallery: z.array(z.string().trim().url()).max(6),
+  }).optional(),
 });
 
 // Shape returned to the client — provider name is looked up via the FK at
@@ -58,6 +65,7 @@ export function toPublicService(row: ServiceRow, providerName: string) {
     availability: row.availability,
     group: row.group,
     packages: row.packages,
+    details: row.details,
     skills: row.skills,
     status: row.status,
   };
@@ -142,7 +150,7 @@ router.post("/services", requireAuth, async (req: AuthenticatedRequest, res) => 
   const imageProblem = await listingImagesProblem(
     req.auth!.userId,
     "service",
-    [parsed.data.avatar],
+    [parsed.data.avatar, ...(parsed.data.details?.gallery ?? [])],
     provider?.avatar ? [provider.avatar] : [],
   );
   if (imageProblem) {
@@ -230,7 +238,7 @@ router.patch("/services/:id", requireAuth, async (req: AuthenticatedRequest, res
     res.status(400).json({ error: "Unknown service category." });
     return;
   }
-  const imageProblem = await listingImagesProblem(req.auth!.userId, "service", [parsed.data.avatar], [row.service.avatar]);
+  const imageProblem = await listingImagesProblem(req.auth!.userId, "service", [parsed.data.avatar, ...(parsed.data.details?.gallery ?? [])], [row.service.avatar, ...(row.service.details?.gallery ?? [])]);
   if (imageProblem) {
     res.status(400).json({ error: imageProblem });
     return;
