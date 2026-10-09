@@ -38,7 +38,8 @@ interface CartContextType {
   total: number;
   /** False until this session's saved cart has been loaded. */
   isLoaded: boolean;
-  addItem: (item: Omit<CartItem, "quantity">) => void;
+  /** Adds `quantity` (default 1) of the item to its cart line. */
+  addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
   /** Takes the line id (CartItem.id). */
   removeItem: (lineId: string) => void;
   /** Takes the line id (CartItem.id). */
@@ -156,10 +157,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   const addItem = useCallback(
-    (item: Omit<CartItem, "quantity">) => {
+    (item: Omit<CartItem, "quantity">, added = 1) => {
       const id = cartLineId(item.productId, item.options);
       const existing = itemsRef.current.find((i) => i.id === id);
-      const quantity = Math.min(MAX_QUANTITY, (existing?.quantity ?? 0) + 1);
+      const quantity = Math.min(MAX_QUANTITY, (existing?.quantity ?? 0) + Math.max(1, Math.floor(added)));
       setItems((prev) =>
         existing
           ? prev.map((i) => (i.id === id ? { ...i, quantity } : i))

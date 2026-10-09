@@ -112,8 +112,10 @@ export default function ShopProductPage() {
       toast({ title: missingChoice, description: "Pick your options above, then add to cart." });
       return;
     }
-    for (let i = 0; i < qty; i++) {
-      addItem({
+    // The whole quantity in one go: separate adds in the same click would each
+    // read the cart before the previous one was applied.
+    addItem(
+      {
         id: `shop-${product.id}`,
         productId: product.id,
         title: product.title,
@@ -121,8 +123,9 @@ export default function ShopProductPage() {
         image: selectedVariant?.image || product.image,
         seller: SHOP_SELLER,
         ...(options ? { options } : {}),
-      });
-    }
+      },
+      qty,
+    );
     if (goToCart) {
       setLocation("/cart");
     } else {
