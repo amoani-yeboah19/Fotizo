@@ -5,7 +5,6 @@ import {
   ArrowDown,
   ArrowRight,
   ArrowUpRight,
-  ChevronDown,
   LayoutGrid,
   Search,
   SlidersHorizontal,
@@ -62,16 +61,6 @@ export default function ShopPage() {
     : undefined;
   const [search, setSearch] = useState(params.get("q") ?? "");
   const [sort, setSort] = useState<Sort>("newest");
-  const [mobileCategories, setMobileCategories] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const media = window.matchMedia?.("(max-width: 767px)");
-    if (!media) return;
-    const sync = () => setIsMobile(media.matches);
-    sync();
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
   useEffect(() => {
     setSearch(new URLSearchParams(query).get("q") ?? "");
   }, [query]);
@@ -157,7 +146,6 @@ export default function ShopPage() {
     if (collection) next.set("collection", collection);
     navigate(`/shop${next.size ? "?" + next.toString() : ""}`);
     setSearch("");
-    setMobileCategories(false);
     setSort("newest");
   }
   const selection =
@@ -184,18 +172,15 @@ export default function ShopPage() {
           </header>
           <div className="discovery-layout">
             <aside className="discovery-sidebar" aria-label="Shop departments">
-              <button
-                className="discovery-sidebar-heading"
-                aria-expanded={!isMobile || mobileCategories}
-                aria-controls="shop-department-navigation"
-                onClick={() => setMobileCategories(!mobileCategories)}
-              >
+              <div className="discovery-sidebar-heading">
                 <LayoutGrid size={18} />
                 <strong>Categories</strong>
-                <ChevronDown size={16} />
-              </button>
+                <span className="discovery-category-hint">
+                  Swipe to explore <ArrowRight size={14} />
+                </span>
+              </div>
               <nav
-                className={`discovery-category-list ${mobileCategories ? "is-open" : ""}`}
+                className="discovery-category-list"
                 id="shop-department-navigation"
                 aria-label="Choose a department"
               >

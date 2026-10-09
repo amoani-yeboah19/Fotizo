@@ -1,6 +1,6 @@
 # Shop discovery storefront
 
-The shop keeps the Fotizo department list and navy/orange styling. Desktop uses a sticky category sidebar; mobile uses a collapsible category panel. The large promotional hero is replaced by a compact welcome, search, Lowest Prices and Top Picks panels, a personalised discovery rail, recently viewed items, and the normal paginated catalogue.
+The shop keeps the Fotizo department list and navy/orange styling. Desktop uses a sticky category sidebar; mobile uses an always-visible, horizontally swipeable category row. The large promotional hero is replaced by a compact welcome, search, Lowest Prices and Top Picks panels, a personalised discovery rail, recently viewed items, and the normal paginated catalogue.
 
 ## Discovery and filters
 
