@@ -1,18 +1,20 @@
-// Imports the 1688 clothing batch (docs/sourcing/1688-clothing-2026-10-04) into
-// the Fotizo Shop with server-calculated prices.
+// Imports the storefront's 1688 batches (clothing, more, home, departments,
+// shoes, family and the detailed listings) into the Fotizo Shop with
+// server-calculated prices.
 //
 //   pnpm exec tsx --env-file=<api .env> src/import-1688-catalogue.ts --dry-run
 //   pnpm exec tsx --env-file=<api .env> src/import-1688-catalogue.ts [--publish]
 //
-// The storefront file (1688-products.json) decides which offers are listed and
-// supplies the reviewed English title, description, category and local image;
-// the handoff (products.json) supplies the supplier cost, link and capture
-// details. Offers the storefront holds back (a payment-adjustment entry and
-// two with broken photos) are skipped.
+// Each batch's storefront file (1688-*-products.json) decides which offers are
+// listed and supplies the English title, description, category and local
+// images; its handoff (docs/sourcing/1688-*/products.json) supplies the supplier
+// cost, link and capture details. Offers a batch holds back are not in its
+// storefront file, so they are skipped. An offer in several batches is imported
+// once, from the first batch in BATCHES (the storefront's own precedence).
 //
 // Price = supplier CNY cost x 1.30 / CNY per GBP (CHINESE_GOODS in
 // @workspace/db), from the unrounded cost, at today's rate (falling back to the
-// verified rate in 1688-pricing.json). The markup is applied once; the
+// verified rate in the batch's pricing file). The markup is applied once; the
 // handoff's own GBP estimate is not reused. Shipping is quoted separately, and
 // every order is confirmed with the supplier before the buyer pays.
 //
@@ -20,7 +22,7 @@
 // keep working), then by (platform, offer id). Existing rows keep their ID,
 // images, status and stock; re-running only refreshes copy and prices. Supplier
 // links are stored privately in source_url, not in the public specs.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { sql } from "drizzle-orm";
@@ -30,7 +32,18 @@ const PUBLISH = process.argv.includes("--publish");
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "../..");
 const SHOP = resolve(ROOT, "artifacts/fotizo/src/features/shop/data");
-const HANDOFF = resolve(ROOT, "docs/sourcing/1688-clothing-2026-10-04/products.json");
+const SOURCING = resolve(ROOT, "docs/sourcing");
+// Storefront file, pricing file and handoff folder, in the storefront's order
+// (features/shop/data/sourced-catalogue.ts).
+const BATCHES = [
+  { storefront: "1688-family-products.json", pricing: "1688-family-pricing.json", handoff: "1688-family-2026-10-08" },
+  { storefront: "1688-departments-products.json", pricing: "1688-departments-pricing.json", handoff: "1688-departments-2026-10-07" },
+  { storefront: "1688-shoes-products.json", pricing: "1688-shoes-pricing.json", handoff: "1688-shoes-2026-10-07" },
+  { storefront: "1688-detail-products.json", pricing: "1688-pricing.json", handoff: "1688-clothing-2026-10-04" },
+  { storefront: "1688-more-products.json", pricing: "1688-more-pricing.json", handoff: "1688-more-2026-10-05" },
+  { storefront: "1688-home-products.json", pricing: "1688-home-pricing.json", handoff: "1688-home-2026-10-05" },
+  { storefront: "1688-products.json", pricing: "1688-pricing.json", handoff: "1688-clothing-2026-10-04" },
+];
 const RATES_URL = process.env.CURRENCY_RATES_URL ?? "https://open.er-api.com/v6/latest/GBP";
 const CHINA_REP_EMAIL = "china@fotizo.com";
 
@@ -55,6 +68,33 @@ interface HandoffRecord {
 
 /** A Postgres array literal (drizzle would expand a JS array into separate parameters). */
 const pgArray = (ids: string[]) => `{${ids.join(",")}}`;
+/**
+ * A fully detailed listing (<offer>-details.json beside the handoff) for offers
+ * captured individually: its cost is the lowest variant's supplier price.
+ */
+function detailedRecord(handoff: string, offerId: string): HandoffRecord | undefined {
+  const path = resolve(SOURCING, handoff, `${offerId}-details.json`);
+  if (!existsSync(path)) return undefined;
+  const d = read<{
+    platform: string;
+    productId: string;
+    sourceUrl: string;
+    importedAt: string;
+    variants?: { supplierPriceCny?: string }[];
+  }>(path);
+  const prices = (d.variants ?? []).map((v) => Number(v.supplierPriceCny)).filter((n) => n > 0);
+  return {
+    platform: d.platform,
+    productId: d.productId,
+    supplierCurrency: "CNY",
+    supplierPrice: prices.length ? String(Math.min(...prices)) : null,
+    supplierUnit: null,
+    minimumOrder: null,
+    sourceUrl: d.sourceUrl,
+    capturedAt: d.importedAt,
+  };
+}
+
 const read = <T>(path: string) => JSON.parse(readFileSync(path, "utf8")) as T;
 
 function readCategories(): Map<string, string> {
@@ -81,9 +121,19 @@ async function main() {
     throw new Error("1688 is not in CHINESE_GOODS.platforms — apply the backend update first.");
   try {
     const categories = readCategories();
-    const storefront = read<StorefrontRecord[]>(resolve(SHOP, "1688-products.json"));
-    const handoff = new Map(read<HandoffRecord[]>(HANDOFF).map((r) => [r.productId, r]));
-    const recorded = read<{ cnyPerGbp: number; rateDate: string }>(resolve(SHOP, "1688-pricing.json"));
+    // Every listed offer with its own batch's supplier record.
+    const handoffs = new Map<string, Map<string, HandoffRecord>>();
+    const storefront: (StorefrontRecord & { handoff: string })[] = [];
+    for (const batch of BATCHES) {
+      if (!handoffs.has(batch.handoff))
+        handoffs.set(
+          batch.handoff,
+          new Map(read<HandoffRecord[]>(resolve(SOURCING, batch.handoff, "products.json")).map((r) => [r.productId, r])),
+        );
+      for (const p of read<StorefrontRecord[]>(resolve(SHOP, batch.storefront))) storefront.push({ ...p, handoff: batch.handoff });
+    }
+    // The most recently verified batch rate, used only if today's is unavailable.
+    const recorded = BATCHES.map((b) => read<{ cnyPerGbp: number; rateDate: string }>(resolve(SHOP, b.pricing)))[0];
     const live = await liveCnyPerGbp();
     const rate = live ?? recorded.cnyPerGbp;
     const pricedAt = new Date();
@@ -109,7 +159,7 @@ async function main() {
         continue;
       }
       seen.add(offerId);
-      const source = handoff.get(offerId);
+      const source = handoffs.get(p.handoff)?.get(offerId) ?? detailedRecord(p.handoff, offerId);
       if (!source || source.platform !== "1688") {
         report.noHandoffRecord++;
         rejected.push({ id: p.id, reason: "not in the handoff" });

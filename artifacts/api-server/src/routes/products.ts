@@ -186,6 +186,30 @@ router.get("/products/categories", async (req, res) => {
   res.json(rows);
 });
 
+// Supplier offer ids published in the shop for one platform. The storefront
+// previews sourced batches from local files until they are imported; this lets
+// it show the published (orderable) product instead, once, with the right totals.
+router.get("/products/published-sources", async (req, res) => {
+  const platform = z.enum(["1688", "taobao", "pinduoduo", "tuwa"]).safeParse(req.query.platform);
+  if (!platform.success) {
+    res.status(400).json({ error: "Choose a supplier platform." });
+    return;
+  }
+  const rows = await db
+    .select({ id: productsTable.sourceProductId })
+    .from(productsTable)
+    .where(
+      and(
+        eq(productsTable.channel, "shop"),
+        eq(productsTable.status, "active"),
+        eq(productsTable.sourcePlatform, platform.data),
+        ownerVisible(productsTable.sellerId),
+      ),
+    );
+  res.setHeader("Cache-Control", "public, max-age=300");
+  res.json({ platform: platform.data, ids: rows.flatMap((r) => (r.id ? [r.id] : [])) });
+});
+
 router.get("/products/:id", async (req, res) => {
   const parsedId = productIdSchema.safeParse(req.params.id);
   if (!parsedId.success) {

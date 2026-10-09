@@ -85,6 +85,46 @@ export function toShopProduct(p: Product): ShopProduct {
   };
 }
 
+// ── Sourced 1688 batches ────────────────────────────────────────────────────
+// Batches are previewed from local files until the backend imports them. Once
+// an offer is published it is orderable: the storefront shows the database
+// product (price, checkout) with the local presentation (variants, size guide,
+// specifications, media) under its familiar 1688-<offer> link.
+
+let published: { at: number; value: Promise<Set<string>> } | null = null;
+
+/** Supplier offer ids published in the shop, refreshed every five minutes. */
+export function publishedOffers(): Promise<Set<string>> {
+  if (SHOP_USE_MOCKS) return Promise.resolve(new Set());
+  if (published && Date.now() - published.at < 300_000) return published.value;
+  const value = api
+    .get<{ ids: string[] }>("/products/published-sources", { platform: "1688" })
+    .then((r) => new Set(r.ids));
+  published = { at: Date.now(), value };
+  value.catch(() => {
+    published = null;
+  });
+  return value;
+}
+
+/** The 1688 offer id of a local catalogue id ("1688-<offer>"), if it is one. */
+export const offerOf = (id: string) => (id.startsWith("1688-") ? id.slice(5) : null);
+
+/** The published product, presented with its local details. */
+export function withLocalDetails(live: ShopProduct, local: ShopProduct): ShopProduct {
+  // Local variant prices were estimated with the batch's rate; keep their
+  // relative differences on the published price.
+  const scale = local.price > 0 ? live.price / local.price : 1;
+  return {
+    ...local,
+    price: live.price,
+    originalPrice: live.originalPrice,
+    sourcing: live.sourcing ?? local.sourcing,
+    variants: local.variants?.map((v) => ({ ...v, price: Math.round(v.price * scale * 100) / 100 })),
+    requiresPublication: false,
+  };
+}
+
 export const shopService = {
   async relatedProducts(id: string): Promise<ShopProduct[]> {
     if (
@@ -131,12 +171,22 @@ export const shopService = {
       id.startsWith("preview-1688-") ||
       id.startsWith("ali-") ||
       id.startsWith("alibaba-")
-    )
-      return (
+    ) {
+      const local =
         (await loadSourcedCatalogue()).find(
           (p) => p.id === id.replace(/^preview-/, ""),
-        ) ?? null
-      );
+        ) ?? null;
+      // Published 1688 offers: the database price, orderable, with local details.
+      if (local && offerOf(local.id) && !SHOP_USE_MOCKS) {
+        try {
+          const product = await api.get<Product>(`/products/${local.id}`);
+          if (product.channel === "shop") return withLocalDetails(toShopProduct(product), local);
+        } catch {
+          // Not published yet (404) or unreachable: show the preview copy.
+        }
+      }
+      return local;
+    }
     if (SHOP_USE_MOCKS) {
       await delay();
       return (

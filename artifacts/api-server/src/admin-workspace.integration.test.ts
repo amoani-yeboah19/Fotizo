@@ -555,6 +555,14 @@ describe("shop catalogue served by the API", () => {
       id: offer,
       sourcing: { platform: "1688", productId: "1000373536462", priceRange: "CNY 8", sourceUrl: null },
     });
+    // The storefront asks which previewed offers are published (orderable).
+    expect(await json(await get("/products/published-sources?platform=1688"))).toEqual({
+      platform: "1688",
+      ids: ["1000373536462"],
+    });
+    expect((await get("/products/published-sources?platform=alibaba")).status).toBe(400);
+    await database.query("UPDATE products SET status = 'unpublished' WHERE id = $1", [offer]);
+    expect(await json(await get("/products/published-sources?platform=1688"))).toMatchObject({ ids: [] });
     // Marketplace listings carry no supplier terms.
     const seller = await account("seller");
     const own = await json<{ id: string }>(await post("/products", product, seller.cookie));
