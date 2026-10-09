@@ -134,8 +134,13 @@ it("adds a published product with the chosen colour and size, and asks for them 
   expect(mocks.addItem).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Oatmeal" }));
   fireEvent.click(screen.getByRole("button", { name: "XL" }));
+  // The chosen quantity is added in one go.
+  fireEvent.click(screen.getByRole("button", { name: "Increase quantity" }));
+  fireEvent.click(screen.getByRole("button", { name: "Increase quantity" }));
   fireEvent.click(screen.getByRole("button", { name: /Add to cart/ }));
+  expect(mocks.addItem).toHaveBeenCalledTimes(1);
   expect(mocks.addItem).toHaveBeenCalledWith(
     expect.objectContaining({ productId: "1688-973074422128", options: "Colour: Oatmeal · Size: XL" }),
+    3,
   );
 });
