@@ -505,18 +505,23 @@ describe("shop catalogue served by the API", () => {
       `INSERT INTO products (id, title, description, price, seller_id, category, stock_count, channel, images, specs,
          source_platform, source_product_id, source_url, supplier_currency, supplier_cost, supplier_rate, markup_percent, price_basis)
        VALUES ($1, 'Magnetic Screen Protector', 'Fits MacBook M5.', 18.14, $2, 'Computers', 0, 'shop', ARRAY['/images/taobao/861590261376.webp'],
-         '{"department":"computers","priceRange":"CNY 124","shopId":"taobao-861590261376"}',
+         '{"department":"computers","priceRange":"CNY 124","shopId":"taobao-861590261376","supplierListing":"https://item.taobao.com/item.htm?id=861590261376"}',
          'taobao', '861590261376', 'https://item.taobao.com/item.htm?id=861590261376', 'CNY', 124, 8.888512, 30, 'quoted')`,
       [id, rep.id],
     );
     // The old frontend id resolves to the stored product.
     const page = await get("/products/taobao-861590261376");
     expect(page.status).toBe(200);
-    expect(await page.json()).toMatchObject({
+    const listed = await json<{ sourcing: { sourceUrl: string | null }; specs: Record<string, string> }>(page);
+    expect(listed).toMatchObject({
       id,
       inStock: true,
       sourcing: { platform: "taobao", productId: "861590261376", currency: "CNY", priceRange: "CNY 124", priceStatus: "estimate" },
     });
+    // Supplier links stay private.
+    expect(listed.sourcing.sourceUrl).toBeNull();
+    expect(listed.specs).not.toHaveProperty("supplierListing");
+    expect(JSON.stringify(listed)).not.toContain("item.taobao.com");
     expect((await get("/products/not a product!")).status).toBe(404);
     // A cart or order holding the old id still works.
     expect((await send("PUT", "/cart/items/taobao-861590261376", { quantity: 2 }, buyer.cookie)).status).toBe(204);
@@ -536,6 +541,28 @@ describe("shop catalogue served by the API", () => {
       buyer.cookie,
     );
     expect(order.status).toBe(201);
+    // 1688.com goods are their own platform (not retired Alibaba.com).
+    const offer = catalogueUuid("1688-1000373536462");
+    await database.query(
+      `INSERT INTO products (id, title, description, price, seller_id, category, stock_count, channel, images, specs,
+         source_platform, source_product_id, source_url, supplier_currency, supplier_cost, supplier_rate, markup_percent, price_basis)
+       VALUES ($1, 'Women’s V-Neck T-Shirt', 'Short sleeves.', 1.17, $2, 'Women''s Clothing', 0, 'shop', ARRAY['/images/1688/1000373536462.webp'],
+         '{"department":"womens","priceRange":"CNY 8","shopId":"1688-1000373536462"}',
+         '1688', '1000373536462', 'https://detail.1688.com/offer/1000373536462.html', 'CNY', 8, 8.896031, 30, 'quoted')`,
+      [offer, rep.id],
+    );
+    expect(await json(await get("/products/1688-1000373536462"))).toMatchObject({
+      id: offer,
+      sourcing: { platform: "1688", productId: "1000373536462", priceRange: "CNY 8", sourceUrl: null },
+    });
+    // The storefront asks which previewed offers are published (orderable).
+    expect(await json(await get("/products/published-sources?platform=1688"))).toEqual({
+      platform: "1688",
+      ids: ["1000373536462"],
+    });
+    expect((await get("/products/published-sources?platform=alibaba")).status).toBe(400);
+    await database.query("UPDATE products SET status = 'unpublished' WHERE id = $1", [offer]);
+    expect(await json(await get("/products/published-sources?platform=1688"))).toMatchObject({ ids: [] });
     // Marketplace listings carry no supplier terms.
     const seller = await account("seller");
     const own = await json<{ id: string }>(await post("/products", product, seller.cookie));
