@@ -14,6 +14,7 @@ import { Price } from "@/components/common/Price";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { aiService } from "@/services";
+import { apiErrorMessage } from "@/api";
 import { useCreateProduct, useUpdateProduct, useOwnedProduct } from "@/features/marketplace/hooks";
 import type { NewProductInput } from "@/types";
 
@@ -139,11 +140,11 @@ export default function PostProductPage() {
       const dashboardBase =
         user?.role === "china_representative" ? "/dashboard/china_representative" : "/dashboard/seller";
       setLocation(`${dashboardBase}?tab=${user?.role === "china_representative" ? "shop" : "products"}`);
-    } catch {
+    } catch (e) {
       toast({
         variant: "destructive",
         title: editingId ? "Couldn't save changes" : "Couldn't publish",
-        description: "Please try again.",
+        description: apiErrorMessage(e, "Please try again."),
       });
     }
   });
