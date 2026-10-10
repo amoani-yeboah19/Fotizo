@@ -1098,6 +1098,49 @@ describe("bounded public catalogue", () => {
     expect((await get("inStock=true")).total).toBe(20);
     expect((await get("sort=rating&pageSize=1")).items[0].rating).toBe(4.5);
   });
+  it("filters a shop collection on the server, sorted and paged like any filter", async () => {
+    const shoe = (title: string, price: number) => ({
+      title,
+      price,
+      channel: "shop" as const,
+      category: "Shoes & Bags",
+      specs: { department: "shoes-bags" },
+    });
+    await seed([
+      shoe("Women’s Running Shoes", 30),
+      shoe("Women’s Loafers", 20),
+      shoe("Women’s Shoulder Bag", 10),
+      shoe("Men’s Boots", 15),
+      shoe("Girls’ Sandals", 5),
+      { ...shoe("Women’s Ankle Boots", 25), status: "unpublished" as const },
+    ]);
+    const q = "channel=shop&category=shoes-bags&collection=women-shoes&sort=price-asc";
+    const first = await get(`${q}&pageSize=1`);
+    expect(first.items.map((p) => p.title)).toEqual(["Women’s Loafers"]);
+    expect(first).toMatchObject({ total: 2, hasMore: true });
+    const second = await get(`${q}&pageSize=1&page=1`);
+    expect(second.items.map((p) => p.title)).toEqual(["Women’s Running Shoes"]);
+    expect(second.hasMore).toBe(false);
+    expect((await get(`${q}&maxPrice=25`)).total).toBe(1);
+    expect((await get("channel=shop&category=shoes-bags")).total).toBe(5);
+    for (const bad of [
+      "channel=shop&category=shoes-bags&collection=no-such",
+      "channel=shop&collection=women-shoes",
+      "category=shoes-bags&collection=women-shoes",
+    ])
+      expect((await fetch(`${base}/api/products?${bad}`)).status).toBe(400);
+  });
+  it("counts sourced-to-order shop goods as in stock, as the products report", async () => {
+    await seed([
+      { title: "Sourced kettle", channel: "shop", stockCount: 0 },
+      { title: "Sourced lamp", channel: "shop", stockCount: 4 },
+      { title: "Sold out drill", stockCount: 0 },
+    ]);
+    const shop = await get("channel=shop&inStock=true");
+    expect(shop.total).toBe(2);
+    expect(shop.items.every((p) => p.inStock)).toBe(true);
+    expect((await get("inStock=true")).total).toBe(0);
+  });
   it("treats search wildcards and SQL-looking text literally and searches seller names", async () => {
     await seed([
       { title: "Literal 50%_ item" },

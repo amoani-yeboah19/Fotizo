@@ -180,6 +180,8 @@ export const listCatalogueProductsQueryMaxPriceMax = 99999999.99;
 export const listCatalogueProductsQueryMinRatingMin = 0;
 export const listCatalogueProductsQueryMinRatingMax = 5;
 
+export const listCatalogueProductsQueryCollectionMax = 60;
+
 export const ListCatalogueProductsQueryParams = zod.object({
   channel: zod
     .enum(["marketplace", "shop"])
@@ -227,6 +229,14 @@ export const ListCatalogueProductsQueryParams = zod.object({
     .optional(),
   inStock: zod.coerce.boolean().optional(),
   discounted: zod.coerce.boolean().optional(),
+  collection: zod.coerce
+    .string()
+    .min(1)
+    .max(listCatalogueProductsQueryCollectionMax)
+    .optional()
+    .describe(
+      "Shop sub-collection within the chosen department (shop channel, with category)",
+    ),
   sellerId: zod.coerce.string().uuid().optional(),
 });
 
