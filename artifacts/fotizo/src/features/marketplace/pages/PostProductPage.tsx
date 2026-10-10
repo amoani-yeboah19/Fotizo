@@ -15,13 +15,21 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { aiService } from "@/services";
 import { apiErrorMessage } from "@/api";
-import { useCreateProduct, useUpdateProduct, useOwnedProduct } from "@/features/marketplace/hooks";
+import { useCategories, useCreateProduct, useUpdateProduct, useOwnedProduct } from "@/features/marketplace/hooks";
 import type { NewProductInput } from "@/types";
 
-const PRODUCT_CATEGORIES = [
+// Used until the category list loads from the server, or if it can't.
+const FALLBACK_CATEGORIES = [
   "Electronics", "Fashion", "Home & Living", "Beauty", "Sports",
   "Books", "Digital Products", "Food & Gourmet", "Auto Parts",
 ];
+
+// Shop data kept in specs by the import scripts (department, supplier terms,
+// badges). The server keeps them on save, so the form doesn't show them.
+const SYSTEM_SPEC_KEYS = new Set([
+  "department", "shopId", "unitsSold", "almostGone", "freeShipping",
+  "priceRange", "minimumOrder", "unit", "capturedAt", "supplierListing",
+]);
 
 const STEPS = ["Basics", "Pricing", "Media", "Review"];
 
@@ -52,6 +60,7 @@ export default function PostProductPage() {
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const { data: existingProduct, isLoading: isLoadingExisting, isError: listingFailed } = useOwnedProduct(editingId ?? "");
+  const { data: categories } = useCategories();
 
   const [step, setStep] = useState(0);
   const [publicationStatus, setPublicationStatus] = useState<"active" | "unpublished">("active");
@@ -80,7 +89,9 @@ export default function PostProductPage() {
     });
     setImages(existingProduct.images);
     setTags(existingProduct.tags);
-    const existingSpecs = Object.entries(existingProduct.specs).map(([key, value]) => ({ key, value }));
+    const existingSpecs = Object.entries(existingProduct.specs)
+      .filter(([key]) => !SYSTEM_SPEC_KEYS.has(key))
+      .map(([key, value]) => ({ key, value }));
     setSpecs(existingSpecs.length ? existingSpecs : [{ key: "", value: "" }]);
   }, [existingProduct, reset]);
 
@@ -153,6 +164,15 @@ export default function PostProductPage() {
     setSpecs((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
 
   const v = watch();
+  // Server categories, plus the listing's own in case it isn't one of them.
+  const categoryOptions = [
+    ...new Set([
+      ...(categories?.length
+        ? categories.map((c) => c.name).filter((name) => name !== "Freelance Services")
+        : FALLBACK_CATEGORIES),
+      ...(v.category ? [v.category] : []),
+    ]),
+  ].sort((a, b) => a.localeCompare(b));
 
   if (editingId && !isLoadingExisting && (listingFailed || !existingProduct)) {
     return <PageLayout mainClassName="container-app py-24"><p role="alert">This listing could not be loaded. Check that it belongs to your account and try again.</p></PageLayout>;
@@ -205,7 +225,7 @@ export default function PostProductPage() {
                   <Input id="title" placeholder="e.g. Sony WH-1000XM5 Headphones" {...register("title")} />
                 </Field>
                 <Field label="Category" htmlFor="category" required error={errors.category?.message}>
-                  <NativeSelect id="category" options={PRODUCT_CATEGORIES} placeholder="Choose a category" {...register("category")} />
+                  <NativeSelect id="category" options={categoryOptions} placeholder="Choose a category" {...register("category")} value={v.category ?? ""} />
                 </Field>
                 <Field
                   label="Description"

@@ -226,6 +226,32 @@ describe("image uploads to Supabase Storage", () => {
     expect(await publish.json()).toEqual({ error: expect.stringMatching(/manager to publish/) });
     expect((await send("PATCH", `/products/${id}`, { title: "Cordless drill kit" }, desk.cookie)).status).toBe(200);
   });
+
+  it("keeps a shop listing's supplier data when it is edited and moves it with its category", async () => {
+    const desk = await account("china_representative");
+    const create = (data: object) => send("POST", "/products", { ...product, images: [], ...data }, desk.cookie);
+    const other = (await (await create({ category: "Men's Clothing" })).json()) as { id: string };
+    await database.query(`UPDATE products SET specs = '{"department":"mens"}' WHERE id = $1`, [other.id]);
+    // Owners cannot set system data such as sales counts or the supplier link.
+    const created = await create({ category: "Wigs & Hair", specs: { Colour: "Black", unitsSold: "9999", supplierListing: "https://evil.example" } });
+    const { id } = (await created.json()) as { id: string };
+    const stored = async () => (await database.query<{ category: string; specs: Record<string, string> }>("SELECT category, specs FROM products WHERE id = $1", [id])).rows[0];
+    expect((await stored()).specs).toEqual({ Colour: "Black" });
+
+    await database.query(
+      `UPDATE products SET specs = specs || '{"department":"wigs","supplierListing":"https://detail.1688.com/offer/1.html","unitsSold":"40"}' WHERE id = $1`,
+      [id],
+    );
+    expect((await send("PATCH", `/products/${id}`, { specs: { Colour: "Brown", unitsSold: "1" } }, desk.cookie)).status).toBe(200);
+    expect((await stored()).specs).toEqual({
+      Colour: "Brown",
+      department: "wigs",
+      supplierListing: "https://detail.1688.com/offer/1.html",
+      unitsSold: "40",
+    });
+    expect((await send("PATCH", `/products/${id}`, { category: "Men's Clothing" }, desk.cookie)).status).toBe(200);
+    expect(await stored()).toMatchObject({ category: "Men's Clothing", specs: { Colour: "Brown", department: "mens", unitsSold: "40" } });
+  });
 });
 
 describe("profile photos", () => {

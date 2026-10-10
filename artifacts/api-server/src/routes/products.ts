@@ -115,6 +115,62 @@ export function toPublicProduct(
   };
 }
 
+// Shop data the import scripts keep in specs: the department, supplier sales
+// and badges, supplier terms and the supplier link staff buy from. The listing
+// form does not edit these, so updates keep the stored values and owners
+// cannot set them.
+const SYSTEM_SPEC_KEYS = new Set([
+  "department",
+  "shopId",
+  "unitsSold",
+  "almostGone",
+  "freeShipping",
+  "priceRange",
+  "minimumOrder",
+  "unit",
+  "capturedAt",
+  "supplierListing",
+]);
+const pickSpecs = (specs: Record<string, string>, system: boolean) =>
+  Object.fromEntries(
+    Object.entries(specs).filter(([key]) => SYSTEM_SPEC_KEYS.has(key) === system),
+  );
+
+/** The shop department other listings in this category use, if any. */
+async function shopDepartment(category: string): Promise<string | undefined> {
+  const [row] = await db
+    .select({ department: sql<string>`${productsTable.specs}->>'department'` })
+    .from(productsTable)
+    .where(
+      and(
+        eq(productsTable.channel, "shop"),
+        eq(productsTable.category, category),
+        sql`coalesce(${productsTable.specs}->>'department', '') <> ''`,
+      ),
+    )
+    .limit(1);
+  return row?.department;
+}
+
+/**
+ * The owner's specs plus the system ones: kept from the stored listing, with
+ * the shop department following the category.
+ */
+async function listingSpecs(
+  channel: "marketplace" | "shop",
+  category: string,
+  owned: Record<string, string>,
+  stored: Record<string, string> = {},
+) {
+  const system = pickSpecs(stored, true);
+  if (channel === "shop") {
+    const department = await shopDepartment(category);
+    if (department) system.department = department;
+    else delete system.department;
+  }
+  return { ...pickSpecs(owned, false), ...system };
+}
+
 function publicSpecs(specs: Record<string, string>) {
   const { supplierListing: _supplierListing, ...rest } = specs;
   return rest;
@@ -310,6 +366,9 @@ router.post(
       return;
     }
 
+    const channel =
+      req.auth!.role === "china_representative" ? "shop" : "marketplace";
+    const specs = await listingSpecs(channel, parsed.data.category, parsed.data.specs);
     const seller = await db.query.usersTable.findFirst({
       where: eq(usersTable.id, req.auth!.userId),
     });
@@ -319,9 +378,9 @@ router.post(
         .insert(productsTable)
         .values({
           ...parsed.data,
+          specs,
           sellerId: req.auth!.userId,
-          channel:
-            req.auth!.role === "china_representative" ? "shop" : "marketplace",
+          channel,
         })
         .returning();
       if (seller && REVIEWED_ROLES.has(req.auth!.role))
@@ -486,6 +545,18 @@ router.patch(
       }
     }
 
+    const changes = { ...parsed.data };
+    const stored = found.product;
+    if (
+      changes.specs ||
+      (changes.category !== undefined && changes.category !== stored.category)
+    )
+      changes.specs = await listingSpecs(
+        stored.channel,
+        changes.category ?? stored.category,
+        changes.specs ?? stored.specs,
+        stored.specs,
+      );
     const seller = await db.query.usersTable.findFirst({
       where: eq(usersTable.id, req.auth!.userId),
     });
@@ -493,7 +564,7 @@ router.patch(
     const updated = await db.transaction(async (tx) => {
       const [row] = await tx
         .update(productsTable)
-        .set(parsed.data)
+        .set(changes)
         .where(eq(productsTable.id, found.product.id))
         .returning();
       if (
