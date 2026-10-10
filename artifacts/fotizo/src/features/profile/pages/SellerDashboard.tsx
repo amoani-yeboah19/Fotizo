@@ -238,7 +238,17 @@ export default function DashboardSeller() {
                           <span><span className="block">{order.productTitle}</span><span className="block mt-1 text-xs font-normal text-primary">View purchase</span></span>
                         </button>
                       </PurchaseDetailsDialog>
-                    ) : order.productTitle}
+                    ) : (
+                      <>
+                        {order.productTitle}
+                        {/* The size or colour the buyer chose, to ship the right item. */}
+                        {(order.confirmedOptions || order.requestedOptions) && (
+                          <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                            {order.confirmedOptions || order.requestedOptions}
+                          </span>
+                        )}
+                      </>
+                    )}
                   </td>
                   <td className="px-6 py-4">{mode === "purchases" ? order.seller : `×${order.quantity}`}</td>
                   <td className="px-6 py-4"><Price amount={order.price * order.quantity} /></td>

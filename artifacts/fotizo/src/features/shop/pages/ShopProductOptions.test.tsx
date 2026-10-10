@@ -7,7 +7,7 @@ import catalogue from "../data/1688-products.json";
 import detailed from "../data/1688-detail-products.json";
 import { ShopProductCard } from "../components/ShopProductCard";
 
-const mocks = vi.hoisted(() => ({ addItem: vi.fn(), basic: false }));
+const mocks = vi.hoisted(() => ({ addItem: vi.fn(), basic: false, published: false }));
 vi.mock("wouter", () => ({
   useRoute: () => [true, { id: "1688-973074422128" }],
   useLocation: () => ["", vi.fn()],
@@ -17,7 +17,11 @@ vi.mock("wouter", () => ({
 }));
 vi.mock("@/features/shop/hooks", () => ({
   useShopProduct: () => ({
-    data: mocks.basic ? catalogue[0] : detailed[0],
+    data: mocks.basic
+      ? catalogue[0]
+      : mocks.published
+        ? { ...detailed[0], requiresPublication: false }
+        : detailed[0],
     isLoading: false,
   }),
   useShopRelatedProducts: () => ({ data: [] }),
@@ -31,11 +35,13 @@ vi.mock("@/contexts/CartContext", () => ({
   useCart: () => ({ addItem: mocks.addItem }),
 }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
+vi.mock("@/features/wishlist/components/WishlistButton", () => ({ WishlistButton: () => null }));
 vi.mock("@/components/common/Price", () => ({
   Price: ({ amount }: { amount: number }) => <span>£{amount.toFixed(2)}</span>,
 }));
 afterEach(() => {
   mocks.basic = false;
+  mocks.published = false;
   cleanup();
   vi.clearAllMocks();
 });
@@ -119,4 +125,22 @@ it("takes clothing shoppers from the card to size selection", () => {
   });
   expect(link.getAttribute("href")).toBe(`/shop/${catalogue[0].id}`);
   expect(screen.queryByRole("button", { name: /Add .* to cart/ })).toBeNull();
+});
+
+it("adds a published product with the chosen colour and size, and asks for them first", () => {
+  mocks.published = true;
+  render(<ShopProductPage />);
+  fireEvent.click(screen.getByRole("button", { name: /Add to cart/ }));
+  expect(mocks.addItem).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Oatmeal" }));
+  fireEvent.click(screen.getByRole("button", { name: "XL" }));
+  // The chosen quantity is added in one go.
+  fireEvent.click(screen.getByRole("button", { name: "Increase quantity" }));
+  fireEvent.click(screen.getByRole("button", { name: "Increase quantity" }));
+  fireEvent.click(screen.getByRole("button", { name: /Add to cart/ }));
+  expect(mocks.addItem).toHaveBeenCalledTimes(1);
+  expect(mocks.addItem).toHaveBeenCalledWith(
+    expect.objectContaining({ productId: "1688-973074422128", options: "Colour: Oatmeal · Size: XL" }),
+    3,
+  );
 });

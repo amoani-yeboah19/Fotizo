@@ -8,7 +8,16 @@ vi.mock("@/features/marketplace/services/catalogue-page", () => ({
   cataloguePages: { list: vi.fn() },
 }));
 vi.mock("../data/sourced-catalogue", () => ({ loadSourcedCatalogue: vi.fn() }));
-vi.mock("./shop.service", () => ({ toShopProduct: (p: unknown) => p }));
+const publishedOffers = vi.hoisted(() => vi.fn());
+vi.mock("./shop.service", async (original) => {
+  const actual = await original<typeof import("./shop.service")>();
+  return {
+    toShopProduct: (p: unknown) => p,
+    offerOf: actual.offerOf,
+    withLocalDetails: actual.withLocalDetails,
+    publishedOffers,
+  };
+});
 const item = (id: string, price: number): ShopProduct => ({
   id,
   price,
@@ -26,6 +35,7 @@ const item = (id: string, price: number): ShopProduct => ({
 beforeEach(() => {
   vi.resetAllMocks();
   clearShopCatalogueCache();
+  publishedOffers.mockResolvedValue(new Set());
   vi.mocked(loadSourcedCatalogue).mockResolvedValue([
     item("1688-1", 2),
     item("1688-2", 6),
@@ -152,4 +162,36 @@ it("filters complete departments before paging a women’s shoe collection", asy
       .mocked(cataloguePages.list)
       .mock.calls.every(([, f]) => !("collection" in (f ?? {}))),
   ).toBe(true);
+});
+
+it("shows a published 1688 offer once, from the server, with its local details and link", async () => {
+  // Offer 2 is published: the server lists it (its own id and price); the
+  // local preview supplies variants and the familiar 1688-2 link.
+  publishedOffers.mockResolvedValue(new Set(["2"]));
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([
+    item("1688-1", 2),
+    {
+      ...item("1688-2", 6),
+      requiresPublication: true,
+      specifications: [{ label: "Material", value: "Cotton" }],
+      variants: [{ id: "v1", colour: "Black", size: "M", image: "", price: 6 }],
+    },
+  ]);
+  vi.mocked(cataloguePages.list).mockResolvedValue({
+    items: [{ ...item("uuid-2", 6.6), sourcing: { platform: "1688", productId: "2" } }] as never[],
+    total: 1,
+    page: 0,
+    pageSize: 48,
+    hasMore: false,
+  });
+  const page = await shopCataloguePage({ page: 0, pageSize: 48 });
+  expect(page.total).toBe(2);
+  expect(page.items.map((i) => i.id).sort()).toEqual(["1688-1", "1688-2"]);
+  const published = page.items.find((i) => i.id === "1688-2")!;
+  expect(published).toMatchObject({
+    price: 6.6,
+    requiresPublication: false,
+    specifications: [{ label: "Material", value: "Cotton" }],
+    variants: [{ id: "v1", price: 6.6 }],
+  });
 });

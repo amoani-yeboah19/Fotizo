@@ -4,7 +4,7 @@ import {
   type CatalogueFilters,
 } from "@/features/marketplace/services/catalogue-page";
 import { loadSourcedCatalogue } from "../data/sourced-catalogue";
-import { toShopProduct } from "./shop.service";
+import { offerOf, publishedOffers, toShopProduct, withLocalDetails } from "./shop.service";
 import { matchesCollection } from "../data/shop-discovery";
 export type ShopCatalogueFilters = CatalogueFilters & { collection?: string };
 import type { ShopProduct } from "../data/shop-product";
@@ -34,8 +34,21 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
     pageSize = filters.pageSize ?? 48;
   const livePageSize = collection ? Math.max(96, pageSize) : pageSize;
   const q = (filters.q ?? "").trim().toLowerCase();
-  const imported = (await loadSourcedCatalogue()).filter(
+  // Published offers come from the server (once, with correct totals); only
+  // unpublished preview items are merged in from the local files.
+  const [sourced, published] = await Promise.all([
+    loadSourcedCatalogue(),
+    publishedOffers().catch(() => new Set<string>()),
+  ]);
+  const localByOffer = new Map(
+    sourced.flatMap((p) => {
+      const offer = offerOf(p.id);
+      return offer ? [[offer, p] as const] : [];
+    }),
+  );
+  const imported = sourced.filter(
     (p) =>
+      !published.has(offerOf(p.id) ?? "") &&
       matchesCollection(p, collection) &&
       !filters.sellerId &&
       !filters.inStock &&
@@ -77,6 +90,10 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
   );
   const live = pages
     .flatMap((p) => p.items.map(toShopProduct))
+    .map((p) => {
+      const local = p.sourcing?.platform === "1688" ? localByOffer.get(p.sourcing.productId) : undefined;
+      return local ? withLocalDetails(p, local) : p;
+    })
     .filter((p) => matchesCollection(p, collection));
   const liveSources = new Set(
     live

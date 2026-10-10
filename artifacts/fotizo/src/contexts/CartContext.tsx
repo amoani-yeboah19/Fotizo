@@ -24,7 +24,13 @@ export interface CartItem {
   needsConfirmation?: boolean;
   /** The supplier's minimum order, e.g. "20 pieces". */
   minimumOrder?: string | null;
+  /** The colour, size and so on chosen, e.g. "Colour: Black · Size: M". */
+  options?: string;
 }
+
+/** A cart line is one product with one choice of options. */
+export const cartLineId = (productId: string, options?: string) =>
+  options ? `${productId}::${options}` : productId;
 
 interface CartContextType {
   items: CartItem[];
@@ -32,9 +38,12 @@ interface CartContextType {
   total: number;
   /** False until this session's saved cart has been loaded. */
   isLoaded: boolean;
-  addItem: (item: Omit<CartItem, "quantity">) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  /** Adds `quantity` (default 1) of the item to its cart line. */
+  addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
+  /** Takes the line id (CartItem.id). */
+  removeItem: (lineId: string) => void;
+  /** Takes the line id (CartItem.id). */
+  updateQuantity: (lineId: string, quantity: number) => void;
   clearCart: () => void;
   isInCart: (productId: string) => boolean;
 }
@@ -103,7 +112,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     const guest = readGuestCart();
     const load = guest.length
-      ? cartService.merge(guest.map((i) => ({ productId: i.productId, quantity: Math.min(i.quantity, MAX_QUANTITY) })))
+      ? cartService.merge(
+          guest.map((i) => ({
+            productId: i.productId,
+            quantity: Math.min(i.quantity, MAX_QUANTITY),
+            ...(i.options ? { options: i.options } : {}),
+          })),
+        )
       : cartService.list();
     load
       .then((saved) => {
@@ -127,11 +142,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, ready, user]);
 
   const save = useCallback(
-    (productId: string, quantity: number) => {
+    (line: Pick<CartItem, "productId" | "options">, quantity: number) => {
       if (!serverBacked) return;
       queue.current = queue.current
         .then(() =>
-          quantity > 0 ? cartService.setQuantity(productId, quantity) : cartService.remove(productId),
+          quantity > 0
+            ? cartService.setQuantity(line.productId, quantity, line.options)
+            : cartService.remove(line.productId, line.options),
         )
         // On failure, show what the server actually holds.
         .catch(reloadFromServer);
@@ -140,36 +157,39 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   const addItem = useCallback(
-    (item: Omit<CartItem, "quantity">) => {
-      const existing = itemsRef.current.find((i) => i.productId === item.productId);
-      const quantity = Math.min(MAX_QUANTITY, (existing?.quantity ?? 0) + 1);
+    (item: Omit<CartItem, "quantity">, added = 1) => {
+      const id = cartLineId(item.productId, item.options);
+      const existing = itemsRef.current.find((i) => i.id === id);
+      const quantity = Math.min(MAX_QUANTITY, (existing?.quantity ?? 0) + Math.max(1, Math.floor(added)));
       setItems((prev) =>
         existing
-          ? prev.map((i) => (i.productId === item.productId ? { ...i, quantity } : i))
-          : [...prev, { ...item, quantity }],
+          ? prev.map((i) => (i.id === id ? { ...i, quantity } : i))
+          : [...prev, { ...item, id, quantity }],
       );
-      save(item.productId, quantity);
+      save(item, quantity);
     },
     [save],
   );
 
   const removeItem = useCallback(
-    (productId: string) => {
-      setItems((prev) => prev.filter((i) => i.productId !== productId));
-      save(productId, 0);
+    (lineId: string) => {
+      const line = itemsRef.current.find((i) => i.id === lineId);
+      setItems((prev) => prev.filter((i) => i.id !== lineId));
+      if (line) save(line, 0);
     },
     [save],
   );
 
   const updateQuantity = useCallback(
-    (productId: string, quantity: number) => {
+    (lineId: string, quantity: number) => {
+      const line = itemsRef.current.find((i) => i.id === lineId);
       const next = Math.min(MAX_QUANTITY, Math.max(0, Math.floor(quantity)));
       setItems((prev) =>
         next <= 0
-          ? prev.filter((i) => i.productId !== productId)
-          : prev.map((i) => (i.productId === productId ? { ...i, quantity: next } : i)),
+          ? prev.filter((i) => i.id !== lineId)
+          : prev.map((i) => (i.id === lineId ? { ...i, quantity: next } : i)),
       );
-      save(productId, next);
+      if (line) save(line, next);
     },
     [save],
   );

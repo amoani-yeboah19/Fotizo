@@ -77,7 +77,7 @@ async function setup(paymentMethod: "pay_on_delivery" | "stripe" = "pay_on_deliv
     {
       items: [
         { productId: bag, quantity: 4, options: "Black, adjustable strap" },
-        { productId: kettle, quantity: 1, options: "ignored for marketplace goods" },
+        { productId: kettle, quantity: 1, options: "Colour: Silver" },
       ],
       delivery: delivery(paymentMethod === "stripe" ? "GB" : "GH"),
       paymentMethod,
@@ -161,7 +161,8 @@ describe("supplier confirmation for imported goods", () => {
     expect(items.find((l) => l.productId === bag)).toMatchObject({
       needsConfirmation: true, requestedOptions: "Black, adjustable strap", estimatedPrice: 1.95,
     });
-    expect(items.find((l) => l.productId === kettle)).toMatchObject({ needsConfirmation: false, requestedOptions: null, estimatedPrice: null });
+    // Options chosen for marketplace goods are kept too, so the seller ships the right one.
+    expect(items.find((l) => l.productId === kettle)).toMatchObject({ needsConfirmation: false, requestedOptions: "Colour: Silver", estimatedPrice: null });
     // Payment can't be opened before the buyer accepts a confirmed total.
     expect((await post(`/payments/orders/${placed.orderId}/start`, {}, buyer.cookie)).status).toBe(409);
     // Ordered products leave the saved cart as usual.
@@ -266,5 +267,52 @@ describe("supplier confirmation for imported goods", () => {
       confirmationStatus: "accepted",
     });
     expect((await post(`/operations/orders/${second.placed.orderId}/payment`, { status: "paid" }, manager.cookie)).status).toBe(200);
+  });
+});
+
+describe("cart lines with chosen options", () => {
+  it("keeps one line per product and choice of options through the cart and the order", async () => {
+    const seller = await account("seller");
+    const buyer = await account();
+    const kettle = await insertProduct(seller.id, false);
+    const put = (quantity: number, options?: string) =>
+      fetch(`${base}/api/cart/items/${kettle}`, {
+        method: "PUT",
+        headers: { ...headers, Cookie: buyer.cookie },
+        body: JSON.stringify({ quantity, ...(options ? { options } : {}) }),
+      });
+    expect((await put(2, "Colour: Silver")).status).toBe(204);
+    expect((await put(1, "Colour: Black")).status).toBe(204);
+    expect((await put(3, "Colour: Black")).status).toBe(204);
+    const cart = await json<{ id: string; options?: string; quantity: number }[]>(await get("/cart", buyer.cookie));
+    expect(cart.map((l) => [l.options, l.quantity]).sort()).toEqual([["Colour: Black", 3], ["Colour: Silver", 2]]);
+    expect(new Set(cart.map((l) => l.id)).size).toBe(2);
+    // Removing one choice leaves the other.
+    await fetch(`${base}/api/cart/items/${kettle}?options=${encodeURIComponent("Colour: Black")}`, {
+      method: "DELETE",
+      headers: { ...headers, Cookie: buyer.cookie },
+    });
+    expect(await json(await get("/cart", buyer.cookie))).toMatchObject([{ options: "Colour: Silver", quantity: 2 }]);
+
+    const order = (items: { productId: string; quantity: number; options?: string }[]) =>
+      post(
+        "/orders",
+        { items, delivery: delivery("GH"), paymentMethod: "pay_on_delivery", idempotencyKey: crypto.randomUUID() },
+        buyer.cookie,
+      );
+    // Stock (5) is shared by every option line of the product.
+    expect(
+      (await order([{ productId: kettle, quantity: 3, options: "Colour: Silver" }, { productId: kettle, quantity: 3, options: "Colour: Black" }])).status,
+    ).toBe(409);
+    expect((await order([{ productId: kettle, quantity: 1 }, { productId: kettle, quantity: 1 }])).status).toBe(400);
+    const placed = await order([
+      { productId: kettle, quantity: 2, options: "Colour: Silver" },
+      { productId: kettle, quantity: 1, options: "Colour: Black" },
+    ]);
+    expect(placed.status).toBe(201);
+    const { orderId } = await json<{ orderId: string }>(placed);
+    expect((await lines(orderId, buyer.cookie)).map((l) => l.requestedOptions).sort()).toEqual(["Colour: Black", "Colour: Silver"]);
+    const { rows } = await database.query<{ stock_count: number }>("SELECT stock_count FROM products WHERE id = $1", [kettle]);
+    expect(rows[0].stock_count).toBe(2);
   });
 });

@@ -91,15 +91,16 @@ export function toPublicProduct(
     inStock: row.channel === "shop" || row.stockCount > 0,
     stockCount: row.stockCount,
     tags: row.tags,
-    specs: row.specs,
+    // Supplier links stay private (staff see them in the confirmation queue).
+    specs: publicSpecs(row.specs),
     ...(row.sourcePlatform && row.sourceProductId
       ? {
           // Supplier prices, variants, minimums and delivery are confirmed
           // before purchase, so the listed price stays an estimate.
           sourcing: {
-            platform: row.sourcePlatform as "alibaba" | "taobao" | "pinduoduo" | "tuwa",
+            platform: row.sourcePlatform as "alibaba" | "1688" | "taobao" | "pinduoduo" | "tuwa",
             productId: row.sourceProductId,
-            sourceUrl: row.sourceUrl,
+            sourceUrl: null,
             currency: row.supplierCurrency,
             priceRange: row.specs.priceRange ?? null,
             minimumOrder: row.specs.minimumOrder ?? null,
@@ -110,6 +111,11 @@ export function toPublicProduct(
         }
       : {}),
   };
+}
+
+function publicSpecs(specs: Record<string, string>) {
+  const { supplierListing: _supplierListing, ...rest } = specs;
+  return rest;
 }
 
 router.get("/products", async (req, res) => {
@@ -179,6 +185,30 @@ router.get("/products/categories", async (req, res) => {
     .groupBy(sql`1`)
     .orderBy(sql`1`);
   res.json(rows);
+});
+
+// Supplier offer ids published in the shop for one platform. The storefront
+// previews sourced batches from local files until they are imported; this lets
+// it show the published (orderable) product instead, once, with the right totals.
+router.get("/products/published-sources", async (req, res) => {
+  const platform = z.enum(["1688", "taobao", "pinduoduo", "tuwa"]).safeParse(req.query.platform);
+  if (!platform.success) {
+    res.status(400).json({ error: "Choose a supplier platform." });
+    return;
+  }
+  const rows = await db
+    .select({ id: productsTable.sourceProductId })
+    .from(productsTable)
+    .where(
+      and(
+        eq(productsTable.channel, "shop"),
+        eq(productsTable.status, "active"),
+        eq(productsTable.sourcePlatform, platform.data),
+        ownerVisible(productsTable.sellerId),
+      ),
+    );
+  res.setHeader("Cache-Control", "public, max-age=300");
+  res.json({ platform: platform.data, ids: rows.flatMap((r) => (r.id ? [r.id] : [])) });
 });
 
 router.get("/products/:id", async (req, res) => {

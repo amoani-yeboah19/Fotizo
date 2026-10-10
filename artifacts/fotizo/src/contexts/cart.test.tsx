@@ -20,6 +20,9 @@ function Probe() {
       <span data-testid="count">{cart.count}</span>
       <span data-testid="loaded">{String(cart.isLoaded)}</span>
       <button onClick={() => cart.addItem(kettle)}>add</button>
+      <button onClick={() => cart.addItem(kettle, 3)}>add three</button>
+      <button onClick={() => cart.addItem({ ...kettle, options: "Size: M" })}>add M</button>
+      <span data-testid="lines">{cart.items.map((i) => `${i.options ?? "-"}x${i.quantity}`).join(",")}</span>
       <button onClick={() => cart.updateQuantity("p1", 5)}>five</button>
       <button onClick={() => cart.removeItem("p1")}>remove</button>
     </div>
@@ -98,4 +101,19 @@ it("shows the server's cart again when saving a change fails", async () => {
   });
   await waitFor(() => expect(cartService.list).toHaveBeenCalledTimes(2));
   await waitFor(() => expect(count()).toBe("1"));
+});
+
+it("adds the chosen quantity at once and keeps each choice of options as its own line", async () => {
+  session.user = { id: "u1" };
+  session.status = "authenticated";
+  vi.mocked(cartService.list).mockResolvedValue([]);
+  render(<CartProvider><Probe /></CartProvider>);
+  await waitFor(() => expect(screen.getByTestId("loaded").textContent).toBe("true"));
+  fireEvent.click(screen.getByText("add three"));
+  expect(count()).toBe("3");
+  fireEvent.click(screen.getByText("add M"));
+  expect(screen.getByTestId("lines").textContent).toBe("-x3,Size: Mx1");
+  await waitFor(() => expect(cartService.setQuantity).toHaveBeenCalledTimes(2));
+  expect(cartService.setQuantity).toHaveBeenNthCalledWith(1, "p1", 3, undefined);
+  expect(cartService.setQuantity).toHaveBeenNthCalledWith(2, "p1", 1, "Size: M");
 });

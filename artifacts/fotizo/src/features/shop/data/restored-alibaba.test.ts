@@ -34,7 +34,9 @@ it("takes 10% off only the newly restored empty departments, once", () => {
   expect(restored.filter((p) => p.price < p.originalPrice)).toHaveLength(617);
 });
 
-it("restores only the requested archive departments, with jewellery separate from other accessories", async () => {
+// The restored selection is kept as data but hidden from the shop: those
+// listings are unpublished in the database and reviewed by managers there.
+it("keeps the restored selection out of the shop, with its data intact", async () => {
   const catalogue = await loadSourcedCatalogue();
   const counts = Object.fromEntries(
     [
@@ -67,9 +69,8 @@ it("restores only the requested archive departments, with jewellery separate fro
     global: 100,
     entertainment: 90,
   });
-  const ids = new Set(restored.map((p) => p.id));
   for (const p of archived)
-    expect(catalogue.some((row) => row.id === p.id)).toBe(ids.has(p.id));
+    expect(catalogue.some((row) => row.id === p.id)).toBe(false);
   expect(new Set(catalogue.map((p) => p.id)).size).toBe(catalogue.length);
   for (const p of restored) {
     expect(p.image).toBeTruthy();
@@ -98,15 +99,11 @@ it.each([
   "global",
   "entertainment",
 ])(
-  "opens restored %s details and related listings without a backend record",
+  "does not open restored %s listings in the shop",
   async (category) => {
     const product = restored.find((p) => p.category === category)!;
-    expect(await shopService.getProduct(product.id)).toEqual(product);
-    const related = await shopService.relatedProducts(product.id);
-    expect(related.length).toBeGreaterThan(0);
-    expect(
-      related.every((p) => p.category === category && p.id !== product.id),
-    ).toBe(true);
+    expect(await shopService.getProduct(product.id)).toBeNull();
+    expect(await shopService.relatedProducts(product.id)).toEqual([]);
   },
 );
 

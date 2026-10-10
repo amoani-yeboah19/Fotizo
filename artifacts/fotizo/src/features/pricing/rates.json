@@ -8,7 +8,7 @@
     "amounts": { "GHS": 1, "USD": 1, "GBP": 1, "EUR": 1 }
   },
   "chineseGoods": {
-    "platforms": ["alibaba", "taobao", "pinduoduo"],
+    "platforms": ["alibaba", "1688", "taobao", "pinduoduo"],
     "markupPercent": 30
   }
 }

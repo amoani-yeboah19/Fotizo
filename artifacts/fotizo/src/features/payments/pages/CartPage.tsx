@@ -57,11 +57,12 @@ export default function CartPage() {
                           </h4>
                         </Link>
                         <p className="text-sm text-muted-foreground">by {item.seller}</p>
+                        {item.options && <p className="text-sm text-foreground">{item.options}</p>}
                         {/* Mobile price and remove */}
                         <div className="sm:hidden flex items-center justify-between mt-2">
                           <Price amount={item.price} className="font-bold" />
                           <button
-                            onClick={() => removeItem(item.productId)}
+                            onClick={() => removeItem(item.id)}
                             className="text-destructive text-sm flex items-center gap-1"
                           >
                             <Trash2 className="w-4 h-4" /> Remove
@@ -78,7 +79,7 @@ export default function CartPage() {
                       <div className="flex items-center border border-border rounded-full bg-white">
                         <button
                           aria-label="Decrease quantity"
-                          onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
                           className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
                         >
                           <Minus className="w-3 h-3" />
@@ -86,7 +87,7 @@ export default function CartPage() {
                         <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
                         <button
                           aria-label="Increase quantity"
-                          onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
                           className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
                         >
                           <Plus className="w-3 h-3" />
@@ -98,7 +99,7 @@ export default function CartPage() {
                       <Price amount={item.price * item.quantity} className="font-bold" />
                       <button
                         aria-label="Remove item"
-                        onClick={() => removeItem(item.productId)}
+                        onClick={() => removeItem(item.id)}
                         className="text-muted-foreground hover:text-destructive transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />

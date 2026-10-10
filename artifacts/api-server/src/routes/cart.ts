@@ -19,6 +19,7 @@ async function readCart(userId: string) {
     .select({
       productId: cartItemsTable.productId,
       quantity: cartItemsTable.quantity,
+      options: cartItemsTable.options,
       title: productsTable.title,
       price: productsTable.price,
       images: productsTable.images,
@@ -35,8 +36,10 @@ async function readCart(userId: string) {
     .where(and(eq(cartItemsTable.userId, userId), eq(productsTable.status, "active"), ownerVisible(productsTable.sellerId)))
     .orderBy(asc(cartItemsTable.addedAt), asc(cartItemsTable.productId));
   return rows.map((r) => ({
-    id: r.productId,
+    // One line per product and chosen options (the same shirt in two sizes).
+    id: lineId(r.productId, r.options),
     productId: r.productId,
+    ...(r.options ? { options: r.options } : {}),
     title: r.title,
     price: r.price,
     image: r.images[0] ?? "",
@@ -58,7 +61,12 @@ router.get("/cart", async (req: AuthenticatedRequest, res) => {
 });
 
 const productId = productIdSchema;
-const quantitySchema = z.object({ quantity: z.number().int().min(1).max(MAX_QUANTITY) }).strict();
+/** The colour, size and so on chosen for a line; empty when the product has none. */
+const optionsSchema = z.string().trim().max(200).default("");
+const quantitySchema = z
+  .object({ quantity: z.number().int().min(1).max(MAX_QUANTITY), options: optionsSchema })
+  .strict();
+const lineId = (productId: string, options: string) => (options ? `${productId}::${options}` : productId);
 
 async function isActive(id: string) {
   const [row] = await db
@@ -90,30 +98,41 @@ router.put("/cart/items/:productId", async (req: AuthenticatedRequest, res) => {
     return;
   }
   const userId = req.auth!.userId;
+  const options = body.data.options;
   const [existing] = await db
     .select({ productId: cartItemsTable.productId })
     .from(cartItemsTable)
-    .where(and(eq(cartItemsTable.userId, userId), eq(cartItemsTable.productId, id.data)));
+    .where(
+      and(eq(cartItemsTable.userId, userId), eq(cartItemsTable.productId, id.data), eq(cartItemsTable.options, options)),
+    );
   if (!existing && (await lineCount(userId)) >= MAX_LINES) {
-    res.status(409).json({ error: `Your cart can hold up to ${MAX_LINES} different products.` });
+    res.status(409).json({ error: `Your cart can hold up to ${MAX_LINES} different items.` });
     return;
   }
   await db
     .insert(cartItemsTable)
-    .values({ userId, productId: id.data, quantity: body.data.quantity })
+    .values({ userId, productId: id.data, quantity: body.data.quantity, options })
     .onConflictDoUpdate({
-      target: [cartItemsTable.userId, cartItemsTable.productId],
+      target: [cartItemsTable.userId, cartItemsTable.productId, cartItemsTable.options],
       set: { quantity: body.data.quantity },
     });
   res.status(204).end();
 });
 
+// ?options=… removes the line with those options; without it, the plain line.
 router.delete("/cart/items/:productId", async (req: AuthenticatedRequest, res) => {
   const id = productId.safeParse(req.params.productId);
-  if (id.success)
+  const options = optionsSchema.safeParse(req.query.options ?? "");
+  if (id.success && options.success)
     await db
       .delete(cartItemsTable)
-      .where(and(eq(cartItemsTable.userId, req.auth!.userId), eq(cartItemsTable.productId, id.data)));
+      .where(
+        and(
+          eq(cartItemsTable.userId, req.auth!.userId),
+          eq(cartItemsTable.productId, id.data),
+          eq(cartItemsTable.options, options.data),
+        ),
+      );
   res.status(204).end();
 });
 
@@ -128,7 +147,9 @@ const mergeSchema = z
   .object({
     items: z
       .array(
-        z.object({ productId: productIdSchema, quantity: z.number().int().min(1).max(MAX_QUANTITY) }).strict(),
+        z
+          .object({ productId: productIdSchema, quantity: z.number().int().min(1).max(MAX_QUANTITY), options: optionsSchema })
+          .strict(),
       )
       .max(MAX_LINES),
   })
@@ -154,9 +175,9 @@ router.post("/cart/merge", async (req: AuthenticatedRequest, res) => {
       if (!allowed.has(item.productId)) continue;
       await tx
         .insert(cartItemsTable)
-        .values({ userId, productId: item.productId, quantity: item.quantity })
+        .values({ userId, productId: item.productId, quantity: item.quantity, options: item.options })
         .onConflictDoUpdate({
-          target: [cartItemsTable.userId, cartItemsTable.productId],
+          target: [cartItemsTable.userId, cartItemsTable.productId, cartItemsTable.options],
           set: { quantity: sql`least(${cartItemsTable.quantity} + ${item.quantity}, ${MAX_QUANTITY})` },
         });
     }

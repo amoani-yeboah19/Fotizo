@@ -131,6 +131,7 @@ export type ProductSourcingPlatform =
 
 export const ProductSourcingPlatform = {
   alibaba: "alibaba",
+  NUMBER_1688: "1688",
   taobao: "taobao",
   pinduoduo: "pinduoduo",
   tuwa: "tuwa",
