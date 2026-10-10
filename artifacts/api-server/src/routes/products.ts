@@ -40,6 +40,8 @@ const router: IRouter = Router();
 // shop catalogue is listed under. Everything else (buyer, manager, developer,
 // the USA representative) is read-only here.
 const PRODUCT_OWNER_ROLES = new Set(["seller", "china_representative"]);
+const CHINA_DESK_HOLD_MESSAGE =
+  "This listing is waiting for a manager to publish it. Managers publish held listings under Publication controls.";
 
 const money = z
   .number()
@@ -461,7 +463,14 @@ router.patch(
     }
 
     if (parsed.data.status === "active" && found.product.moderationHold) {
-      res.status(409).json({ error: HOLD_MESSAGE });
+      // China desk listings are not reviewed on update, so only a manager can
+      // lift their hold (Publication controls).
+      res.status(409).json({
+        error:
+          req.auth!.role === "china_representative"
+            ? CHINA_DESK_HOLD_MESSAGE
+            : HOLD_MESSAGE,
+      });
       return;
     }
     if (parsed.data.images) {

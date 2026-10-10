@@ -212,6 +212,20 @@ describe("image uploads to Supabase Storage", () => {
     expect((await send("POST", "/services", { ...service, avatar: serviceShot, details: { ...details, gallery: [theirs] } }, seller.cookie)).status).toBe(400);
     expect((await send("PATCH", `/services/${savedService.id}`, { ...service, avatar: serviceShot, details }, seller.cookie)).status).toBe(200);
   });
+
+  it("lets the China desk list products, leaving held listings for a manager to publish", async () => {
+    const desk = await account("china_representative");
+    const created = await send("POST", "/products", { ...product, images: [await uploaded("product", desk.cookie)] }, desk.cookie);
+    expect(created.status).toBe(201);
+    const { id } = (await created.json()) as { id: string };
+    expect((await upload("service", JPEG, desk.cookie)).status).toBe(403);
+
+    await database.query("UPDATE products SET status = 'unpublished', moderation_hold = true WHERE id = $1", [id]);
+    const publish = await send("PATCH", `/products/${id}`, { status: "active" }, desk.cookie);
+    expect(publish.status).toBe(409);
+    expect(await publish.json()).toEqual({ error: expect.stringMatching(/manager to publish/) });
+    expect((await send("PATCH", `/products/${id}`, { title: "Cordless drill kit" }, desk.cookie)).status).toBe(200);
+  });
 });
 
 describe("profile photos", () => {
