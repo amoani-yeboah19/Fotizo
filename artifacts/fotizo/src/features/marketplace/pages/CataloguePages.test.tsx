@@ -158,11 +158,13 @@ it("maps shop sorting and debounced search to server queries", async () => {
       pageSize: 3,
     }),
   );
+  // Visibility filtering can also fetch later pages; verify the requested
+  // filters without relying on which concurrent request finishes last.
   fireEvent.change(screen.getByLabelText("Sort products"), {
     target: { value: "best-selling" },
   });
   await waitFor(() =>
-    expect(cataloguePages.list).toHaveBeenLastCalledWith(
+    expect(cataloguePages.list).toHaveBeenCalledWith(
       "shop",
       expect.objectContaining({ sort: "best-selling", page: 0 }),
     ),
@@ -171,7 +173,7 @@ it("maps shop sorting and debounced search to server queries", async () => {
     target: { value: " kettle " },
   });
   await waitFor(() =>
-    expect(cataloguePages.list).toHaveBeenLastCalledWith(
+    expect(cataloguePages.list).toHaveBeenCalledWith(
       "shop",
       expect.objectContaining({ q: "kettle", page: 0 }),
     ),
