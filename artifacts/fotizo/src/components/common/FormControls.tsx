@@ -158,8 +158,13 @@ export async function uploadPhoto(
 
 const uploadFailure = (error: unknown) => {
   if (error instanceof ApiError) {
-    if (error.status >= 500)
-      return "Photo storage is temporarily unavailable. Please try again shortly. Your form has not been lost.";
+    // The API names which storage problem it hit (not set up, unreachable,
+    // rejected); its messages are written for customers.
+    const reason =
+      error.data && typeof error.data === "object" && "error" in error.data && typeof error.data.error === "string"
+        ? `${error.data.error} `
+        : "Photo storage is temporarily unavailable. Please try again shortly. ";
+    if (error.status >= 500) return `${reason}Your form has not been lost.`;
     return apiErrorMessage(
       error,
       "The upload was refused. Please sign in again and retry.",
