@@ -206,6 +206,10 @@ paths:
           }
         - { in: query, name: inStock, schema: { type: boolean } }
         - { in: query, name: discounted, schema: { type: boolean } }
+        - in: query
+          name: collection
+          description: Shop sub-collection within the chosen department (shop channel, with category)
+          schema: { type: string, minLength: 1, maxLength: 60 }
         - { in: query, name: sellerId, schema: { type: string, format: uuid } }
       responses:
         "200":

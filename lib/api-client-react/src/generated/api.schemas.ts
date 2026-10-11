@@ -282,6 +282,12 @@ export type ListCatalogueProductsParams = {
   minRating?: number;
   inStock?: boolean;
   discounted?: boolean;
+  /**
+   * Shop sub-collection within the chosen department (shop channel, with category)
+   * @minLength 1
+   * @maxLength 60
+   */
+  collection?: string;
   sellerId?: string;
 };
 

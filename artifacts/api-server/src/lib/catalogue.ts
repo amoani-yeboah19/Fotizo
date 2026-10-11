@@ -4,6 +4,7 @@ import { productsTable as p, usersTable } from "@workspace/db";
 import { ownerVisible } from "./identity";
 
 import { ListCatalogueProductsQueryParams } from "@workspace/api-zod";
+import { SHOP_COLLECTIONS } from "@workspace/shop-taxonomy";
 const shape = ListCatalogueProductsQueryParams.shape;
 export const catalogueChannel = shape.channel;
 // Strengthen generated coercion: "false" must stay false, query arrays must not
@@ -21,8 +22,18 @@ export const catalogueQuery = ListCatalogueProductsQueryParams.extend({
     .enum(["true", "false"])
     .transform((v) => v === "true")
     .optional(),
+  // A shop sub-collection within the chosen department (e.g. women-shoes).
+  collection: z.string().trim().pipe(shape.collection.unwrap()).optional(),
 })
   .strict()
+  .refine(
+    (v) =>
+      !v.collection ||
+      (v.channel === "shop" &&
+        !!v.category &&
+        !!SHOP_COLLECTIONS[v.category]?.some((c) => c.id === v.collection)),
+    { message: "Unknown collection for this department." },
+  )
   .refine(
     (v) =>
       v.minPrice === undefined ||
@@ -88,7 +99,9 @@ export function catalogueWhere(filter: z.infer<typeof catalogueQuery>) {
     filter.minRating !== undefined
       ? gte(p.rating, filter.minRating)
       : undefined,
-    filter.inStock ? gt(p.stockCount, 0) : undefined,
+    // Fotizo Shop goods are sourced to order, so they count as in stock (as
+    // the product response reports them).
+    filter.inStock ? or(eq(p.channel, "shop"), gt(p.stockCount, 0)) : undefined,
     filter.discounted ? gt(discount, 0) : undefined,
   );
 }

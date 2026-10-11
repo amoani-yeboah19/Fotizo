@@ -11,7 +11,7 @@ The shop keeps the Fotizo department list and navy/orange styling. Desktop uses 
 - Top Picks is a deterministic, varied merchandising selection. It does not manufacture ratings, sales, urgency or discounts.
 - Subcollections are title-derived navigation shortcuts. Women's and men's shoes use explicit title terms (including explicitly unisex listings); children's footwear and bags are excluded from adult footwear. Unknown audience/style stays available under the department's All selection.
 - URLs such as `/shop?category=shoes-bags&collection=women-shoes` preserve the selection and work with browser navigation. Free-text search, sorting and pagination still apply.
-- Filtering happens before pagination. Until backend taxonomy exists, the overlay retrieves the selected live catalogue in bounded concurrent batches and filters it together with the complete sourced snapshot. Failed live requests retain the existing partial-listing notice. This is a transition strategy; the backend should add indexed subcategory/audience filters and counts to avoid fetching full departments as the published catalogue grows.
+- Filtering happens before pagination. The API applies collection filters using the shared taxonomy. The frontend overlay retrieves that selection in bounded concurrent batches of at most 48 products per request and applies storefront exclusions together with the complete sourced snapshot. Failed live requests retain the existing partial-listing notice. This is a transition strategy; the storefront visibility policy should eventually have indexed filtering and counts to avoid fetching full selections as the published catalogue grows.
 
 ## Viewing history
 

@@ -17,6 +17,9 @@
     },
     {
       "path": "../../lib/service-taxonomy"
+    },
+    {
+      "path": "../../lib/shop-taxonomy"
     }
   ]
 }

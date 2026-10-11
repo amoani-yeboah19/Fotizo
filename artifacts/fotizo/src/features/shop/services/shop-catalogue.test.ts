@@ -3,6 +3,7 @@ import { shopCataloguePage, clearShopCatalogueCache } from "./shop-catalogue";
 import { cataloguePages } from "@/features/marketplace/services/catalogue-page";
 import { loadSourcedCatalogue } from "../data/sourced-catalogue";
 import type { ShopProduct } from "../data/shop-product";
+import { matchesCollection } from "@workspace/shop-taxonomy";
 
 vi.mock("@/features/marketplace/services/catalogue-page", () => ({
   cataloguePages: { list: vi.fn() },
@@ -106,7 +107,7 @@ it("keeps sourced products available when the backend fails and reports the fail
   expect((await shopCataloguePage({ category: "womens" })).items).toEqual([]);
 });
 
-it("filters complete departments before paging a women’s shoe collection", async () => {
+it("asks the server for a women’s shoe collection page and merges matching previews", async () => {
   vi.mocked(loadSourcedCatalogue).mockResolvedValue([
     {
       ...item("woman-local", 3),
@@ -128,17 +129,21 @@ it("filters complete departments before paging a women’s shoe collection", asy
       title: "Women’s Loafers",
     },
   ];
+  // The API applies the collection (shared rules) before paging.
   vi.mocked(cataloguePages.list).mockImplementation(
-    async (_channel, f = {}) => ({
-      items: live.slice(
-        (f.page ?? 0) * (f.pageSize ?? 1),
-        ((f.page ?? 0) + 1) * (f.pageSize ?? 1),
-      ) as never[],
-      total: 3,
-      page: f.page ?? 0,
-      pageSize: f.pageSize ?? 1,
-      hasMore: (f.page ?? 0) < 2,
-    }),
+    async (_channel, f = {}) => {
+      const matched = live.filter((p) => matchesCollection(p, f.collection));
+      return {
+        items: matched.slice(
+          (f.page ?? 0) * (f.pageSize ?? 1),
+          ((f.page ?? 0) + 1) * (f.pageSize ?? 1),
+        ) as never[],
+        total: matched.length,
+        page: f.page ?? 0,
+        pageSize: f.pageSize ?? 1,
+        hasMore: ((f.page ?? 0) + 1) * (f.pageSize ?? 1) < matched.length,
+      };
+    },
   );
   const first = await shopCataloguePage({
     category: "shoes-bags",
@@ -157,10 +162,19 @@ it("filters complete departments before paging a women’s shoe collection", asy
   expect(second.items.map((p) => p.id)).toEqual(["woman-live"]);
   expect(first.total).toBe(2);
   expect(second.hasMore).toBe(false);
+  // One page at a time, never the whole department.
   expect(
     vi
       .mocked(cataloguePages.list)
-      .mock.calls.every(([, f]) => !("collection" in (f ?? {}))),
+      .mock.calls.every(
+        ([, f]) => f?.collection === "women-shoes" && f.pageSize === 1,
+      ),
+  ).toBe(true);
+  // The API refuses pages over 48 items, which would leave the collection empty.
+  expect(
+    vi
+      .mocked(cataloguePages.list)
+      .mock.calls.every(([, f]) => (f?.pageSize ?? 0) <= 48),
   ).toBe(true);
 });
 
@@ -206,22 +220,29 @@ it("removes imported and live driving decals before sorting, counting and pagina
     { ...item("1688-flag", 0.01), title: "Decorative Vehicle Trim or Sticker" },
     item("1688-shirt", 2),
   ]);
-  vi.mocked(cataloguePages.list).mockResolvedValue({
-    items: [
-      { ...item("live-decal", 0.01), title: "Vehicle Decorative Stickers" },
-      { ...item("live-flag", 0.02), title: "Chinese Flag Sticker" },
-      {
-        ...item("renamed-flag", 0.02),
-        title: "Reflective Car Decal",
-        sourcing: { platform: "1688", productId: "888000266401" },
-      },
-      item("live-shirt", 3),
-    ] as never[],
-    total: 4,
-    page: 0,
-    pageSize: 96,
-    hasMore: false,
-  });
+  const live = [
+    { ...item("live-decal", 0.01), title: "Vehicle Decorative Stickers" },
+    { ...item("live-flag", 0.02), title: "Chinese Flag Sticker" },
+    {
+      ...item("renamed-flag", 0.02),
+      title: "Reflective Car Decal",
+      sourcing: { platform: "1688", productId: "888000266401" },
+    },
+    item("live-shirt", 3),
+  ];
+  vi.mocked(cataloguePages.list).mockImplementation(
+    async (_channel, f = {}) => {
+      const page = f.page ?? 0,
+        size = f.pageSize ?? 48;
+      return {
+        items: live.slice(page * size, (page + 1) * size) as never[],
+        total: live.length,
+        page,
+        pageSize: size,
+        hasMore: (page + 1) * size < live.length,
+      };
+    },
+  );
   const first = await shopCataloguePage({ sort: "price-asc", pageSize: 1 });
   const second = await shopCataloguePage({
     sort: "price-asc",

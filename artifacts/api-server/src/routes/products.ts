@@ -11,13 +11,15 @@ import {
 } from "../lib/admin";
 import { z } from "zod";
 import type { CatalogueProduct } from "@workspace/api-zod";
-import { eq, and, ne, desc, sql, isNull } from "drizzle-orm";
+import { eq, and, ne, desc, sql, isNull, inArray } from "drizzle-orm";
+import { matchesCollection } from "@workspace/shop-taxonomy";
 import { ownerVisible } from "../lib/identity";
 import {
   db,
   productsTable,
   usersTable,
   orderItemsTable,
+  adminAuditTable,
   type ProductRow,
 } from "@workspace/db";
 import {
@@ -40,8 +42,24 @@ const router: IRouter = Router();
 // shop catalogue is listed under. Everything else (buyer, manager, developer,
 // the USA representative) is read-only here.
 const PRODUCT_OWNER_ROLES = new Set(["seller", "china_representative"]);
-const CHINA_DESK_HOLD_MESSAGE =
-  "This listing is waiting for a manager to publish it. Managers publish held listings under Publication controls.";
+const TAKEN_DOWN_MESSAGE =
+  "A manager took this listing down. Ask a manager to republish it under Publication controls.";
+
+/** Whether a manager's last publication decision on this product was to take it down. */
+async function takenDownByManager(productId: string) {
+  const [last] = await db
+    .select({ action: adminAuditTable.action })
+    .from(adminAuditTable)
+    .where(
+      and(
+        eq(adminAuditTable.targetId, productId),
+        inArray(adminAuditTable.action, ["product.publish", "product.unpublish"]),
+      ),
+    )
+    .orderBy(desc(adminAuditTable.createdAt), desc(adminAuditTable.id))
+    .limit(1);
+  return last?.action === "product.unpublish";
+}
 
 const money = z
   .number()
@@ -115,6 +133,62 @@ export function toPublicProduct(
   };
 }
 
+// Shop data the import scripts keep in specs: the department, supplier sales
+// and badges, supplier terms and the supplier link staff buy from. The listing
+// form does not edit these, so updates keep the stored values and owners
+// cannot set them.
+const SYSTEM_SPEC_KEYS = new Set([
+  "department",
+  "shopId",
+  "unitsSold",
+  "almostGone",
+  "freeShipping",
+  "priceRange",
+  "minimumOrder",
+  "unit",
+  "capturedAt",
+  "supplierListing",
+]);
+const pickSpecs = (specs: Record<string, string>, system: boolean) =>
+  Object.fromEntries(
+    Object.entries(specs).filter(([key]) => SYSTEM_SPEC_KEYS.has(key) === system),
+  );
+
+/** The shop department other listings in this category use, if any. */
+async function shopDepartment(category: string): Promise<string | undefined> {
+  const [row] = await db
+    .select({ department: sql<string>`${productsTable.specs}->>'department'` })
+    .from(productsTable)
+    .where(
+      and(
+        eq(productsTable.channel, "shop"),
+        eq(productsTable.category, category),
+        sql`coalesce(${productsTable.specs}->>'department', '') <> ''`,
+      ),
+    )
+    .limit(1);
+  return row?.department;
+}
+
+/**
+ * The owner's specs plus the system ones: kept from the stored listing, with
+ * the shop department following the category.
+ */
+async function listingSpecs(
+  channel: "marketplace" | "shop",
+  category: string,
+  owned: Record<string, string>,
+  stored: Record<string, string> = {},
+) {
+  const system = pickSpecs(stored, true);
+  if (channel === "shop") {
+    const department = await shopDepartment(category);
+    if (department) system.department = department;
+    else delete system.department;
+  }
+  return { ...pickSpecs(owned, false), ...system };
+}
+
 function publicSpecs(specs: Record<string, string>) {
   const { supplierListing: _supplierListing, ...rest } = specs;
   return rest;
@@ -126,11 +200,43 @@ router.get("/products", async (req, res) => {
     res.status(400).json({ error: "Invalid catalogue filters." });
     return;
   }
-  const { page, pageSize } = filter.data;
+  const { page, pageSize, category, collection } = filter.data;
   const where = catalogueWhere(filter.data);
   // A shared snapshot keeps the page and its total consistent during writes.
   const result = await db.transaction(
     async (tx) => {
+      if (collection && category) {
+        // Collections match on product titles (shared with the storefront), so
+        // the department's titles are matched here, in sort order, before paging.
+        const candidates = await tx
+          .select({ id: productsTable.id, title: productsTable.title })
+          .from(productsTable)
+          .leftJoin(usersTable, eq(productsTable.sellerId, usersTable.id))
+          .where(where)
+          .orderBy(...catalogueOrder(filter.data.sort));
+        const ids = candidates
+          .filter((r) => matchesCollection({ title: r.title, category }, collection))
+          .map((r) => r.id);
+        const pageIds = ids.slice(page * pageSize, (page + 1) * pageSize);
+        const rows = pageIds.length
+          ? await tx
+              .select({ product: productsTable, sellerName: usersTable.name })
+              .from(productsTable)
+              .leftJoin(usersTable, eq(productsTable.sellerId, usersTable.id))
+              .where(inArray(productsTable.id, pageIds))
+          : [];
+        const byId = new Map(rows.map((r) => [r.product.id, r]));
+        return {
+          items: pageIds.flatMap((id) => {
+            const r = byId.get(id);
+            return r ? [toPublicProduct(r.product, r.sellerName ?? "Unknown seller")] : [];
+          }),
+          total: ids.length,
+          page,
+          pageSize,
+          hasMore: (page + 1) * pageSize < ids.length,
+        };
+      }
       const [count] = await tx
         .select({ total: sql<number>`count(*)::int` })
         .from(productsTable)
@@ -310,6 +416,9 @@ router.post(
       return;
     }
 
+    const channel =
+      req.auth!.role === "china_representative" ? "shop" : "marketplace";
+    const specs = await listingSpecs(channel, parsed.data.category, parsed.data.specs);
     const seller = await db.query.usersTable.findFirst({
       where: eq(usersTable.id, req.auth!.userId),
     });
@@ -319,9 +428,9 @@ router.post(
         .insert(productsTable)
         .values({
           ...parsed.data,
+          specs,
           sellerId: req.auth!.userId,
-          channel:
-            req.auth!.role === "china_representative" ? "shop" : "marketplace",
+          channel,
         })
         .returning();
       if (seller && REVIEWED_ROLES.has(req.auth!.role))
@@ -462,16 +571,23 @@ router.patch(
       return;
     }
 
+    // The China desk publishes its own held listings (such as imports kept
+    // back for review), except ones a manager took down. Other owners' holds
+    // are lifted by staff.
+    const liftHold =
+      parsed.data.status === "active" &&
+      found.product.moderationHold &&
+      req.auth!.role === "china_representative";
     if (parsed.data.status === "active" && found.product.moderationHold) {
-      // China desk listings are not reviewed on update, so only a manager can
-      // lift their hold (Publication controls).
-      res.status(409).json({
-        error:
-          req.auth!.role === "china_representative"
-            ? CHINA_DESK_HOLD_MESSAGE
-            : HOLD_MESSAGE,
-      });
-      return;
+      const refusal = !liftHold
+        ? HOLD_MESSAGE
+        : (await takenDownByManager(found.product.id))
+          ? TAKEN_DOWN_MESSAGE
+          : null;
+      if (refusal) {
+        res.status(409).json({ error: refusal });
+        return;
+      }
     }
     if (parsed.data.images) {
       const imageProblem = await listingImagesProblem(
@@ -486,6 +602,21 @@ router.patch(
       }
     }
 
+    const changes = {
+      ...parsed.data,
+      ...(liftHold ? { moderationHold: false } : {}),
+    };
+    const stored = found.product;
+    if (
+      changes.specs ||
+      (changes.category !== undefined && changes.category !== stored.category)
+    )
+      changes.specs = await listingSpecs(
+        stored.channel,
+        changes.category ?? stored.category,
+        changes.specs ?? stored.specs,
+        stored.specs,
+      );
     const seller = await db.query.usersTable.findFirst({
       where: eq(usersTable.id, req.auth!.userId),
     });
@@ -493,7 +624,7 @@ router.patch(
     const updated = await db.transaction(async (tx) => {
       const [row] = await tx
         .update(productsTable)
-        .set(parsed.data)
+        .set(changes)
         .where(eq(productsTable.id, found.product.id))
         .returning();
       if (

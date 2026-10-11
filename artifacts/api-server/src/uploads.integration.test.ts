@@ -213,18 +213,66 @@ describe("image uploads to Supabase Storage", () => {
     expect((await send("PATCH", `/services/${savedService.id}`, { ...service, avatar: serviceShot, details }, seller.cookie)).status).toBe(200);
   });
 
-  it("lets the China desk list products, leaving held listings for a manager to publish", async () => {
+  it("lets the China desk publish its held listings, but not ones a manager took down", async () => {
     const desk = await account("china_representative");
     const created = await send("POST", "/products", { ...product, images: [await uploaded("product", desk.cookie)] }, desk.cookie);
     expect(created.status).toBe(201);
     const { id } = (await created.json()) as { id: string };
     expect((await upload("service", JPEG, desk.cookie)).status).toBe(403);
+    const hold = () => database.query("UPDATE products SET status = 'unpublished', moderation_hold = true WHERE id = $1", [id]);
+    const state = async () => (await database.query<{ status: string; moderation_hold: boolean }>("SELECT status, moderation_hold FROM products WHERE id = $1", [id])).rows[0];
 
-    await database.query("UPDATE products SET status = 'unpublished', moderation_hold = true WHERE id = $1", [id]);
-    const publish = await send("PATCH", `/products/${id}`, { status: "active" }, desk.cookie);
-    expect(publish.status).toBe(409);
-    expect(await publish.json()).toEqual({ error: expect.stringMatching(/manager to publish/) });
+    // Held on import: the China desk publishes it and the hold is lifted.
+    await hold();
+    expect((await send("PATCH", `/products/${id}`, { status: "active" }, desk.cookie)).status).toBe(200);
+    expect(await state()).toEqual({ status: "active", moderation_hold: false });
+
+    // Taken down by a manager: only a manager can republish it.
+    const manager = await account("manager");
+    const audit = (action: string) =>
+      database.query(
+        "INSERT INTO admin_audit (actor_id, actor_name, action, target_type, target_id, target_label, reason) VALUES ($1, 'Manager', $2, 'product', $3, 'Cordless drill', 'Review')",
+        [manager.id, action, id],
+      );
+    await hold();
+    await audit("product.unpublish");
+    const refused = await send("PATCH", `/products/${id}`, { status: "active" }, desk.cookie);
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toEqual({ error: expect.stringMatching(/manager took this listing down/) });
+    expect(await state()).toEqual({ status: "unpublished", moderation_hold: true });
     expect((await send("PATCH", `/products/${id}`, { title: "Cordless drill kit" }, desk.cookie)).status).toBe(200);
+
+    // Sellers' holds are still lifted by staff.
+    const seller = await account("seller");
+    const listed = (await (await send("POST", "/products", { ...product, images: [await uploaded("product", seller.cookie)] }, seller.cookie)).json()) as { id: string };
+    await database.query("UPDATE products SET status = 'unpublished', moderation_hold = true WHERE id = $1", [listed.id]);
+    expect((await send("PATCH", `/products/${listed.id}`, { status: "active" }, seller.cookie)).status).toBe(409);
+  });
+
+  it("keeps a shop listing's supplier data when it is edited and moves it with its category", async () => {
+    const desk = await account("china_representative");
+    const create = (data: object) => send("POST", "/products", { ...product, images: [], ...data }, desk.cookie);
+    const other = (await (await create({ category: "Men's Clothing" })).json()) as { id: string };
+    await database.query(`UPDATE products SET specs = '{"department":"mens"}' WHERE id = $1`, [other.id]);
+    // Owners cannot set system data such as sales counts or the supplier link.
+    const created = await create({ category: "Wigs & Hair", specs: { Colour: "Black", unitsSold: "9999", supplierListing: "https://evil.example" } });
+    const { id } = (await created.json()) as { id: string };
+    const stored = async () => (await database.query<{ category: string; specs: Record<string, string> }>("SELECT category, specs FROM products WHERE id = $1", [id])).rows[0];
+    expect((await stored()).specs).toEqual({ Colour: "Black" });
+
+    await database.query(
+      `UPDATE products SET specs = specs || '{"department":"wigs","supplierListing":"https://detail.1688.com/offer/1.html","unitsSold":"40"}' WHERE id = $1`,
+      [id],
+    );
+    expect((await send("PATCH", `/products/${id}`, { specs: { Colour: "Brown", unitsSold: "1" } }, desk.cookie)).status).toBe(200);
+    expect((await stored()).specs).toEqual({
+      Colour: "Brown",
+      department: "wigs",
+      supplierListing: "https://detail.1688.com/offer/1.html",
+      unitsSold: "40",
+    });
+    expect((await send("PATCH", `/products/${id}`, { category: "Men's Clothing" }, desk.cookie)).status).toBe(200);
+    expect(await stored()).toMatchObject({ category: "Men's Clothing", specs: { Colour: "Brown", department: "mens", unitsSold: "40" } });
   });
 });
 

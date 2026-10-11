@@ -39,3 +39,9 @@ it("distinguishes a storage failure and keeps the existing photo", async () => {
   expect((await screen.findByRole("alert")).textContent).toContain("Photo storage is temporarily unavailable");
   expect(onChange).not.toHaveBeenCalled();
 });
+it("shows which storage problem the server reported", async () => {
+  photoDecoder(); vi.mocked(uploadImage).mockRejectedValue(new ApiError(503, "Unavailable", { error: "Image uploads are not available right now." }, "/uploads/images"));
+  const { container } = render(<AvatarUploadInput value="" onChange={vi.fn()} />);
+  fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [new File(["photo"], "camera.jpg", { type: "image/jpeg" })] } });
+  expect((await screen.findByRole("alert")).textContent).toBe("Image uploads are not available right now. Your form has not been lost.");
+});
