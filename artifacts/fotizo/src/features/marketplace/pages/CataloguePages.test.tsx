@@ -329,6 +329,11 @@ it("shows women's clothing first and fills lowest prices while live requests are
   mount(<ShopPage />);
   const lowest = screen.getByRole("region", { name: "Lowest prices" });
   await within(lowest).findByText("Women's Cotton Top");
+  const catalogue = screen.getByRole("region", { name: "All discoveries" });
+  await within(catalogue).findByText("Women's Cotton Top");
+  expect(
+    within(catalogue).queryByText("Finding your next favourite…"),
+  ).toBeNull();
   const highlights = screen.getAllByRole("region");
   expect(highlights[0].getAttribute("aria-label")).toBe("Women's Clothing");
   expect(highlights[1].getAttribute("aria-label")).toBe("Men's Clothing");

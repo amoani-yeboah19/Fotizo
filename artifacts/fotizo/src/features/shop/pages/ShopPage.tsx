@@ -109,6 +109,27 @@ export default function ShopPage() {
             .includes(q.toLowerCase())),
     );
   }, [snapshot.data, live.data, activeCat, activeCollection, q]);
+  const openingProducts = useMemo(() => {
+    const items = [...pool];
+    const priority = (p: ShopProduct) =>
+      p.category === "womens" ? 0 : p.category === "mens" ? 1 : 2;
+    items.sort((a, b) =>
+      sort === "price-asc"
+        ? a.price - b.price
+        : sort === "price-desc"
+          ? b.price - a.price
+          : sort === "best-selling"
+            ? b.sold - a.sold
+            : sort === "discount"
+              ? (b.originalPrice - b.price) / b.originalPrice -
+                (a.originalPrice - a.price) / a.originalPrice
+              : !activeCat && !q
+                ? priority(a) - priority(b)
+                : 0,
+    );
+    return items.slice(0, 48);
+  }, [pool, sort, activeCat, q]);
+  const displayedProducts = grid.data ? products : openingProducts;
   const men = useShopCataloguePage("shop", {
     category: "mens",
     sort: "newest",
@@ -299,7 +320,10 @@ export default function ShopPage() {
                     title="Women's Clothing"
                     eyebrow="STYLES YOU’LL LOVE"
                     icon={<Venus size={18} />}
-                    products={women.data?.items ?? []}
+                    products={
+                      women.data?.items ??
+                      pool.filter((p) => p.category === "womens").slice(0, 3)
+                    }
                     tone="picks"
                     loading={women.isLoading}
                     description="Discover dresses, tops, skirts and more."
@@ -309,7 +333,10 @@ export default function ShopPage() {
                     title="Men's Clothing"
                     eyebrow="FIND YOUR NEXT LOOK"
                     icon={<Shirt size={18} />}
-                    products={men.data?.items ?? []}
+                    products={
+                      men.data?.items ??
+                      pool.filter((p) => p.category === "mens").slice(0, 3)
+                    }
                     tone="value"
                     loading={men.isLoading}
                     description="Explore shirts, T-shirts, trousers and more."
@@ -453,11 +480,11 @@ export default function ShopPage() {
                     </button>
                   </p>
                 )}
-                {grid.isLoading ? (
+                {grid.isLoading && !displayedProducts.length ? (
                   <Loading label="Finding your next favourite…" />
                 ) : grid.isError ? (
                   <ErrorState label="The shop could not be loaded. Please try again." />
-                ) : !products.length ? (
+                ) : !displayedProducts.length ? (
                   <div className="discovery-empty">
                     <Search size={30} />
                     <h3>No finds here just yet.</h3>
@@ -471,7 +498,7 @@ export default function ShopPage() {
                 ) : (
                   <>
                     <div className="discovery-product-grid">
-                      {products.map((p) => (
+                      {displayedProducts.map((p) => (
                         <ShopProductCard key={p.id} product={p} />
                       ))}
                     </div>

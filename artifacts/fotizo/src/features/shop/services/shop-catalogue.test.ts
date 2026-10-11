@@ -277,3 +277,26 @@ it("opens all categories with women's clothing followed by men's clothing", asyn
     "women",
   ]);
 });
+
+it("returns the opening page without requesting the rest of a large live catalogue", async () => {
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([]);
+  vi.mocked(cataloguePages.list).mockImplementation(
+    async (_channel, f = {}) => {
+      if (f.page) throw new Error("Opening page must not request later pages");
+      return {
+        items: Array.from({ length: 48 }, (_, i) =>
+          item(`live-${i}`, i + 1),
+        ) as never[],
+        total: 4800,
+        page: 0,
+        pageSize: 48,
+        hasMore: true,
+      };
+    },
+  );
+  const result = await shopCataloguePage({ sort: "newest", pageSize: 48 });
+  expect(result.items).toHaveLength(48);
+  expect(result.total).toBe(4800);
+  expect(result.hasMore).toBe(true);
+  expect(cataloguePages.list).toHaveBeenCalledTimes(1);
+});
