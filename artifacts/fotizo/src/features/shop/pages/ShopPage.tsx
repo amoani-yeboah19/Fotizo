@@ -129,7 +129,21 @@ export default function ShopPage() {
     );
     return items.slice(0, 48);
   }, [pool, sort, activeCat, q]);
-  const displayedProducts = grid.data ? products : openingProducts;
+  const displayedProducts = useMemo(() => {
+    if (!grid.data) return openingProducts;
+    if (activeCat || q || sort !== "newest") return products;
+    // Keep the clothing opening visible when the live first page contains
+    // other departments. Loading live results must not replace it with appliances.
+    const liveIds = new Set(products.map((p) => p.id));
+    const clothing = openingProducts.filter(
+      (p) =>
+        (p.category === "womens" || p.category === "mens") &&
+        !liveIds.has(p.id),
+    );
+    const priority = (p: ShopProduct) =>
+      p.category === "womens" ? 0 : p.category === "mens" ? 1 : 2;
+    return [...clothing, ...products].sort((a, b) => priority(a) - priority(b));
+  }, [grid.data, products, openingProducts, activeCat, q, sort]);
   const men = useShopCataloguePage("shop", {
     category: "mens",
     sort: "newest",

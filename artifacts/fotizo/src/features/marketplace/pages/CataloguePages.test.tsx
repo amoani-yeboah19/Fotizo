@@ -344,3 +344,49 @@ it("shows women's clothing first and fills lowest prices while live requests are
   expect(navigation[1].textContent).toContain("Women's Clothing");
   expect(navigation[2].textContent).toContain("Men's Clothing");
 });
+
+it("keeps clothing first in All discoveries after the live appliance page arrives", async () => {
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([
+    {
+      id: "women-opening",
+      title: "Women's Opening Dress",
+      description: "Dress",
+      category: "womens",
+      price: 5,
+      originalPrice: 5,
+      image: "/dress.webp",
+      images: [],
+      rating: 0,
+      sold: 0,
+      freeShipping: false,
+      almostGone: false,
+    },
+  ]);
+  vi.mocked(cataloguePages.list).mockImplementation(
+    async (channel, filters) => {
+      const result = page(
+        channel,
+        filters?.page ?? 0,
+        60,
+        filters?.pageSize ?? 48,
+      );
+      result.items = result.items.map((p) => ({
+        ...p,
+        title: "Home Appliance",
+        category: "appliances",
+        specs: { department: "appliances" },
+      }));
+      return result;
+    },
+  );
+  mount(<ShopPage />);
+  await screen.findByText("61 products");
+  const catalogue = screen.getByRole("region", { name: "All discoveries" });
+  const cards = within(catalogue).getAllByText(
+    /Women's Opening Dress|Home Appliance/,
+  );
+  expect(cards[0].textContent).toBe("Women's Opening Dress");
+  expect(cards.some((card) => card.textContent === "Home Appliance")).toBe(
+    true,
+  );
+});
