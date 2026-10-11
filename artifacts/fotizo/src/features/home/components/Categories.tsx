@@ -6,11 +6,12 @@ import {
   CARD_W,
   type Category,
 } from "@/features/home/components/CategoryCard";
+import { SHOP_CATEGORY_COVERS } from "../data/shop-category-covers";
 import { categoryLabel } from "@/features/shop/data/categories";
 import type { CatalogueCategory } from "@/features/marketplace/services/catalogue-page";
 import { useCatalogueCategories } from "@/features/marketplace/hooks/useCatalogue";
 
-// Full-channel API aggregates supply counts and representative product images.
+// API aggregates supply counts; local curated photographs supply category covers.
 // Accent colors remain stable for the displayed category order.
 const ACCENTS = [
   "#1E3A5F",
@@ -29,13 +30,13 @@ const ACCENTS = [
 
 function toCards(categories: CatalogueCategory[]): Category[] {
   return [...categories]
-    .filter((c) => c.count > 0 && c.image)
+    .filter((c) => c.count > 0 && (SHOP_CATEGORY_COVERS[c.category] || c.image))
     .sort((a, b) => b.count - a.count)
     .map((c, i) => ({
       id: c.category,
       name: categoryLabel(c.category),
       count: `${c.count} ${c.count === 1 ? "item" : "items"}`,
-      image: c.image,
+      image: SHOP_CATEGORY_COVERS[c.category] ?? c.image,
       accent: ACCENTS[i % ACCENTS.length],
       href: `/shop?category=${encodeURIComponent(c.category)}`,
     }));
