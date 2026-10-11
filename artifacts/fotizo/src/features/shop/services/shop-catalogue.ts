@@ -42,7 +42,7 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
   const { collection } = input;
   const page = filters.page ?? 0,
     pageSize = filters.pageSize ?? 48;
-  const livePageSize = Math.min(pageSize, SERVER_PAGE_SIZE_MAX);
+  const livePageSize = SERVER_PAGE_SIZE_MAX;
   const q = (filters.q ?? "").trim().toLowerCase();
   // Published offers come from the server (once, with correct totals); only
   // unpublished preview items are merged in from the local files.
@@ -129,6 +129,12 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
               ? b.sold - a.sold
               : discount(b) - discount(a),
     );
+  // The unfiltered opening catalogue leads with clothing while retaining every department.
+  if ((!filters.sort || filters.sort === "newest") && !filters.category && !q) {
+    const priority = (p: ShopProduct) =>
+      p.category === "womens" ? 0 : p.category === "mens" ? 1 : 2;
+    all.sort((a, b) => priority(a) - priority(b));
+  }
   const total = all.length;
   return {
     items: all.slice(page * pageSize, (page + 1) * pageSize),

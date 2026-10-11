@@ -167,7 +167,7 @@ it("asks the server for a women’s shoe collection page and merges matching pre
     vi
       .mocked(cataloguePages.list)
       .mock.calls.every(
-        ([, f]) => f?.collection === "women-shoes" && f.pageSize === 1,
+        ([, f]) => f?.collection === "women-shoes" && f.pageSize === 48,
       ),
   ).toBe(true);
   // The API refuses pages over 48 items, which would leave the collection empty.
@@ -253,4 +253,27 @@ it("removes imported and live driving decals before sorting, counting and pagina
   expect(second.items.map((p) => p.id)).toEqual(["live-shirt"]);
   expect(first.total).toBe(2);
   expect(second.hasMore).toBe(false);
+});
+
+it("opens all categories with women's clothing followed by men's clothing", async () => {
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([
+    { ...item("appliance", 1), category: "appliances" },
+    item("men", 2),
+    { ...item("women", 3), category: "womens" },
+  ]);
+  vi.mocked(cataloguePages.list).mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 0,
+    pageSize: 48,
+    hasMore: false,
+  });
+  const result = await shopCataloguePage({ sort: "newest" });
+  expect(result.items.map((p) => p.id)).toEqual(["women", "men", "appliance"]);
+  const cheapest = await shopCataloguePage({ sort: "price-asc" });
+  expect(cheapest.items.map((p) => p.id)).toEqual([
+    "appliance",
+    "men",
+    "women",
+  ]);
 });

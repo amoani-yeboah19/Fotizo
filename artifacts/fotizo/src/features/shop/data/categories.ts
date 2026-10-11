@@ -50,8 +50,8 @@ export interface ShopCategory {
 }
 
 export const SHOP_CATEGORIES: ShopCategory[] = [
-  { id: "mens", label: "Men's Clothing", icon: Shirt },
   { id: "womens", label: "Women's Clothing", icon: Venus },
+  { id: "mens", label: "Men's Clothing", icon: Shirt },
   { id: "shoes-bags", label: "Shoes & Bags", icon: ShoppingBag },
   { id: "general", label: "General Merchandise", icon: Package },
   { id: "packaging", label: "Packaging", icon: Boxes },
