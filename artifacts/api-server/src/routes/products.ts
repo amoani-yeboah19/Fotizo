@@ -19,6 +19,7 @@ import {
   productsTable,
   usersTable,
   orderItemsTable,
+  adminAuditTable,
   type ProductRow,
 } from "@workspace/db";
 import {
@@ -41,8 +42,24 @@ const router: IRouter = Router();
 // shop catalogue is listed under. Everything else (buyer, manager, developer,
 // the USA representative) is read-only here.
 const PRODUCT_OWNER_ROLES = new Set(["seller", "china_representative"]);
-const CHINA_DESK_HOLD_MESSAGE =
-  "This listing is waiting for a manager to publish it. Managers publish held listings under Publication controls.";
+const TAKEN_DOWN_MESSAGE =
+  "A manager took this listing down. Ask a manager to republish it under Publication controls.";
+
+/** Whether a manager's last publication decision on this product was to take it down. */
+async function takenDownByManager(productId: string) {
+  const [last] = await db
+    .select({ action: adminAuditTable.action })
+    .from(adminAuditTable)
+    .where(
+      and(
+        eq(adminAuditTable.targetId, productId),
+        inArray(adminAuditTable.action, ["product.publish", "product.unpublish"]),
+      ),
+    )
+    .orderBy(desc(adminAuditTable.createdAt), desc(adminAuditTable.id))
+    .limit(1);
+  return last?.action === "product.unpublish";
+}
 
 const money = z
   .number()
@@ -554,16 +571,23 @@ router.patch(
       return;
     }
 
+    // The China desk publishes its own held listings (such as imports kept
+    // back for review), except ones a manager took down. Other owners' holds
+    // are lifted by staff.
+    const liftHold =
+      parsed.data.status === "active" &&
+      found.product.moderationHold &&
+      req.auth!.role === "china_representative";
     if (parsed.data.status === "active" && found.product.moderationHold) {
-      // China desk listings are not reviewed on update, so only a manager can
-      // lift their hold (Publication controls).
-      res.status(409).json({
-        error:
-          req.auth!.role === "china_representative"
-            ? CHINA_DESK_HOLD_MESSAGE
-            : HOLD_MESSAGE,
-      });
-      return;
+      const refusal = !liftHold
+        ? HOLD_MESSAGE
+        : (await takenDownByManager(found.product.id))
+          ? TAKEN_DOWN_MESSAGE
+          : null;
+      if (refusal) {
+        res.status(409).json({ error: refusal });
+        return;
+      }
     }
     if (parsed.data.images) {
       const imageProblem = await listingImagesProblem(
@@ -578,7 +602,10 @@ router.patch(
       }
     }
 
-    const changes = { ...parsed.data };
+    const changes = {
+      ...parsed.data,
+      ...(liftHold ? { moderationHold: false } : {}),
+    };
     const stored = found.product;
     if (
       changes.specs ||
