@@ -78,18 +78,38 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
   ]);
   const serverTotal =
     first[0].status === "fulfilled" ? first[0].value.total : 0;
-  // Collections stay server-filtered; storefront exclusions remain frontend-only.
-  // Read the selection in API-compliant pages before removing hidden offers.
-  const count = Math.ceil(serverTotal / livePageSize);
+  // Only load enough of the sorted live prefix to fill this page. Keep reading
+  // past excluded products, without waiting for the entire catalogue.
+  const pageCount = Math.ceil(serverTotal / livePageSize);
   const responses = [...first];
-  for (let start = 1; start < count; start += 4) {
-    responses.push(
-      ...(await Promise.allSettled(
-        Array.from({ length: Math.min(4, count - start) }, (_, i) =>
-          serverPage({ ...filters, page: start + i, pageSize: livePageSize }),
-        ),
-      )),
+  const target = (page + 1) * pageSize;
+  const previewFillsPage =
+    (!filters.sort || filters.sort === "newest") && imported.length >= target;
+  let visible =
+    first[0].status === "fulfilled"
+      ? first[0].value.items.map(toShopProduct).filter(isShopVisible).length
+      : 0;
+  for (
+    let start = 1;
+    !previewFillsPage && visible < target && start < pageCount;
+  ) {
+    const batchSize = Math.min(
+      4,
+      pageCount - start,
+      Math.max(1, Math.ceil((target - visible) / livePageSize)),
     );
+    const batch = await Promise.allSettled(
+      Array.from({ length: batchSize }, (_, i) =>
+        serverPage({ ...filters, page: start + i, pageSize: livePageSize }),
+      ),
+    );
+    responses.push(...batch);
+    visible += batch.flatMap((r) =>
+      r.status === "fulfilled"
+        ? r.value.items.map(toShopProduct).filter(isShopVisible)
+        : [],
+    ).length;
+    start += batchSize;
   }
   const pages = responses.flatMap((r) =>
     r.status === "fulfilled" ? [r.value] : [],
@@ -135,7 +155,9 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
       p.category === "womens" ? 0 : p.category === "mens" ? 1 : 2;
     all.sort((a, b) => priority(a) - priority(b));
   }
-  const total = all.length;
+  const loadedCount = pages.reduce((n, p) => n + p.items.length, 0);
+  const total =
+    local.length + Math.max(0, serverTotal - (loadedCount - live.length));
   return {
     items: all.slice(page * pageSize, (page + 1) * pageSize),
     total,
