@@ -125,10 +125,13 @@ export default function ShopPage() {
     sort: "price-asc",
     pageSize: 3,
   });
-  const lowest = useMemo(
-    () => lowestQuery.data?.items ?? [],
-    [lowestQuery.data],
-  );
+  const lowest = useMemo(() => {
+    const finds =
+      lowestQuery.data?.items.filter((p) => p.price > 0 && p.image) ?? [];
+    return finds.length
+      ? finds
+      : [...pool].sort((a, b) => a.price - b.price).slice(0, 3);
+  }, [lowestQuery.data, pool]);
   const top = useMemo(
     () =>
       discoveryPicks(
@@ -293,16 +296,6 @@ export default function ShopPage() {
               {!q && !activeCat && (
                 <div className="discovery-highlights">
                   <Highlight
-                    title="Men's Clothing"
-                    eyebrow="FIND YOUR NEXT LOOK"
-                    icon={<Shirt size={18} />}
-                    products={men.data?.items ?? []}
-                    tone="value"
-                    loading={men.isLoading}
-                    description="Explore shirts, T-shirts, trousers and more."
-                    onExplore={() => choose("mens")}
-                  />
-                  <Highlight
                     title="Women's Clothing"
                     eyebrow="STYLES YOU’LL LOVE"
                     icon={<Venus size={18} />}
@@ -311,6 +304,16 @@ export default function ShopPage() {
                     loading={women.isLoading}
                     description="Discover dresses, tops, skirts and more."
                     onExplore={() => choose("womens")}
+                  />
+                  <Highlight
+                    title="Men's Clothing"
+                    eyebrow="FIND YOUR NEXT LOOK"
+                    icon={<Shirt size={18} />}
+                    products={men.data?.items ?? []}
+                    tone="value"
+                    loading={men.isLoading}
+                    description="Explore shirts, T-shirts, trousers and more."
+                    onExplore={() => choose("mens")}
                   />
                 </div>
               )}
@@ -322,7 +325,7 @@ export default function ShopPage() {
                     icon={<Tag size={18} />}
                     products={lowest}
                     tone="value"
-                    loading={lowestQuery.isLoading}
+                    loading={lowestQuery.isLoading || snapshot.isLoading}
                     description="Lowest listed prices in this selection."
                     onExplore={() => {
                       setSort("price-asc");
