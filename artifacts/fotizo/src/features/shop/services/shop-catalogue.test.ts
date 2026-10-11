@@ -178,7 +178,12 @@ it("shows a published 1688 offer once, from the server, with its local details a
     },
   ]);
   vi.mocked(cataloguePages.list).mockResolvedValue({
-    items: [{ ...item("uuid-2", 6.6), sourcing: { platform: "1688", productId: "2" } }] as never[],
+    items: [
+      {
+        ...item("uuid-2", 6.6),
+        sourcing: { platform: "1688", productId: "2" },
+      },
+    ] as never[],
     total: 1,
     page: 0,
     pageSize: 48,
@@ -194,4 +199,37 @@ it("shows a published 1688 offer once, from the server, with its local details a
     specifications: [{ label: "Material", value: "Cotton" }],
     variants: [{ id: "v1", price: 6.6 }],
   });
+});
+
+it("removes imported and live driving decals before sorting, counting and pagination", async () => {
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([
+    { ...item("1688-flag", 0.01), title: "Decorative Vehicle Trim or Sticker" },
+    item("1688-shirt", 2),
+  ]);
+  vi.mocked(cataloguePages.list).mockResolvedValue({
+    items: [
+      { ...item("live-decal", 0.01), title: "Vehicle Decorative Stickers" },
+      { ...item("live-flag", 0.02), title: "Chinese Flag Sticker" },
+      {
+        ...item("renamed-flag", 0.02),
+        title: "Reflective Car Decal",
+        sourcing: { platform: "1688", productId: "888000266401" },
+      },
+      item("live-shirt", 3),
+    ] as never[],
+    total: 4,
+    page: 0,
+    pageSize: 96,
+    hasMore: false,
+  });
+  const first = await shopCataloguePage({ sort: "price-asc", pageSize: 1 });
+  const second = await shopCataloguePage({
+    sort: "price-asc",
+    pageSize: 1,
+    page: 1,
+  });
+  expect(first.items.map((p) => p.id)).toEqual(["1688-shirt"]);
+  expect(second.items.map((p) => p.id)).toEqual(["live-shirt"]);
+  expect(first.total).toBe(2);
+  expect(second.hasMore).toBe(false);
 });

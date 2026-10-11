@@ -4,13 +4,19 @@ import {
   type CatalogueFilters,
 } from "@/features/marketplace/services/catalogue-page";
 import { loadSourcedCatalogue } from "../data/sourced-catalogue";
-import { offerOf, publishedOffers, toShopProduct, withLocalDetails } from "./shop.service";
+import {
+  offerOf,
+  publishedOffers,
+  toShopProduct,
+  withLocalDetails,
+} from "./shop.service";
+import { isShopVisible } from "../data/shop-visibility";
 import { matchesCollection } from "../data/shop-discovery";
 export type ShopCatalogueFilters = CatalogueFilters & { collection?: string };
 import type { ShopProduct } from "../data/shop-product";
 
 // Temporary frontend sourcing overlay. Marketplace queries remain server-only.
-// Fetch enough of the sorted server prefix to merge an accurate catalogue page.
+// Apply storefront exclusions and facets before counting and pagination.
 const serverPages = new Map<
   string,
   { at: number; value: ReturnType<typeof cataloguePages.list> }
@@ -32,7 +38,7 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
   const { collection, ...filters } = input;
   const page = filters.page ?? 0,
     pageSize = filters.pageSize ?? 48;
-  const livePageSize = collection ? Math.max(96, pageSize) : pageSize;
+  const livePageSize = Math.max(96, pageSize);
   const q = (filters.q ?? "").trim().toLowerCase();
   // Published offers come from the server (once, with correct totals); only
   // unpublished preview items are merged in from the local files.
@@ -48,6 +54,7 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
   );
   const imported = sourced.filter(
     (p) =>
+      isShopVisible(p) &&
       !published.has(offerOf(p.id) ?? "") &&
       matchesCollection(p, collection) &&
       !filters.sellerId &&
@@ -67,15 +74,10 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
   ]);
   const serverTotal =
     first[0].status === "fulfilled" ? first[0].value.total : 0;
-  const needed = collection
-    ? Math.ceil(serverTotal / livePageSize)
-    : filters.sort === "newest" && imported.length >= (page + 1) * pageSize
-      ? 1
-      : page + 1;
-  const count = Math.min(needed, Math.ceil(serverTotal / livePageSize));
+  const count = Math.ceil(serverTotal / livePageSize);
   const responses = [...first];
-  // Subcollections are frontend facets until the API supports taxonomy filters.
-  // Filter the complete department before pagination, never just loaded cards.
+  // Visibility and subcollections are frontend filters until the API supports them.
+  // Filter the complete selection before pagination so excluded items leave no gaps.
   for (let start = 1; start < count; start += 4) {
     responses.push(
       ...(await Promise.allSettled(
@@ -91,10 +93,13 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
   const live = pages
     .flatMap((p) => p.items.map(toShopProduct))
     .map((p) => {
-      const local = p.sourcing?.platform === "1688" ? localByOffer.get(p.sourcing.productId) : undefined;
+      const local =
+        p.sourcing?.platform === "1688"
+          ? localByOffer.get(p.sourcing.productId)
+          : undefined;
       return local ? withLocalDetails(p, local) : p;
     })
-    .filter((p) => matchesCollection(p, collection));
+    .filter((p) => isShopVisible(p) && matchesCollection(p, collection));
   const liveSources = new Set(
     live
       .filter((p) => p.sourcing?.platform === "1688")
@@ -120,7 +125,7 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
               ? b.sold - a.sold
               : discount(b) - discount(a),
     );
-  const total = collection ? all.length : local.length + (pages[0]?.total ?? 0);
+  const total = all.length;
   return {
     items: all.slice(page * pageSize, (page + 1) * pageSize),
     total,
