@@ -12,6 +12,8 @@ import {
   History,
   X,
   Tag,
+  Shirt,
+  Venus,
 } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Loading, ErrorState } from "@/components/common/QueryStates";
@@ -107,6 +109,16 @@ export default function ShopPage() {
             .includes(q.toLowerCase())),
     );
   }, [snapshot.data, live.data, activeCat, activeCollection, q]);
+  const men = useShopCataloguePage("shop", {
+    category: "mens",
+    sort: "newest",
+    pageSize: 3,
+  });
+  const women = useShopCataloguePage("shop", {
+    category: "womens",
+    sort: "newest",
+    pageSize: 3,
+  });
   const lowestQuery = useShopCataloguePage("shop", {
     category: activeCat ?? undefined,
     collection: activeCollection,
@@ -276,6 +288,30 @@ export default function ShopPage() {
                       {c.label}
                     </button>
                   ))}
+                </div>
+              )}
+              {!q && !activeCat && (
+                <div className="discovery-highlights">
+                  <Highlight
+                    title="Men's Clothing"
+                    eyebrow="FIND YOUR NEXT LOOK"
+                    icon={<Shirt size={18} />}
+                    products={men.data?.items ?? []}
+                    tone="value"
+                    loading={men.isLoading}
+                    description="Explore shirts, T-shirts, trousers and more."
+                    onExplore={() => choose("mens")}
+                  />
+                  <Highlight
+                    title="Women's Clothing"
+                    eyebrow="STYLES YOU’LL LOVE"
+                    icon={<Venus size={18} />}
+                    products={women.data?.items ?? []}
+                    tone="picks"
+                    loading={women.isLoading}
+                    description="Discover dresses, tops, skirts and more."
+                    onExplore={() => choose("womens")}
+                  />
                 </div>
               )}
               {!q && (

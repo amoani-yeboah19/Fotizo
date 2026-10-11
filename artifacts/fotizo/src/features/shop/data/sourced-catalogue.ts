@@ -1,3 +1,4 @@
+import { isShopVisible } from "./shop-visibility";
 import type { ShopProduct } from "./shop-product";
 
 // The restored Alibaba selection (restored-alibaba-products.json) is not shown
@@ -32,7 +33,7 @@ export async function loadSourcedCatalogue(): Promise<ShopProduct[]> {
     ...home,
     ...rows,
   ].filter((product) => {
-    if (seen.has(product.id)) return false;
+    if (seen.has(product.id) || !isShopVisible(product)) return false;
     seen.add(product.id);
     return true;
   });

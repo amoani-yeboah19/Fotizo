@@ -130,19 +130,21 @@ it("asks the server for a women’s shoe collection page and merges matching pre
     },
   ];
   // The API applies the collection (shared rules) before paging.
-  vi.mocked(cataloguePages.list).mockImplementation(async (_channel, f = {}) => {
-    const matched = live.filter((p) => matchesCollection(p, f.collection));
-    return {
-      items: matched.slice(
-        (f.page ?? 0) * (f.pageSize ?? 1),
-        ((f.page ?? 0) + 1) * (f.pageSize ?? 1),
-      ) as never[],
-      total: matched.length,
-      page: f.page ?? 0,
-      pageSize: f.pageSize ?? 1,
-      hasMore: ((f.page ?? 0) + 1) * (f.pageSize ?? 1) < matched.length,
-    };
-  });
+  vi.mocked(cataloguePages.list).mockImplementation(
+    async (_channel, f = {}) => {
+      const matched = live.filter((p) => matchesCollection(p, f.collection));
+      return {
+        items: matched.slice(
+          (f.page ?? 0) * (f.pageSize ?? 1),
+          ((f.page ?? 0) + 1) * (f.pageSize ?? 1),
+        ) as never[],
+        total: matched.length,
+        page: f.page ?? 0,
+        pageSize: f.pageSize ?? 1,
+        hasMore: ((f.page ?? 0) + 1) * (f.pageSize ?? 1) < matched.length,
+      };
+    },
+  );
   const first = await shopCataloguePage({
     category: "shoes-bags",
     collection: "women-shoes",
@@ -164,7 +166,9 @@ it("asks the server for a women’s shoe collection page and merges matching pre
   expect(
     vi
       .mocked(cataloguePages.list)
-      .mock.calls.every(([, f]) => f?.collection === "women-shoes" && f.pageSize === 1),
+      .mock.calls.every(
+        ([, f]) => f?.collection === "women-shoes" && f.pageSize === 1,
+      ),
   ).toBe(true);
   // The API refuses pages over 48 items, which would leave the collection empty.
   expect(
@@ -188,7 +192,12 @@ it("shows a published 1688 offer once, from the server, with its local details a
     },
   ]);
   vi.mocked(cataloguePages.list).mockResolvedValue({
-    items: [{ ...item("uuid-2", 6.6), sourcing: { platform: "1688", productId: "2" } }] as never[],
+    items: [
+      {
+        ...item("uuid-2", 6.6),
+        sourcing: { platform: "1688", productId: "2" },
+      },
+    ] as never[],
     total: 1,
     page: 0,
     pageSize: 48,
@@ -204,4 +213,44 @@ it("shows a published 1688 offer once, from the server, with its local details a
     specifications: [{ label: "Material", value: "Cotton" }],
     variants: [{ id: "v1", price: 6.6 }],
   });
+});
+
+it("removes imported and live driving decals before sorting, counting and pagination", async () => {
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([
+    { ...item("1688-flag", 0.01), title: "Decorative Vehicle Trim or Sticker" },
+    item("1688-shirt", 2),
+  ]);
+  const live = [
+    { ...item("live-decal", 0.01), title: "Vehicle Decorative Stickers" },
+    { ...item("live-flag", 0.02), title: "Chinese Flag Sticker" },
+    {
+      ...item("renamed-flag", 0.02),
+      title: "Reflective Car Decal",
+      sourcing: { platform: "1688", productId: "888000266401" },
+    },
+    item("live-shirt", 3),
+  ];
+  vi.mocked(cataloguePages.list).mockImplementation(
+    async (_channel, f = {}) => {
+      const page = f.page ?? 0,
+        size = f.pageSize ?? 48;
+      return {
+        items: live.slice(page * size, (page + 1) * size) as never[],
+        total: live.length,
+        page,
+        pageSize: size,
+        hasMore: (page + 1) * size < live.length,
+      };
+    },
+  );
+  const first = await shopCataloguePage({ sort: "price-asc", pageSize: 1 });
+  const second = await shopCataloguePage({
+    sort: "price-asc",
+    pageSize: 1,
+    page: 1,
+  });
+  expect(first.items.map((p) => p.id)).toEqual(["1688-shirt"]);
+  expect(second.items.map((p) => p.id)).toEqual(["live-shirt"]);
+  expect(first.total).toBe(2);
+  expect(second.hasMore).toBe(false);
 });

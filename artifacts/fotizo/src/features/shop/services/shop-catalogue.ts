@@ -4,7 +4,13 @@ import {
   type CatalogueFilters,
 } from "@/features/marketplace/services/catalogue-page";
 import { loadSourcedCatalogue } from "../data/sourced-catalogue";
-import { offerOf, publishedOffers, toShopProduct, withLocalDetails } from "./shop.service";
+import {
+  offerOf,
+  publishedOffers,
+  toShopProduct,
+  withLocalDetails,
+} from "./shop.service";
+import { isShopVisible } from "../data/shop-visibility";
 import { matchesCollection } from "../data/shop-discovery";
 export type ShopCatalogueFilters = CatalogueFilters;
 // The most the catalogue API returns per page; larger requests are refused.
@@ -12,7 +18,7 @@ const SERVER_PAGE_SIZE_MAX = 48;
 import type { ShopProduct } from "../data/shop-product";
 
 // Temporary frontend sourcing overlay. Marketplace queries remain server-only.
-// Fetch enough of the sorted server prefix to merge an accurate catalogue page.
+// Apply frontend visibility exclusions before counting and pagination.
 const serverPages = new Map<
   string,
   { at: number; value: ReturnType<typeof cataloguePages.list> }
@@ -52,6 +58,7 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
   );
   const imported = sourced.filter(
     (p) =>
+      isShopVisible(p) &&
       !published.has(offerOf(p.id) ?? "") &&
       matchesCollection(p, collection) &&
       !filters.sellerId &&
@@ -71,11 +78,9 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
   ]);
   const serverTotal =
     first[0].status === "fulfilled" ? first[0].value.total : 0;
-  const needed =
-    filters.sort === "newest" && imported.length >= (page + 1) * pageSize
-      ? 1
-      : page + 1;
-  const count = Math.min(needed, Math.ceil(serverTotal / livePageSize));
+  // Collections stay server-filtered; storefront exclusions remain frontend-only.
+  // Read the selection in API-compliant pages before removing hidden offers.
+  const count = Math.ceil(serverTotal / livePageSize);
   const responses = [...first];
   for (let start = 1; start < count; start += 4) {
     responses.push(
@@ -92,9 +97,13 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
   const live = pages
     .flatMap((p) => p.items.map(toShopProduct))
     .map((p) => {
-      const local = p.sourcing?.platform === "1688" ? localByOffer.get(p.sourcing.productId) : undefined;
+      const local =
+        p.sourcing?.platform === "1688"
+          ? localByOffer.get(p.sourcing.productId)
+          : undefined;
       return local ? withLocalDetails(p, local) : p;
-    });
+    })
+    .filter(isShopVisible);
   const liveSources = new Set(
     live
       .filter((p) => p.sourcing?.platform === "1688")
@@ -120,7 +129,7 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
               ? b.sold - a.sold
               : discount(b) - discount(a),
     );
-  const total = local.length + (pages[0]?.total ?? 0);
+  const total = all.length;
   return {
     items: all.slice(page * pageSize, (page + 1) * pageSize),
     total,

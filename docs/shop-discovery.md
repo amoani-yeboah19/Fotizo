@@ -1,14 +1,17 @@
 # Shop discovery storefront
 
-The shop keeps the Fotizo department list and navy/orange styling. Desktop uses a sticky category sidebar; mobile uses an always-visible, horizontally swipeable category row. The large promotional hero is replaced by a compact welcome, search, Lowest Prices and Top Picks panels, a personalised discovery rail, recently viewed items, and the normal paginated catalogue.
+The shop keeps the Fotizo department list and navy/orange styling. Desktop uses a sticky category sidebar; mobile uses an always-visible, horizontally swipeable category row. The large promotional hero is replaced by a compact welcome, search, men’s and women’s clothing panels first, then Lowest Prices and Top Picks panels, a personalised discovery rail, recently viewed items, and the normal paginated catalogue.
 
 ## Discovery and filters
+
+- Men’s and women’s clothing lead the category navigation and the unfiltered shop opening panels.
+- Imported vehicle sticker/trim listings and explicitly China-themed flags/team listings are excluded from shop feeds, including discovery, recent views, search and Lowest Prices. Source records are retained for administrative review.
 
 - Lowest Prices uses the combined catalogue's ascending-price query. Prices remain currency-aware; estimates and delivery qualifications remain visible. No lowest-market-price or bestseller claims are invented.
 - Top Picks is a deterministic, varied merchandising selection. It does not manufacture ratings, sales, urgency or discounts.
 - Subcollections are title-derived navigation shortcuts. Women's and men's shoes use explicit title terms (including explicitly unisex listings); children's footwear and bags are excluded from adult footwear. Unknown audience/style stays available under the department's All selection.
 - URLs such as `/shop?category=shoes-bags&collection=women-shoes` preserve the selection and work with browser navigation. Free-text search, sorting and pagination still apply.
-- Filtering happens before pagination. Until backend taxonomy exists, the overlay retrieves the selected live department in bounded concurrent batches and filters it together with the complete sourced snapshot. Failed live requests retain the existing partial-listing notice. This is a transition strategy; the backend should add indexed subcategory/audience filters and counts to avoid fetching full departments as the published catalogue grows.
+- Filtering happens before pagination. The API applies collection filters using the shared taxonomy. The frontend overlay retrieves that selection in bounded concurrent batches of at most 48 products per request and applies storefront exclusions together with the complete sourced snapshot. Failed live requests retain the existing partial-listing notice. This is a transition strategy; the storefront visibility policy should eventually have indexed filtering and counts to avoid fetching full selections as the published catalogue grows.
 
 ## Viewing history
 
