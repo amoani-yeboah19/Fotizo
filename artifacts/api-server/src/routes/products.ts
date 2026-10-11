@@ -11,7 +11,8 @@ import {
 } from "../lib/admin";
 import { z } from "zod";
 import type { CatalogueProduct } from "@workspace/api-zod";
-import { eq, and, ne, desc, sql, isNull } from "drizzle-orm";
+import { eq, and, ne, desc, sql, isNull, inArray } from "drizzle-orm";
+import { matchesCollection } from "@workspace/shop-taxonomy";
 import { ownerVisible } from "../lib/identity";
 import {
   db,
@@ -182,11 +183,43 @@ router.get("/products", async (req, res) => {
     res.status(400).json({ error: "Invalid catalogue filters." });
     return;
   }
-  const { page, pageSize } = filter.data;
+  const { page, pageSize, category, collection } = filter.data;
   const where = catalogueWhere(filter.data);
   // A shared snapshot keeps the page and its total consistent during writes.
   const result = await db.transaction(
     async (tx) => {
+      if (collection && category) {
+        // Collections match on product titles (shared with the storefront), so
+        // the department's titles are matched here, in sort order, before paging.
+        const candidates = await tx
+          .select({ id: productsTable.id, title: productsTable.title })
+          .from(productsTable)
+          .leftJoin(usersTable, eq(productsTable.sellerId, usersTable.id))
+          .where(where)
+          .orderBy(...catalogueOrder(filter.data.sort));
+        const ids = candidates
+          .filter((r) => matchesCollection({ title: r.title, category }, collection))
+          .map((r) => r.id);
+        const pageIds = ids.slice(page * pageSize, (page + 1) * pageSize);
+        const rows = pageIds.length
+          ? await tx
+              .select({ product: productsTable, sellerName: usersTable.name })
+              .from(productsTable)
+              .leftJoin(usersTable, eq(productsTable.sellerId, usersTable.id))
+              .where(inArray(productsTable.id, pageIds))
+          : [];
+        const byId = new Map(rows.map((r) => [r.product.id, r]));
+        return {
+          items: pageIds.flatMap((id) => {
+            const r = byId.get(id);
+            return r ? [toPublicProduct(r.product, r.sellerName ?? "Unknown seller")] : [];
+          }),
+          total: ids.length,
+          page,
+          pageSize,
+          hasMore: (page + 1) * pageSize < ids.length,
+        };
+      }
       const [count] = await tx
         .select({ total: sql<number>`count(*)::int` })
         .from(productsTable)

@@ -111,6 +111,9 @@ importers:
       '@workspace/service-taxonomy':
         specifier: workspace:*
         version: link:../../lib/service-taxonomy
+      '@workspace/shop-taxonomy':
+        specifier: workspace:*
+        version: link:../../lib/shop-taxonomy
       bcrypt:
         specifier: ^6.0.0
         version: 6.0.0
@@ -242,6 +245,9 @@ importers:
       '@workspace/service-taxonomy':
         specifier: workspace:*
         version: link:../../lib/service-taxonomy
+      '@workspace/shop-taxonomy':
+        specifier: workspace:*
+        version: link:../../lib/shop-taxonomy
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -509,6 +515,8 @@ importers:
         version: 0.31.10
 
   lib/service-taxonomy: {}
+
+  lib/shop-taxonomy: {}
 
   scripts:
     dependencies:
