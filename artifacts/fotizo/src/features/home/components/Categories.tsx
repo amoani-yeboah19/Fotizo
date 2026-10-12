@@ -69,6 +69,13 @@ export function Categories() {
       category.count += 1;
       combined.set(product.category, category);
     }
+    const jewellery = combined.get("jewellery");
+    if (jewellery) {
+      const accessories = combined.get("accessories") ?? { category: "accessories", count: 0, image: jewellery.image };
+      accessories.count += jewellery.count;
+      combined.set("accessories", accessories);
+      combined.delete("jewellery");
+    }
     return toCards([...combined.values()]);
   }, [categories, published.data]);
 

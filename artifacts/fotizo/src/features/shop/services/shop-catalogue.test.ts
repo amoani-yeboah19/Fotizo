@@ -300,3 +300,30 @@ it("returns the opening page without requesting the rest of a large live catalog
   expect(result.hasMore).toBe(true);
   expect(cataloguePages.list).toHaveBeenCalledTimes(1);
 });
+
+it("combines accessories and jewellery, including legacy jewellery links", async () => {
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([
+    { ...item("watch-preview", 2), category: "accessories" },
+    { ...item("ring-preview", 3), category: "jewellery" },
+  ]);
+  vi.mocked(cataloguePages.list).mockImplementation(
+    async (_channel, filters = {}) => ({
+      items: [
+        { ...item(`${filters.category}-live`, 4), category: filters.category! },
+      ] as never[],
+      total: 1,
+      page: 0,
+      pageSize: 48,
+      hasMore: false,
+    }),
+  );
+  const combined = await shopCataloguePage({ category: "accessories" });
+  expect(combined.items.map((p) => p.id)).toEqual([
+    "watch-preview",
+    "ring-preview",
+    "accessories-live",
+    "jewellery-live",
+  ]);
+  const legacy = await shopCataloguePage({ category: "jewellery" });
+  expect(legacy.items).toEqual(combined.items);
+});
