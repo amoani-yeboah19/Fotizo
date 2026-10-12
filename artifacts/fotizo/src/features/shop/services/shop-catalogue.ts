@@ -30,7 +30,18 @@ function serverPage(filters: CatalogueFilters) {
   const key = JSON.stringify(filters);
   const cached = serverPages.get(key);
   if (cached && Date.now() - cached.at < 60_000) return cached.value;
-  const value = cataloguePages.list("shop", filters);
+  const value =
+    filters.category === "accessories" && !filters.collection
+      ? Promise.all([
+          cataloguePages.list("shop", filters),
+          cataloguePages.list("shop", { ...filters, category: "jewellery" }),
+        ]).then(([accessories, jewellery]) => ({
+          ...accessories,
+          items: [...accessories.items, ...jewellery.items],
+          total: accessories.total + jewellery.total,
+          hasMore: accessories.hasMore || jewellery.hasMore,
+        }))
+      : cataloguePages.list("shop", filters);
   serverPages.set(key, { at: Date.now(), value });
   value.catch(() => serverPages.delete(key));
   return value;
@@ -38,7 +49,10 @@ function serverPage(filters: CatalogueFilters) {
 
 export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
   // The server filters collections too, so every filter is applied before paging.
-  const filters = input;
+  const filters =
+    input.category === "jewellery"
+      ? { ...input, category: "accessories" }
+      : input;
   const { collection } = input;
   const page = filters.page ?? 0,
     pageSize = filters.pageSize ?? 48;
@@ -63,7 +77,9 @@ export async function shopCataloguePage(input: ShopCatalogueFilters = {}) {
       matchesCollection(p, collection) &&
       !filters.sellerId &&
       !filters.inStock &&
-      (!filters.category || p.category === filters.category) &&
+      (!filters.category ||
+        p.category === filters.category ||
+        (filters.category === "accessories" && p.category === "jewellery")) &&
       (!q ||
         `${p.title} ${p.description} ${p.category}`
           .toLowerCase()

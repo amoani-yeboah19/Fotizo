@@ -14,6 +14,7 @@ export async function loadSourcedCatalogue(): Promise<ShopProduct[]> {
     { default: shoes },
     { default: departments },
     { default: family },
+    { default: extras },
   ] = await Promise.all([
     import("./1688-products.json"),
     import("./1688-detail-products.json"),
@@ -22,9 +23,11 @@ export async function loadSourcedCatalogue(): Promise<ShopProduct[]> {
     import("./1688-shoes-products.json"),
     import("./1688-departments-products.json"),
     import("./1688-family-products.json"),
+    import("./1688-textiles-accessories-products.json"),
   ]);
   const seen = new Set<string>();
   return [
+    ...extras,
     ...family,
     ...departments,
     ...shoes,

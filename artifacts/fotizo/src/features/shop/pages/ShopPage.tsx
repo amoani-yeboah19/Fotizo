@@ -51,7 +51,9 @@ export default function ShopPage() {
   const query = useSearch();
   const [, navigate] = useLocation();
   const params = new URLSearchParams(query);
-  const category = params.get("category");
+  const requestedCategory = params.get("category");
+  const category =
+    requestedCategory === "jewellery" ? "accessories" : requestedCategory;
   const activeCat = SHOP_CATEGORIES.some((c) => c.id === category)
     ? category
     : null;
@@ -101,7 +103,9 @@ export default function ShopPage() {
       (p) =>
         p.price > 0 &&
         p.image &&
-        (!activeCat || p.category === activeCat) &&
+        (!activeCat ||
+          p.category === activeCat ||
+          (activeCat === "accessories" && p.category === "jewellery")) &&
         matchesCollection(p, activeCollection) &&
         (!q ||
           `${p.title} ${p.description}`
