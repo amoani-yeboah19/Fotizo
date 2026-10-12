@@ -24,6 +24,8 @@ const ID_BY_LABEL = new Map(
   SHOP_CATEGORIES.map((c) => [c.label.toLowerCase(), c.id]),
 );
 
+ID_BY_LABEL.set("sports furniture", "sports");
+
 const flag = (specs: Record<string, string>, key: string) =>
   specs[key] === "true";
 

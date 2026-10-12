@@ -10,6 +10,7 @@ import { SHOP_CATEGORY_COVERS } from "../data/shop-category-covers";
 import { categoryLabel } from "@/features/shop/data/categories";
 import type { CatalogueCategory } from "@/features/marketplace/services/catalogue-page";
 import { useQuery } from "@tanstack/react-query";
+import fitness from "@/features/shop/data/1688-fitness-category-index.json";
 import additions from "@/features/shop/data/1688-textiles-accessories-category-index.json";
 import {
   publishedOffers,
@@ -59,7 +60,7 @@ export function Categories() {
     const combined = new Map(
       (categories ?? []).map((c) => [c.category, { ...c }]),
     );
-    for (const product of additions) {
+    for (const product of [...additions, ...fitness]) {
       if (published.data?.has(offerOf(product.id) ?? "")) continue;
       const category = combined.get(product.category) ?? {
         category: product.category,

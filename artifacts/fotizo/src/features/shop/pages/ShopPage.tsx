@@ -57,7 +57,21 @@ export default function ShopPage() {
   const activeCat = SHOP_CATEGORIES.some((c) => c.id === category)
     ? category
     : null;
-  const collections = activeCat ? (SHOP_COLLECTIONS[activeCat] ?? []) : [];
+  const collections = activeCat
+    ? (SHOP_COLLECTIONS[activeCat] ?? []).map((collection) =>
+        activeCat === "sports"
+          ? {
+              ...collection,
+              label:
+                collection.id === "seating"
+                  ? "Training benches"
+                  : collection.id === "outdoor"
+                    ? "Outdoor fitness"
+                    : collection.label,
+            }
+          : collection,
+      )
+    : [];
   const activeCollection = collections.some(
     (c) => c.id === params.get("collection"),
   )
