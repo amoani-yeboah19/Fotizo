@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import rows from "./1688-textiles-accessories-products.json";
+import categoryIndex from "./1688-textiles-accessories-category-index.json";
 import { loadSourcedCatalogue } from "./sourced-catalogue";
 
 it("adds verified source records with local images and correctly estimated draft prices", () => {
@@ -13,9 +14,15 @@ it("adds verified source records with local images and correctly estimated draft
       p,
     ]),
   );
-  expect(rows).toHaveLength(29);
-  expect(manifest.held).toHaveLength(11);
+  expect(rows.length).toBeGreaterThan(29);
+  expect(rows).toHaveLength(manifest.frontendAdded);
+  expect(manifest.pagination.textiles.pages.length).toBeGreaterThan(1);
+  expect(manifest.pagination.accessories.pages.length).toBeGreaterThan(1);
+  expect(manifest.held.length).toBeGreaterThan(0);
   expect(new Set(rows.map((p) => p.id)).size).toBe(rows.length);
+  expect(categoryIndex).toEqual(
+    rows.map(({ id, category }) => ({ id, category })),
+  );
   for (const p of rows) {
     expect(existsSync(`artifacts/fotizo/public${p.image}`)).toBe(true);
     expect(
@@ -26,6 +33,7 @@ it("adds verified source records with local images and correctly estimated draft
       ),
     ).toBeLessThanOrEqual(0.005001);
     expect(p.requiresPublication).toBe(true);
+    expect(p.price).toBeGreaterThan(0);
     expect(p.originalPrice).toBe(p.price);
     expect(p.rating).toBe(0);
     expect(p.sold).toBe(0);

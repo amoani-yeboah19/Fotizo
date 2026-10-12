@@ -10,7 +10,7 @@ import { SHOP_CATEGORY_COVERS } from "../data/shop-category-covers";
 import { categoryLabel } from "@/features/shop/data/categories";
 import type { CatalogueCategory } from "@/features/marketplace/services/catalogue-page";
 import { useQuery } from "@tanstack/react-query";
-import additions from "@/features/shop/data/1688-textiles-accessories-products.json";
+import additions from "@/features/shop/data/1688-textiles-accessories-category-index.json";
 import {
   publishedOffers,
   offerOf,
@@ -64,14 +64,18 @@ export function Categories() {
       const category = combined.get(product.category) ?? {
         category: product.category,
         count: 0,
-        image: product.image,
+        image: SHOP_CATEGORY_COVERS[product.category] ?? "",
       };
       category.count += 1;
       combined.set(product.category, category);
     }
     const jewellery = combined.get("jewellery");
     if (jewellery) {
-      const accessories = combined.get("accessories") ?? { category: "accessories", count: 0, image: jewellery.image };
+      const accessories = combined.get("accessories") ?? {
+        category: "accessories",
+        count: 0,
+        image: jewellery.image,
+      };
       accessories.count += jewellery.count;
       combined.set("accessories", accessories);
       combined.delete("jewellery");
