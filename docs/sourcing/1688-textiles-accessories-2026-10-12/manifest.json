@@ -1,0 +1,72 @@
+{
+  "capturedDate": "2026-10-12",
+  "sources": [
+    {
+      "category": "textiles",
+      "url": "https://www.1688.com/zw/page.html?hpageId=old-sem-pc-list&keywords=%E5%AE%B6%E7%BA%BA%E5%AE%B6%E9%A5%B0",
+      "returned": 20
+    },
+    {
+      "category": "accessories",
+      "url": "https://www.1688.com/zw/page.html?hpageId=old-sem-pc-list&keywords=%E9%85%8D%E9%A5%B0",
+      "returned": 20
+    }
+  ],
+  "captured": 40,
+  "frontendAdded": 29,
+  "held": [
+    {
+      "productId": "650736283689",
+      "reason": "HTTP Error 420: "
+    },
+    {
+      "productId": "795791395481",
+      "reason": "HTTP Error 420: "
+    },
+    {
+      "productId": "731940294407",
+      "reason": "HTTP Error 420: "
+    },
+    {
+      "productId": "777722623163",
+      "reason": "HTTP Error 420: "
+    },
+    {
+      "productId": "795793639326",
+      "reason": "HTTP Error 420: "
+    },
+    {
+      "productId": "891395389599",
+      "reason": "HTTP Error 420: "
+    },
+    {
+      "productId": "709549934548",
+      "reason": "HTTP Error 420: "
+    },
+    {
+      "productId": "885062033135",
+      "reason": "HTTP Error 420: "
+    },
+    {
+      "productId": "1045922806599",
+      "reason": "HTTP Error 420: "
+    },
+    {
+      "productId": "875051637972",
+      "reason": "HTTP Error 420: "
+    },
+    {
+      "productId": "743502374531",
+      "reason": "HTTP Error 420: "
+    }
+  ],
+  "pricing": {
+    "baseCurrency": "GBP",
+    "supplierCurrency": "CNY",
+    "cnyPerGbp": 8.862916,
+    "markupPercent": 30,
+    "rateDate": "Mon, 12 Oct 2026 00:02:32 +0000",
+    "rateSource": "https://open.er-api.com/v6/latest/GBP",
+    "status": "estimate"
+  }
+}

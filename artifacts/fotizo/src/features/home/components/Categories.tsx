@@ -9,6 +9,12 @@ import {
 import { SHOP_CATEGORY_COVERS } from "../data/shop-category-covers";
 import { categoryLabel } from "@/features/shop/data/categories";
 import type { CatalogueCategory } from "@/features/marketplace/services/catalogue-page";
+import { useQuery } from "@tanstack/react-query";
+import additions from "@/features/shop/data/1688-textiles-accessories-products.json";
+import {
+  publishedOffers,
+  offerOf,
+} from "@/features/shop/services/shop.service";
 import { useCatalogueCategories } from "@/features/marketplace/hooks/useCatalogue";
 
 // API aggregates supply counts; local curated photographs supply category covers.
@@ -44,7 +50,27 @@ function toCards(categories: CatalogueCategory[]): Category[] {
 
 export function Categories() {
   const { data: categories } = useCatalogueCategories("shop");
-  const CATEGORIES = useMemo(() => toCards(categories ?? []), [categories]);
+  const published = useQuery({
+    queryKey: ["shop", "published-sources"],
+    queryFn: publishedOffers,
+    staleTime: 300_000,
+  });
+  const CATEGORIES = useMemo(() => {
+    const combined = new Map(
+      (categories ?? []).map((c) => [c.category, { ...c }]),
+    );
+    for (const product of additions) {
+      if (published.data?.has(offerOf(product.id) ?? "")) continue;
+      const category = combined.get(product.category) ?? {
+        category: product.category,
+        count: 0,
+        image: product.image,
+      };
+      category.count += 1;
+      combined.set(product.category, category);
+    }
+    return toCards([...combined.values()]);
+  }, [categories, published.data]);
 
   const trackRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
