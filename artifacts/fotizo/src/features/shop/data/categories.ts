@@ -60,7 +60,7 @@ export const SHOP_CATEGORIES: ShopCategory[] = [
   { id: "wigs", label: "Wigs & Hair", icon: Scissors },
   { id: "jackets", label: "Winter Jackets", icon: Snowflake },
   { id: "pets", label: "Pet Supplies", icon: PawPrint },
-  { id: "sports", label: "Sports Furniture", icon: Dumbbell },
+  { id: "sports", label: "Fitness Equipment", icon: Dumbbell },
   { id: "gymwear", label: "Gym Wear", icon: Activity },
   { id: "beauty", label: "Beauty", icon: Sparkles },
   { id: "accessories", label: "Accessories & Jewellery", icon: Watch },
