@@ -1,9 +1,11 @@
+import photoRouter from "./ai-photos";
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
+router.use(photoRouter);
 
 // ── Request validation ────────────────────────────────────────────────────────
 const listingRequestSchema = z.object({
