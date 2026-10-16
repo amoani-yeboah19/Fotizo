@@ -5,6 +5,7 @@ import { expect, it } from "vitest";
 import products from "./1688-family-products.json";
 import pricing from "./1688-family-pricing.json";
 import { loadSourcedCatalogue } from "./sourced-catalogue";
+import { isShopVisible } from "./shop-visibility";
 
 import { productSizeRequest } from "./product-sizes";
 
@@ -38,7 +39,8 @@ it("expands the requested five departments with photographed English products, w
   expect(all.length).toBeGreaterThanOrEqual(19000);
   expect(new Set(all.map((p) => p.id)).size).toBe(all.length);
   const ids = new Set(all.map((p) => p.id));
-  for (const p of products) expect(ids.has(p.id)).toBe(true);
+  for (const p of products) expect(ids.has(p.id)).toBe(isShopVisible(p));
+  expect(ids.has("1688-1069915779493")).toBe(false);
 });
 
 it("applies the agreed markup once and reconciles capture, holds and exported products", () => {
