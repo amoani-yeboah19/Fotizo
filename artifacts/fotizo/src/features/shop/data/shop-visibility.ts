@@ -3,8 +3,8 @@ import type { ShopProduct } from "./shop-product";
 
 const excluded = new Set(excludedOffers);
 
-// These imported sticker listings include the flags and Chinese driving decals
-// previously promoted as the cheapest finds. Keep them out of every shop feed.
+// Keep removed offers (including sticker listings and the red long-sleeve
+// women's blouse) out of every shop feed, including published server results.
 export function isShopVisible(
   product: Pick<ShopProduct, "title" | "id" | "sourcing">,
 ): boolean {
