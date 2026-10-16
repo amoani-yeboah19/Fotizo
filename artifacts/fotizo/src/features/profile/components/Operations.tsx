@@ -1,3 +1,4 @@
+import { VehicleEditor } from "./VehicleEditor";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -380,6 +381,7 @@ function CaseDetail({
 }
 
 export function VehicleCatalogueControls() {
+  const [editor, setEditor] = useState<Vehicle | null | undefined>(undefined);
   const cache = useQueryClient();
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -420,6 +422,14 @@ export function VehicleCatalogueControls() {
   );
   return (
     <TableShell title="Vehicle catalogue">
+      {editor !== undefined && (
+        <VehicleEditor vehicle={editor} onClose={() => setEditor(undefined)} />
+      )}
+      <div className="p-4">
+        <Button disabled={AUTH_USE_MOCKS} onClick={() => setEditor(null)}>
+          Add vehicle
+        </Button>
+      </div>
       <div className="p-4 border-b flex flex-wrap gap-3">
         <Input
           aria-label="Search vehicles"
@@ -533,6 +543,13 @@ export function VehicleCatalogueControls() {
                     </Button>
                     <Button
                       size="sm"
+                      variant="ghost"
+                      onClick={() => setEditor(v)}
+                    >
+                      Edit vehicle
+                    </Button>
+                    <Button
+                      size="sm"
                       variant="outline"
                       disabled={toggle.isPending}
                       onClick={() =>
@@ -600,8 +617,8 @@ export function VehicleCatalogueControls() {
                 <dd>{selected.leadTimeWeeks.join("–")} weeks</dd>
               </dl>
               <p className="text-xs text-muted-foreground">
-                Specification and price changes are handled by the catalogue
-                team. Visibility can be changed from the vehicle list.
+                Edit specifications, photos and pricing from the vehicle list.
+                Visibility can also be changed there.
               </p>
             </div>
           )}
