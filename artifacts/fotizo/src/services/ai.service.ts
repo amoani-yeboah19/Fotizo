@@ -30,3 +30,19 @@ export const aiService = {
     return api.post<ServiceListingDraft>("/ai/listing", { kind: "service", ...input });
   },
 };
+
+export interface PhotoListingDraft {
+  title: string;
+  description: string;
+  tags: string[];
+  skills: string[];
+  specs: { name: string; value: string }[];
+  vehicle: {
+    make: string; model: string; bodyType: "" | "suv" | "coupe-suv" | "sedan" | "pickup";
+    fuel: "" | "petrol" | "hybrid" | "electric";
+    transmission: string; drivetrain: string; powertrain: string; efficiency: string;
+  };
+}
+export function suggestFromPhotos(kind: "product" | "service" | "vehicle", images: string[]): Promise<PhotoListingDraft> {
+  return api.post<PhotoListingDraft>("/ai/photos", { kind, images: images.slice(0, 3) });
+}

@@ -1,3 +1,4 @@
+import { PhotoListingAssist } from "@/components/common/PhotoListingAssist";
 import { useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -129,6 +130,17 @@ export function VehicleEditor({
                 onBusyChange={setUploading}
               />
             </Field>
+            <PhotoListingAssist images={draft.images} kind="vehicle" disabled={uploading || save.isPending} onDraft={suggestion => {
+              setDraft(current => {
+                const next = { ...current };
+                for (const key of ["make", "model", "transmission", "drivetrain", "powertrain", "efficiency"] as const) {
+                  if (!current[key].trim() && suggestion.vehicle[key]) next[key] = suggestion.vehicle[key];
+                }
+                if (!current.description.trim()) next.description = suggestion.description;
+                return next;
+              });
+              setHighlights(current => current.trim() ? current : suggestion.specs.map(s => `${s.name}: ${s.value}`).join("\n"));
+            }} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {(
                 [
