@@ -141,6 +141,8 @@ export const operationsService = {
       `${casePath(type)}/${id}/status`,
       input,
     ),
+  saveVehicle: (input: Omit<Vehicle, "id" | "slug" | "image" | "status">, id?: string) =>
+    api.post<Vehicle>(id ? `/operations/vehicles/${id}` : "/operations/vehicles", input),
   vehicles: () => api.get<Vehicle[]>("/operations/vehicles"),
   setVehicleStatus: (id: string, status: "active" | "unpublished") =>
     api.post<Vehicle>(`/operations/vehicles/${id}/status`, { status }),

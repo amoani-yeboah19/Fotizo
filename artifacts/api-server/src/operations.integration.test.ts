@@ -953,3 +953,30 @@ describe("online payment (Paystack and Stripe)", () => {
     expect(retry.status).toBe(409);
   });
 });
+
+it("lets China staff create, edit and publish a vehicle while rejecting buyers and invalid details", async () => {
+  const china = await account("china_representative");
+  const buyer = await account();
+  const input = {
+    make: "BYD", model: "Seal", bodyType: "sedan", fuel: "electric", seats: 5,
+    transmission: "Automatic", drivetrain: "RWD", powertrain: "Electric motor", efficiency: "500 km",
+    landedPrice: 30000, leadTimeWeeks: [8, 12], images: ["https://example.com/seal.jpg"],
+    highlights: ["Long range"], description: "Reviewed vehicle specification",
+  };
+  expect((await post("/operations/vehicles", input, buyer.cookie)).status).toBe(403);
+  expect((await post("/operations/vehicles", { ...input, images: [] }, china.cookie)).status).toBe(400);
+  expect((await post("/operations/vehicles", { ...input, leadTimeWeeks: [12, 8] }, china.cookie)).status).toBe(400);
+  expect((await post("/operations/vehicles", { ...input, status: "active" }, china.cookie)).status).toBe(400);
+  const response = await post("/operations/vehicles", input, china.cookie);
+  expect(response.status).toBe(201);
+  const created = await response.json() as { id: string; slug: string; status: string };
+  expect(created.status).toBe("unpublished");
+  expect((await get(`/vehicles/${created.slug}`)).status).toBe(404);
+  const edited = await post(`/operations/vehicles/${created.id}`, { ...input, model: "Seal Premium", landedPrice: 32000 }, china.cookie);
+  expect(edited.status).toBe(200);
+  expect(await edited.json()).toMatchObject({ slug: created.slug, model: "Seal Premium", landedPrice: 32000, status: "unpublished" });
+  expect((await post(`/operations/vehicles/${created.id}/status`, { status: "active" }, china.cookie)).status).toBe(200);
+  expect((await get(`/vehicles/${created.slug}`)).status).toBe(200);
+  const update = await post(`/operations/vehicles/${created.id}`, input, china.cookie);
+  expect(await update.json()).toMatchObject({ status: "active" });
+});
