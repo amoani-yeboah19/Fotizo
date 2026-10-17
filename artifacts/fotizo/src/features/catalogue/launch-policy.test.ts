@@ -9,6 +9,10 @@ it("removes only the named test listings and retired vehicles",()=>{
  expect(retiredService("new-patrick-service")).toBe(false);
  expect(retiredVehicle("new-reviewed-car")).toBe(false);
 });
+it("leaves vehicle publication to the database, so a published car shows",()=>{
+ // The Audi Q5 was a launch-retired demo vehicle until it was republished.
+ expect(retiredVehicle("cfc754b6-eb34-4613-8ece-4f9b088a774a")).toBe(false);
+});
 it("shows published listings from any supplier, Alibaba included",()=>{
  for(const id of ["3cb361ca-4fad-576e-8147-e3a4b081b7d2","1688-973074422128","taobao-1"])expect(visibleProduct({id})).toBe(true);
 });
