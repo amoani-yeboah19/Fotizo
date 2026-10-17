@@ -1,3 +1,4 @@
+import { isShopVisible } from "./shop-visibility";
 import type { ShopProduct } from "./shop-product";
 
 // The restored Alibaba selection (restored-alibaba-products.json) is not shown
@@ -13,6 +14,8 @@ export async function loadSourcedCatalogue(): Promise<ShopProduct[]> {
     { default: shoes },
     { default: departments },
     { default: family },
+    { default: extras },
+    { default: fitness },
   ] = await Promise.all([
     import("./1688-products.json"),
     import("./1688-detail-products.json"),
@@ -21,9 +24,13 @@ export async function loadSourcedCatalogue(): Promise<ShopProduct[]> {
     import("./1688-shoes-products.json"),
     import("./1688-departments-products.json"),
     import("./1688-family-products.json"),
+    import("./1688-textiles-accessories-products.json"),
+    import("./1688-fitness-products.json"),
   ]);
   const seen = new Set<string>();
   return [
+    ...fitness,
+    ...extras,
     ...family,
     ...departments,
     ...shoes,
@@ -32,7 +39,7 @@ export async function loadSourcedCatalogue(): Promise<ShopProduct[]> {
     ...home,
     ...rows,
   ].filter((product) => {
-    if (seen.has(product.id)) return false;
+    if (seen.has(product.id) || !isShopVisible(product)) return false;
     seen.add(product.id);
     return true;
   });

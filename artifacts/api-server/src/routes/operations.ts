@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { vehicleInput } from "../lib/vehicle-input";
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
@@ -301,6 +303,61 @@ router.get("/operations/vehicles", vehicleGuard, async (_req, res) => {
     .limit(500);
   res.json(rows.map(toPublicVehicle));
 });
+
+// New listings start unpublished; edits retain their publication status and URL.
+for (const editing of [false, true]) {
+  router.post(
+    editing ? "/operations/vehicles/:id" : "/operations/vehicles",
+    vehicleGuard,
+    async (req, res) => {
+      const parsed = vehicleInput.safeParse(req.body);
+      const id = editing ? z.string().uuid().safeParse(req.params.id) : null;
+      if (!parsed.success || (editing && !id?.success)) {
+        res
+          .status(400)
+          .json({
+            error:
+              "Enter valid vehicle details, at least one photo, and a valid delivery window.",
+          });
+        return;
+      }
+      const { leadTimeWeeks, ...details } = parsed.data;
+      const values = {
+        ...details,
+        leadTimeMinWeeks: leadTimeWeeks[0],
+        leadTimeMaxWeeks: leadTimeWeeks[1],
+        updatedAt: new Date(),
+      };
+      const [row] =
+        editing && id?.success
+          ? await db
+              .update(vehiclesTable)
+              .set(values)
+              .where(eq(vehiclesTable.id, id.data))
+              .returning()
+          : await db
+              .insert(vehiclesTable)
+              .values({
+                ...values,
+                slug:
+                  `${details.make}-${details.model}`
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, "-")
+                    .replace(/^-|-$/g, "")
+                    .slice(0, 70) +
+                  "-" +
+                  randomUUID(),
+                status: "unpublished",
+              })
+              .returning();
+      if (!row) {
+        res.status(404).json({ error: "Vehicle not found." });
+        return;
+      }
+      res.status(editing ? 200 : 201).json(toPublicVehicle(row));
+    },
+  );
+}
 
 router.post("/operations/vehicles/:id/status", vehicleGuard, async (req, res) => {
   const id = z.string().uuid().safeParse(req.params.id);

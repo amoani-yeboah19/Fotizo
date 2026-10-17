@@ -38,9 +38,9 @@ export function discoveryPicks(
   });
   const preferred = [
     "womens",
+    "mens",
     "shoes-bags",
     "appliances",
-    "mens",
     "baby",
     "furniture",
     "beauty",

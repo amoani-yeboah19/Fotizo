@@ -130,19 +130,21 @@ it("asks the server for a women’s shoe collection page and merges matching pre
     },
   ];
   // The API applies the collection (shared rules) before paging.
-  vi.mocked(cataloguePages.list).mockImplementation(async (_channel, f = {}) => {
-    const matched = live.filter((p) => matchesCollection(p, f.collection));
-    return {
-      items: matched.slice(
-        (f.page ?? 0) * (f.pageSize ?? 1),
-        ((f.page ?? 0) + 1) * (f.pageSize ?? 1),
-      ) as never[],
-      total: matched.length,
-      page: f.page ?? 0,
-      pageSize: f.pageSize ?? 1,
-      hasMore: ((f.page ?? 0) + 1) * (f.pageSize ?? 1) < matched.length,
-    };
-  });
+  vi.mocked(cataloguePages.list).mockImplementation(
+    async (_channel, f = {}) => {
+      const matched = live.filter((p) => matchesCollection(p, f.collection));
+      return {
+        items: matched.slice(
+          (f.page ?? 0) * (f.pageSize ?? 1),
+          ((f.page ?? 0) + 1) * (f.pageSize ?? 1),
+        ) as never[],
+        total: matched.length,
+        page: f.page ?? 0,
+        pageSize: f.pageSize ?? 1,
+        hasMore: ((f.page ?? 0) + 1) * (f.pageSize ?? 1) < matched.length,
+      };
+    },
+  );
   const first = await shopCataloguePage({
     category: "shoes-bags",
     collection: "women-shoes",
@@ -164,7 +166,9 @@ it("asks the server for a women’s shoe collection page and merges matching pre
   expect(
     vi
       .mocked(cataloguePages.list)
-      .mock.calls.every(([, f]) => f?.collection === "women-shoes" && f.pageSize === 1),
+      .mock.calls.every(
+        ([, f]) => f?.collection === "women-shoes" && f.pageSize === 48,
+      ),
   ).toBe(true);
   // The API refuses pages over 48 items, which would leave the collection empty.
   expect(
@@ -188,7 +192,12 @@ it("shows a published 1688 offer once, from the server, with its local details a
     },
   ]);
   vi.mocked(cataloguePages.list).mockResolvedValue({
-    items: [{ ...item("uuid-2", 6.6), sourcing: { platform: "1688", productId: "2" } }] as never[],
+    items: [
+      {
+        ...item("uuid-2", 6.6),
+        sourcing: { platform: "1688", productId: "2" },
+      },
+    ] as never[],
     total: 1,
     page: 0,
     pageSize: 48,
@@ -204,4 +213,117 @@ it("shows a published 1688 offer once, from the server, with its local details a
     specifications: [{ label: "Material", value: "Cotton" }],
     variants: [{ id: "v1", price: 6.6 }],
   });
+});
+
+it("removes imported and live driving decals before sorting, counting and pagination", async () => {
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([
+    { ...item("1688-flag", 0.01), title: "Decorative Vehicle Trim or Sticker" },
+    item("1688-shirt", 2),
+  ]);
+  const live = [
+    { ...item("live-decal", 0.01), title: "Vehicle Decorative Stickers" },
+    { ...item("live-flag", 0.02), title: "Chinese Flag Sticker" },
+    {
+      ...item("renamed-flag", 0.02),
+      title: "Reflective Car Decal",
+      sourcing: { platform: "1688", productId: "888000266401" },
+    },
+    item("live-shirt", 3),
+  ];
+  vi.mocked(cataloguePages.list).mockImplementation(
+    async (_channel, f = {}) => {
+      const page = f.page ?? 0,
+        size = f.pageSize ?? 48;
+      return {
+        items: live.slice(page * size, (page + 1) * size) as never[],
+        total: live.length,
+        page,
+        pageSize: size,
+        hasMore: (page + 1) * size < live.length,
+      };
+    },
+  );
+  const first = await shopCataloguePage({ sort: "price-asc", pageSize: 1 });
+  const second = await shopCataloguePage({
+    sort: "price-asc",
+    pageSize: 1,
+    page: 1,
+  });
+  expect(first.items.map((p) => p.id)).toEqual(["1688-shirt"]);
+  expect(second.items.map((p) => p.id)).toEqual(["live-shirt"]);
+  expect(first.total).toBe(2);
+  expect(second.hasMore).toBe(false);
+});
+
+it("opens all categories with women's clothing followed by men's clothing", async () => {
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([
+    { ...item("appliance", 1), category: "appliances" },
+    item("men", 2),
+    { ...item("women", 3), category: "womens" },
+  ]);
+  vi.mocked(cataloguePages.list).mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 0,
+    pageSize: 48,
+    hasMore: false,
+  });
+  const result = await shopCataloguePage({ sort: "newest" });
+  expect(result.items.map((p) => p.id)).toEqual(["women", "men", "appliance"]);
+  const cheapest = await shopCataloguePage({ sort: "price-asc" });
+  expect(cheapest.items.map((p) => p.id)).toEqual([
+    "appliance",
+    "men",
+    "women",
+  ]);
+});
+
+it("returns the opening page without requesting the rest of a large live catalogue", async () => {
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([]);
+  vi.mocked(cataloguePages.list).mockImplementation(
+    async (_channel, f = {}) => {
+      if (f.page) throw new Error("Opening page must not request later pages");
+      return {
+        items: Array.from({ length: 48 }, (_, i) =>
+          item(`live-${i}`, i + 1),
+        ) as never[],
+        total: 4800,
+        page: 0,
+        pageSize: 48,
+        hasMore: true,
+      };
+    },
+  );
+  const result = await shopCataloguePage({ sort: "newest", pageSize: 48 });
+  expect(result.items).toHaveLength(48);
+  expect(result.total).toBe(4800);
+  expect(result.hasMore).toBe(true);
+  expect(cataloguePages.list).toHaveBeenCalledTimes(1);
+});
+
+it("combines accessories and jewellery, including legacy jewellery links", async () => {
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([
+    { ...item("watch-preview", 2), category: "accessories" },
+    { ...item("ring-preview", 3), category: "jewellery" },
+  ]);
+  vi.mocked(cataloguePages.list).mockImplementation(
+    async (_channel, filters = {}) => ({
+      items: [
+        { ...item(`${filters.category}-live`, 4), category: filters.category! },
+      ] as never[],
+      total: 1,
+      page: 0,
+      pageSize: 48,
+      hasMore: false,
+    }),
+  );
+  const combined = await shopCataloguePage({ category: "accessories" });
+  expect(combined.items.map((p) => p.id)).toEqual([
+    "watch-preview",
+    "ring-preview",
+    "accessories-live",
+    "jewellery-live",
+  ]);
+  const legacy = await shopCataloguePage({ category: "jewellery" });
+  expect(legacy.items).toEqual(combined.items);
 });

@@ -1,7 +1,13 @@
-import { useRef, useState, useEffect, type ReactNode } from "react";
+import { useRef, useState, useEffect, useMemo, type ReactNode } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, ClipboardList, UserRound, ArrowRight } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  UserRound,
+  ArrowRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { Categories } from "@/features/home/components/Categories";
@@ -10,6 +16,17 @@ import { ServiceCard } from "@/features/artisans/components/ServiceCard";
 import { useProducts } from "@/features/marketplace/hooks";
 import { useServices } from "@/features/artisans/hooks";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { loadSourcedCatalogue } from "@/features/shop/data/sourced-catalogue";
+import { discoveryPicks } from "@/features/shop/data/shop-discovery";
+import { isShopVisible } from "@/features/shop/data/shop-visibility";
+import {
+  toShopProduct,
+  withLocalDetails,
+} from "@/features/shop/services/shop.service";
+import { ShopProductCard } from "@/features/shop/components/ShopProductCard";
+import { useShopHistory } from "@/features/shop/hooks/useShopHistory";
+import type { ShopProduct } from "@/features/shop/data/shop-product";
 
 // One of the two Fiverr-style action cards under the greeting.
 function ActionCard({
@@ -34,13 +51,19 @@ function ActionCard({
           {icon}
         </span>
         <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
-          <p className="mt-1 font-bold text-foreground leading-tight">{title}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            {label}
+          </p>
+          <p className="mt-1 font-bold text-foreground leading-tight">
+            {title}
+          </p>
           <p className="mt-0.5 text-sm text-muted-foreground">{sub}</p>
         </div>
       </div>
       <Link href={href} className="shrink-0 self-start sm:self-center">
-        <Button variant="outline" className="rounded-lg font-semibold">{cta}</Button>
+        <Button variant="outline" className="rounded-lg font-semibold">
+          {cta}
+        </Button>
       </Link>
     </div>
   );
@@ -56,8 +79,36 @@ export function PersonalizedHome() {
   const firstName = user?.name?.split(" ")[0] ?? "there";
   const dashboardHref = user ? `/dashboard/${user.role}` : "/dashboard/buyer";
 
-  const recommended = products.slice(0, 10);
-  const topServices = [...services].sort((a, b) => b.rating - a.rating).slice(0, 6);
+  const browsing = useShopHistory();
+  const snapshot = useQuery({
+    queryKey: ["shop", "discovery-source"],
+    queryFn: loadSourcedCatalogue,
+    staleTime: Infinity,
+  });
+  const recommended = useMemo(() => {
+    const pool = new Map<string, ShopProduct>();
+    for (const p of snapshot.data ?? []) pool.set(p.id, p);
+    for (const product of products) {
+      const live = toShopProduct(product);
+      const key =
+        live.sourcing?.platform === "1688"
+          ? `1688-${live.sourcing.productId}`
+          : live.id;
+      const local = pool.get(key);
+      pool.set(key, local ? withLocalDetails(live, local) : live);
+    }
+    return discoveryPicks(
+      [...pool.values()].filter(isShopVisible),
+      browsing.history,
+      10,
+    );
+  }, [products, snapshot.data, browsing.history]);
+  const marketplaceById = new Map(
+    products.filter((p) => p.channel !== "shop").map((p) => [p.id, p]),
+  );
+  const topServices = [...services]
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, 6);
 
   // Horizontal recommendations track with arrow controls.
   const trackRef = useRef<HTMLDivElement>(null);
@@ -80,7 +131,10 @@ export function PersonalizedHome() {
   }, [recommended.length]);
 
   const scroll = (dir: "left" | "right") =>
-    trackRef.current?.scrollBy({ left: (dir === "right" ? 1 : -1) * 580, behavior: "smooth" });
+    trackRef.current?.scrollBy({
+      left: (dir === "right" ? 1 : -1) * 580,
+      behavior: "smooth",
+    });
 
   const arrowBtn =
     "w-9 h-9 rounded-full border border-border bg-white flex items-center justify-center shadow-sm hover:bg-primary hover:text-white hover:border-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed";
@@ -130,12 +184,26 @@ export function PersonalizedHome() {
       <section className="py-12 bg-background overflow-hidden">
         <div className="container-app">
           <div className="flex items-end justify-between mb-8">
-            <h2 className="heading-section">Based on what you might be looking for</h2>
+            <h2 className="heading-section">
+              {browsing.history.length
+                ? "Based on your recent browsing"
+                : "Discover something you’ll love"}
+            </h2>
             <div className="hidden md:flex items-center gap-2 shrink-0">
-              <button aria-label="Scroll recommendations left" onClick={() => scroll("left")} disabled={!canLeft} className={arrowBtn}>
+              <button
+                aria-label="Scroll recommendations left"
+                onClick={() => scroll("left")}
+                disabled={!canLeft}
+                className={arrowBtn}
+              >
                 <ChevronLeft className="w-4 h-4" aria-hidden="true" />
               </button>
-              <button aria-label="Scroll recommendations right" onClick={() => scroll("right")} disabled={!canRight} className={arrowBtn}>
+              <button
+                aria-label="Scroll recommendations right"
+                onClick={() => scroll("right")}
+                disabled={!canRight}
+                className={arrowBtn}
+              >
                 <ChevronRight className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
@@ -148,7 +216,11 @@ export function PersonalizedHome() {
         >
           {recommended.map((p) => (
             <div key={p.id} className="w-[270px] shrink-0 snap-start">
-              <ProductCard product={p} />
+              {marketplaceById.has(p.id) ? (
+                <ProductCard product={marketplaceById.get(p.id)!} />
+              ) : (
+                <ShopProductCard product={p} />
+              )}
             </div>
           ))}
           <div className="shrink-0 w-4" />
@@ -162,8 +234,12 @@ export function PersonalizedHome() {
             title="Services you may like"
             subtitle="Hire trusted professionals."
             action={
-              <Link href="/services" className="hidden md:flex items-center text-primary font-medium hover:underline">
-                View all <ArrowRight className="w-4 h-4 ml-1" aria-hidden="true" />
+              <Link
+                href="/services"
+                className="hidden md:flex items-center text-primary font-medium hover:underline"
+              >
+                View all{" "}
+                <ArrowRight className="w-4 h-4 ml-1" aria-hidden="true" />
               </Link>
             }
           />

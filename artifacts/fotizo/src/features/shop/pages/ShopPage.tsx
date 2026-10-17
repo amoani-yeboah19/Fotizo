@@ -12,6 +12,8 @@ import {
   History,
   X,
   Tag,
+  Shirt,
+  Venus,
 } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Loading, ErrorState } from "@/components/common/QueryStates";
@@ -49,11 +51,27 @@ export default function ShopPage() {
   const query = useSearch();
   const [, navigate] = useLocation();
   const params = new URLSearchParams(query);
-  const category = params.get("category");
+  const requestedCategory = params.get("category");
+  const category =
+    requestedCategory === "jewellery" ? "accessories" : requestedCategory;
   const activeCat = SHOP_CATEGORIES.some((c) => c.id === category)
     ? category
     : null;
-  const collections = activeCat ? (SHOP_COLLECTIONS[activeCat] ?? []) : [];
+  const collections = activeCat
+    ? (SHOP_COLLECTIONS[activeCat] ?? []).map((collection) =>
+        activeCat === "sports"
+          ? {
+              ...collection,
+              label:
+                collection.id === "seating"
+                  ? "Training benches"
+                  : collection.id === "outdoor"
+                    ? "Outdoor fitness"
+                    : collection.label,
+            }
+          : collection,
+      )
+    : [];
   const activeCollection = collections.some(
     (c) => c.id === params.get("collection"),
   )
@@ -99,7 +117,9 @@ export default function ShopPage() {
       (p) =>
         p.price > 0 &&
         p.image &&
-        (!activeCat || p.category === activeCat) &&
+        (!activeCat ||
+          p.category === activeCat ||
+          (activeCat === "accessories" && p.category === "jewellery")) &&
         matchesCollection(p, activeCollection) &&
         (!q ||
           `${p.title} ${p.description}`
@@ -107,16 +127,64 @@ export default function ShopPage() {
             .includes(q.toLowerCase())),
     );
   }, [snapshot.data, live.data, activeCat, activeCollection, q]);
+  const openingProducts = useMemo(() => {
+    const items = [...pool];
+    const priority = (p: ShopProduct) =>
+      p.category === "womens" ? 0 : p.category === "mens" ? 1 : 2;
+    items.sort((a, b) =>
+      sort === "price-asc"
+        ? a.price - b.price
+        : sort === "price-desc"
+          ? b.price - a.price
+          : sort === "best-selling"
+            ? b.sold - a.sold
+            : sort === "discount"
+              ? (b.originalPrice - b.price) / b.originalPrice -
+                (a.originalPrice - a.price) / a.originalPrice
+              : !activeCat && !q
+                ? priority(a) - priority(b)
+                : 0,
+    );
+    return items.slice(0, 48);
+  }, [pool, sort, activeCat, q]);
+  const displayedProducts = useMemo(() => {
+    if (!grid.data) return openingProducts;
+    if (activeCat || q || sort !== "newest") return products;
+    // Keep the clothing opening visible when the live first page contains
+    // other departments. Loading live results must not replace it with appliances.
+    const liveIds = new Set(products.map((p) => p.id));
+    const clothing = openingProducts.filter(
+      (p) =>
+        (p.category === "womens" || p.category === "mens") &&
+        !liveIds.has(p.id),
+    );
+    const priority = (p: ShopProduct) =>
+      p.category === "womens" ? 0 : p.category === "mens" ? 1 : 2;
+    return [...clothing, ...products].sort((a, b) => priority(a) - priority(b));
+  }, [grid.data, products, openingProducts, activeCat, q, sort]);
+  const men = useShopCataloguePage("shop", {
+    category: "mens",
+    sort: "newest",
+    pageSize: 3,
+  });
+  const women = useShopCataloguePage("shop", {
+    category: "womens",
+    sort: "newest",
+    pageSize: 3,
+  });
   const lowestQuery = useShopCataloguePage("shop", {
     category: activeCat ?? undefined,
     collection: activeCollection,
     sort: "price-asc",
     pageSize: 3,
   });
-  const lowest = useMemo(
-    () => lowestQuery.data?.items ?? [],
-    [lowestQuery.data],
-  );
+  const lowest = useMemo(() => {
+    const finds =
+      lowestQuery.data?.items.filter((p) => p.price > 0 && p.image) ?? [];
+    return finds.length
+      ? finds
+      : [...pool].sort((a, b) => a.price - b.price).slice(0, 3);
+  }, [lowestQuery.data, pool]);
   const top = useMemo(
     () =>
       discoveryPicks(
@@ -278,6 +346,36 @@ export default function ShopPage() {
                   ))}
                 </div>
               )}
+              {!q && !activeCat && (
+                <div className="discovery-highlights">
+                  <Highlight
+                    title="Women's Clothing"
+                    eyebrow="STYLES YOU’LL LOVE"
+                    icon={<Venus size={18} />}
+                    products={
+                      women.data?.items ??
+                      pool.filter((p) => p.category === "womens").slice(0, 3)
+                    }
+                    tone="picks"
+                    loading={women.isLoading}
+                    description="Discover dresses, tops, skirts and more."
+                    onExplore={() => choose("womens")}
+                  />
+                  <Highlight
+                    title="Men's Clothing"
+                    eyebrow="FIND YOUR NEXT LOOK"
+                    icon={<Shirt size={18} />}
+                    products={
+                      men.data?.items ??
+                      pool.filter((p) => p.category === "mens").slice(0, 3)
+                    }
+                    tone="value"
+                    loading={men.isLoading}
+                    description="Explore shirts, T-shirts, trousers and more."
+                    onExplore={() => choose("mens")}
+                  />
+                </div>
+              )}
               {!q && (
                 <div className="discovery-highlights">
                   <Highlight
@@ -286,7 +384,7 @@ export default function ShopPage() {
                     icon={<Tag size={18} />}
                     products={lowest}
                     tone="value"
-                    loading={lowestQuery.isLoading}
+                    loading={lowestQuery.isLoading || snapshot.isLoading}
                     description="Lowest listed prices in this selection."
                     onExplore={() => {
                       setSort("price-asc");
@@ -414,11 +512,11 @@ export default function ShopPage() {
                     </button>
                   </p>
                 )}
-                {grid.isLoading ? (
+                {grid.isLoading && !displayedProducts.length ? (
                   <Loading label="Finding your next favourite…" />
                 ) : grid.isError ? (
                   <ErrorState label="The shop could not be loaded. Please try again." />
-                ) : !products.length ? (
+                ) : !displayedProducts.length ? (
                   <div className="discovery-empty">
                     <Search size={30} />
                     <h3>No finds here just yet.</h3>
@@ -432,7 +530,7 @@ export default function ShopPage() {
                 ) : (
                   <>
                     <div className="discovery-product-grid">
-                      {products.map((p) => (
+                      {displayedProducts.map((p) => (
                         <ShopProductCard key={p.id} product={p} />
                       ))}
                     </div>

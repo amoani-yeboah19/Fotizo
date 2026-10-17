@@ -276,10 +276,6 @@ export default function ShopProductPage() {
                   Supplier minimum order: {product.sourcing.minimumOrder}.
                 </p>
               )}
-              <p className="mt-1">
-                Supplier price: {product.sourcing.priceRange} per{" "}
-                {product.sourcing.unit || "unit"}.
-              </p>
             </div>
           )}
 

@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
@@ -13,9 +14,10 @@ import ShopPage from "@/features/shop/pages/ShopPage";
 import ProductsPage from "./ProductsPage";
 import { cataloguePages, type CataloguePage } from "../services/catalogue-page";
 import type { CatalogueProduct } from "@workspace/api-client-react";
+import { loadSourcedCatalogue } from "@/features/shop/data/sourced-catalogue";
 import { clearShopCatalogueCache } from "@/features/shop/services/shop-catalogue";
 vi.mock("@/features/shop/data/sourced-catalogue", () => ({
-  loadSourcedCatalogue: async () => [],
+  loadSourcedCatalogue: vi.fn(async () => []),
 }));
 
 const location = vi.hoisted(() => ({ search: "", navigate: vi.fn() }));
@@ -104,6 +106,7 @@ function mount(node: ReactNode) {
 beforeEach(() => {
   clearShopCatalogueCache();
   vi.resetAllMocks();
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([]);
   // The price slider measures itself; jsdom has no ResizeObserver.
   vi.stubGlobal(
     "ResizeObserver",
@@ -155,14 +158,16 @@ it("maps shop sorting and debounced search to server queries", async () => {
     "shop",
     expect.objectContaining({
       sort: "price-asc",
-      pageSize: 3,
+      pageSize: 48,
     }),
   );
+  // Visibility filtering can also fetch later pages; verify the requested
+  // filters without relying on which concurrent request finishes last.
   fireEvent.change(screen.getByLabelText("Sort products"), {
     target: { value: "best-selling" },
   });
   await waitFor(() =>
-    expect(cataloguePages.list).toHaveBeenLastCalledWith(
+    expect(cataloguePages.list).toHaveBeenCalledWith(
       "shop",
       expect.objectContaining({ sort: "best-selling", page: 0 }),
     ),
@@ -171,7 +176,7 @@ it("maps shop sorting and debounced search to server queries", async () => {
     target: { value: " kettle " },
   });
   await waitFor(() =>
-    expect(cataloguePages.list).toHaveBeenLastCalledWith(
+    expect(cataloguePages.list).toHaveBeenCalledWith(
       "shop",
       expect.objectContaining({ q: "kettle", page: 0 }),
     ),
@@ -299,4 +304,89 @@ it("does not advertise seller deals without a real reduction", async () => {
   expect(
     screen.queryByRole("heading", { name: "Deals from local sellers" }),
   ).toBeNull();
+});
+
+it("shows women's clothing first and fills lowest prices while live requests are pending", async () => {
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([
+    {
+      id: "women-top",
+      title: "Women's Cotton Top",
+      description: "Cotton top",
+      category: "womens",
+      price: 5,
+      originalPrice: 5,
+      image: "/top.webp",
+      images: [],
+      rating: 0,
+      sold: 0,
+      freeShipping: false,
+      almostGone: false,
+    },
+  ]);
+  vi.mocked(cataloguePages.list).mockImplementation(
+    () => new Promise(() => {}),
+  );
+  mount(<ShopPage />);
+  const lowest = screen.getByRole("region", { name: "Lowest prices" });
+  await within(lowest).findByText("Women's Cotton Top");
+  const catalogue = screen.getByRole("region", { name: "All discoveries" });
+  await within(catalogue).findByText("Women's Cotton Top");
+  expect(
+    within(catalogue).queryByText("Finding your next favourite…"),
+  ).toBeNull();
+  const highlights = screen.getAllByRole("region");
+  expect(highlights[0].getAttribute("aria-label")).toBe("Women's Clothing");
+  expect(highlights[1].getAttribute("aria-label")).toBe("Men's Clothing");
+  const navigation = within(
+    screen.getByRole("navigation", { name: "Choose a department" }),
+  ).getAllByRole("button");
+  expect(navigation[0].textContent).toContain("All categories");
+  expect(navigation[1].textContent).toContain("Women's Clothing");
+  expect(navigation[2].textContent).toContain("Men's Clothing");
+});
+
+it("keeps clothing first in All discoveries after the live appliance page arrives", async () => {
+  vi.mocked(loadSourcedCatalogue).mockResolvedValue([
+    {
+      id: "women-opening",
+      title: "Women's Opening Dress",
+      description: "Dress",
+      category: "womens",
+      price: 5,
+      originalPrice: 5,
+      image: "/dress.webp",
+      images: [],
+      rating: 0,
+      sold: 0,
+      freeShipping: false,
+      almostGone: false,
+    },
+  ]);
+  vi.mocked(cataloguePages.list).mockImplementation(
+    async (channel, filters) => {
+      const result = page(
+        channel,
+        filters?.page ?? 0,
+        60,
+        filters?.pageSize ?? 48,
+      );
+      result.items = result.items.map((p) => ({
+        ...p,
+        title: "Home Appliance",
+        category: "appliances",
+        specs: { department: "appliances" },
+      }));
+      return result;
+    },
+  );
+  mount(<ShopPage />);
+  await screen.findByText("61 products");
+  const catalogue = screen.getByRole("region", { name: "All discoveries" });
+  const cards = within(catalogue).getAllByText(
+    /Women's Opening Dress|Home Appliance/,
+  );
+  expect(cards[0].textContent).toBe("Women's Opening Dress");
+  expect(cards.some((card) => card.textContent === "Home Appliance")).toBe(
+    true,
+  );
 });

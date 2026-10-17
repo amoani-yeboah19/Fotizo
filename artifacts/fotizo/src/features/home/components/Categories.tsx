@@ -6,11 +6,19 @@ import {
   CARD_W,
   type Category,
 } from "@/features/home/components/CategoryCard";
+import { SHOP_CATEGORY_COVERS } from "../data/shop-category-covers";
 import { categoryLabel } from "@/features/shop/data/categories";
 import type { CatalogueCategory } from "@/features/marketplace/services/catalogue-page";
+import { useQuery } from "@tanstack/react-query";
+import fitness from "@/features/shop/data/1688-fitness-category-index.json";
+import additions from "@/features/shop/data/1688-textiles-accessories-category-index.json";
+import {
+  publishedOffers,
+  offerOf,
+} from "@/features/shop/services/shop.service";
 import { useCatalogueCategories } from "@/features/marketplace/hooks/useCatalogue";
 
-// Full-channel API aggregates supply counts and representative product images.
+// API aggregates supply counts; local curated photographs supply category covers.
 // Accent colors remain stable for the displayed category order.
 const ACCENTS = [
   "#1E3A5F",
@@ -29,13 +37,13 @@ const ACCENTS = [
 
 function toCards(categories: CatalogueCategory[]): Category[] {
   return [...categories]
-    .filter((c) => c.count > 0 && c.image)
+    .filter((c) => c.count > 0 && (SHOP_CATEGORY_COVERS[c.category] || c.image))
     .sort((a, b) => b.count - a.count)
     .map((c, i) => ({
       id: c.category,
       name: categoryLabel(c.category),
       count: `${c.count} ${c.count === 1 ? "item" : "items"}`,
-      image: c.image,
+      image: SHOP_CATEGORY_COVERS[c.category] ?? c.image,
       accent: ACCENTS[i % ACCENTS.length],
       href: `/shop?category=${encodeURIComponent(c.category)}`,
     }));
@@ -43,7 +51,38 @@ function toCards(categories: CatalogueCategory[]): Category[] {
 
 export function Categories() {
   const { data: categories } = useCatalogueCategories("shop");
-  const CATEGORIES = useMemo(() => toCards(categories ?? []), [categories]);
+  const published = useQuery({
+    queryKey: ["shop", "published-sources"],
+    queryFn: publishedOffers,
+    staleTime: 300_000,
+  });
+  const CATEGORIES = useMemo(() => {
+    const combined = new Map(
+      (categories ?? []).map((c) => [c.category, { ...c }]),
+    );
+    for (const product of [...additions, ...fitness]) {
+      if (published.data?.has(offerOf(product.id) ?? "")) continue;
+      const category = combined.get(product.category) ?? {
+        category: product.category,
+        count: 0,
+        image: SHOP_CATEGORY_COVERS[product.category] ?? "",
+      };
+      category.count += 1;
+      combined.set(product.category, category);
+    }
+    const jewellery = combined.get("jewellery");
+    if (jewellery) {
+      const accessories = combined.get("accessories") ?? {
+        category: "accessories",
+        count: 0,
+        image: jewellery.image,
+      };
+      accessories.count += jewellery.count;
+      combined.set("accessories", accessories);
+      combined.delete("jewellery");
+    }
+    return toCards([...combined.values()]);
+  }, [categories, published.data]);
 
   const trackRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);

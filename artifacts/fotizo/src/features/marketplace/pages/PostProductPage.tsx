@@ -1,3 +1,4 @@
+import { PhotoListingAssist } from "@/components/common/PhotoListingAssist";
 import { useState, useEffect } from "react";
 import { useLocation, useRoute } from "wouter";
 import { useForm } from "react-hook-form";
@@ -31,7 +32,7 @@ const SYSTEM_SPEC_KEYS = new Set([
   "priceRange", "minimumOrder", "unit", "capturedAt", "supplierListing",
 ]);
 
-const STEPS = ["Basics", "Pricing", "Media", "Review"];
+const STEPS = ["Basics", "Pricing", "Details", "Review"];
 
 const schema = z.object({
   title: z.string().min(3, "Give your product a clear title (min 3 characters)"),
@@ -67,6 +68,7 @@ export default function PostProductPage() {
   const [images, setImages] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [specs, setSpecs] = useState<{ key: string; value: string }[]>([{ key: "", value: "" }]);
+  const [mediaBusy, setMediaBusy] = useState(false);
   const [mediaError, setMediaError] = useState<string>();
 
   const form = useForm<FormValues>({
@@ -106,9 +108,13 @@ export default function PostProductPage() {
   };
 
   const next = async () => {
+    if (mediaBusy) {
+      setMediaError("Wait for your photos to finish uploading.");
+      return;
+    }
     const fields = STEP_FIELDS[step];
     if (fields && !(await form.trigger(fields))) return;
-    if (step === 2 && images.length === 0) {
+    if (step === 0 && images.length === 0) {
       setMediaError("Add at least one image");
       return;
     }
@@ -118,8 +124,12 @@ export default function PostProductPage() {
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   const submit = form.handleSubmit(async (data) => {
+    if (mediaBusy) {
+      setMediaError("Wait for your photos to finish uploading.");
+      return;
+    }
     if (images.length === 0) {
-      setStep(2);
+      setStep(0);
       setMediaError("Add at least one image");
       return;
     }
@@ -221,6 +231,16 @@ export default function PostProductPage() {
           >
             {step === 0 && (
               <>
+                <Field label="Product photos" required hint="Upload from your device or take a picture. The first photo is the cover.">
+                  <ImageUploadInput value={images} onChange={setImages} error={mediaError} onBusyChange={setMediaBusy} />
+                </Field>
+                <PhotoListingAssist images={images} disabled={mediaBusy} kind="product" onDraft={draft => {
+                  const current = form.getValues();
+                  if (!current.title?.trim() && draft.title) setValue("title", draft.title.slice(0, 120), { shouldValidate: true });
+                  if (!current.description?.trim() && draft.description) setValue("description", draft.description, { shouldValidate: true });
+                  setTags(current => current.length ? current : draft.tags);
+                  setSpecs(current => current.some(s => s.key.trim() || s.value.trim()) ? current : draft.specs.map(s => ({ key: s.name, value: s.value })));
+                }} />
                 <Field label="Product title" htmlFor="title" required error={errors.title?.message}>
                   <Input id="title" placeholder="e.g. Sony WH-1000XM5 Headphones" {...register("title")} />
                 </Field>
@@ -278,9 +298,6 @@ export default function PostProductPage() {
 
             {step === 2 && (
               <>
-                <Field label="Product photos" required hint="Upload from your device or take a picture. The first photo is the cover.">
-                  <ImageUploadInput value={images} onChange={setImages} error={mediaError} />
-                </Field>
                 <Field label="Tags" hint="Help buyers find it (e.g. wireless, noise-cancelling).">
                   <TagsInput value={tags} onChange={setTags} placeholder="Add a tag and press Enter" />
                 </Field>

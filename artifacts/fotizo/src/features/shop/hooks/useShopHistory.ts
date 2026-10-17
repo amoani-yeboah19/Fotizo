@@ -6,7 +6,7 @@ const KEY = "fotizo.shop.views.v1";
 const ENABLED = "fotizo.shop.views.enabled";
 const EVENT = "fotizo-shop-history";
 const MAX_AGE = 30 * 24 * 60 * 60 * 1000;
-const categories = new Set(SHOP_CATEGORIES.map((c) => c.id));
+const categories = new Set([...SHOP_CATEGORIES.map((c) => c.id), "jewellery"]);
 export function readShopHistory(): ViewedProduct[] {
   try {
     if (localStorage.getItem(ENABLED) === "false") return [];

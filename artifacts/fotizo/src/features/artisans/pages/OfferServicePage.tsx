@@ -1,3 +1,4 @@
+import { PhotoListingAssist } from "@/components/common/PhotoListingAssist";
 import { useQuery } from "@tanstack/react-query";
 import { currencyService } from "@/services/currency.service";
 import { servicePrice, validUsdRate } from "../lib/service-pricing";
@@ -41,7 +42,7 @@ const STEPS = [
   "Pricing",
   "Description & FAQ",
   "Requirements",
-  "Gallery",
+  "Profile photo",
   "Preview & publish",
 ];
 const TIERS = ["Basic", "Standard", "Premium"];
@@ -146,6 +147,7 @@ export default function OfferServicePage() {
       prev.map((p, n) => (n === i ? { ...p, ...patch } : p)),
     );
   const validation = (s: number) => {
+    if (uploading) return "Wait for your photos to finish uploading.";
     if (s === 1 && !usdRate)
       return "Dollar pricing is temporarily unavailable. Please retry loading exchange rates before continuing.";
     if (
@@ -415,6 +417,24 @@ export default function OfferServicePage() {
             )}
             {step === 0 && (
               <div className="max-w-3xl space-y-5">
+                <Field
+                  label="Showcase your work"
+                  hint="Add up to six photos. Your first image is the gallery cover. Use work you own or have permission to share."
+                >
+                  <ImageUploadInput
+                    purpose="service"
+                    value={details.gallery}
+                    onChange={(gallery) =>
+                      setDetails((d) => ({ ...d, gallery }))
+                    }
+                    maxFiles={6}
+                    onBusyChange={setGalleryUploading}
+                  />
+                </Field>
+                <PhotoListingAssist images={details.gallery} disabled={galleryUploading} kind="service" onDraft={draft => {
+                  setV(current => ({ ...current, title: current.title.trim() ? current.title : draft.title.slice(0, 120), description: current.description.trim() ? current.description : draft.description }));
+                  setSkills(current => current.length ? current : draft.skills);
+                }} />
                 <Field
                   label="Service title"
                   htmlFor="title"
@@ -793,20 +813,6 @@ export default function OfferServicePage() {
                     value={avatar}
                     onChange={setAvatar}
                     onBusyChange={setAvatarUploading}
-                  />
-                </Field>
-                <Field
-                  label="Showcase your work"
-                  hint="Add up to six photos. Your first image is the gallery cover. Use work you own or have permission to share."
-                >
-                  <ImageUploadInput
-                    purpose="service"
-                    value={details.gallery}
-                    onChange={(gallery) =>
-                      setDetails((d) => ({ ...d, gallery }))
-                    }
-                    maxFiles={6}
-                    onBusyChange={setGalleryUploading}
                   />
                 </Field>
               </div>

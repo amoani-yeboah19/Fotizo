@@ -50,6 +50,8 @@ export interface ShopCategory {
 }
 
 export const SHOP_CATEGORIES: ShopCategory[] = [
+  { id: "womens", label: "Women's Clothing", icon: Venus },
+  { id: "mens", label: "Men's Clothing", icon: Shirt },
   { id: "shoes-bags", label: "Shoes & Bags", icon: ShoppingBag },
   { id: "general", label: "General Merchandise", icon: Package },
   { id: "packaging", label: "Packaging", icon: Boxes },
@@ -58,13 +60,10 @@ export const SHOP_CATEGORIES: ShopCategory[] = [
   { id: "wigs", label: "Wigs & Hair", icon: Scissors },
   { id: "jackets", label: "Winter Jackets", icon: Snowflake },
   { id: "pets", label: "Pet Supplies", icon: PawPrint },
-  { id: "mens", label: "Men's Clothing", icon: Shirt },
-  { id: "sports", label: "Sports Furniture", icon: Dumbbell },
+  { id: "sports", label: "Fitness Equipment", icon: Dumbbell },
   { id: "gymwear", label: "Gym Wear", icon: Activity },
   { id: "beauty", label: "Beauty", icon: Sparkles },
-  { id: "womens", label: "Women's Clothing", icon: Venus },
-  { id: "accessories", label: "Accessories", icon: Watch },
-  { id: "jewellery", label: "Jewellery", icon: Sparkles },
+  { id: "accessories", label: "Accessories & Jewellery", icon: Watch },
   { id: "phones", label: "Phones", icon: Smartphone },
   { id: "appliances", label: "Home Appliances", icon: Zap },
   { id: "furniture", label: "Furniture", icon: Sofa },
@@ -83,5 +82,9 @@ export const SHOP_CATEGORIES: ShopCategory[] = [
 ];
 
 export function categoryLabel(id: string): string {
-  return SHOP_CATEGORIES.find((c) => c.id === id)?.label ?? id;
+  return (
+    SHOP_CATEGORIES.find(
+      (c) => c.id === (id === "jewellery" ? "accessories" : id),
+    )?.label ?? id
+  );
 }

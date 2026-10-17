@@ -241,6 +241,9 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
 }
+.discovery-highlights + .discovery-highlights {
+  margin-top: 18px;
+}
 .discovery-highlight {
   border: 1px solid #eadfd6;
   background: linear-gradient(145deg, #fff3e8, #fff 70%);
