@@ -29,6 +29,7 @@ import {
   Clock,
   Briefcase,
 } from "lucide-react";
+import { ReviewsSection } from "@/features/reviews/ReviewsSection";
 
 export default function ServiceDetail() {
   const [, params] = useRoute("/services/:id");
@@ -217,6 +218,9 @@ export default function ServiceDetail() {
             </div>
           </SurfaceCard>
         </div>
+      </div>
+      <div id="reviews" className="mt-12 scroll-mt-24">
+        <ReviewsSection kind="service" listingId={service.id} />
       </div>
     </PageLayout>
   );

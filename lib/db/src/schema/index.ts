@@ -17,3 +17,5 @@ export * from "./fees";
 export * from "./pricing";
 export * from "./catalogue-ids";
 export * from "./identity";
+export * from "./notifications";
+export * from "./reviews";

@@ -45,6 +45,7 @@ import {
   CaseQueue,
   VehicleCatalogueControls,
 } from "@/features/profile/components/Operations";
+import { UrgentAlertsToggle } from "@/features/notifications/UrgentAlertsToggle";
 
 type Section = "overview" | "confirmations" | "shop" | "autos" | "freight" | "suppliers";
 
@@ -576,7 +577,12 @@ export default function ChinaRepresentativeDashboard() {
       {section === "freight" && <SourcingDrafts kind="shipment" />}
 
       {section === "suppliers" && <SourcingDrafts kind="supplier" />}
-      {section === "confirmations" && <ConfirmationQueue />}
+      {section === "confirmations" && (
+        <div className="space-y-4">
+          <UrgentAlertsToggle />
+          <ConfirmationQueue />
+        </div>
+      )}
     </DashboardLayout>
   );
 }
