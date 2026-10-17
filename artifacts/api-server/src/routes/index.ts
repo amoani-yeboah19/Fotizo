@@ -25,6 +25,8 @@ import searchRouter from "./search";
 import earningsRouter from "./earnings";
 import confirmationsRouter from "./confirmations";
 import identityRouter from "./identity";
+import notificationsRouter from "./notifications";
+import reviewsRouter from "./reviews";
 
 const router: IRouter = Router();
 
@@ -35,6 +37,8 @@ router.use("/auth", authRouter);
 router.use(productsRouter);
 router.use(categoriesRouter);
 router.use("/ai", aiRouter);
+router.use(notificationsRouter);
+router.use(reviewsRouter);
 router.use(ordersRouter);
 router.use(servicesRouter);
 router.use(conversationsRouter);

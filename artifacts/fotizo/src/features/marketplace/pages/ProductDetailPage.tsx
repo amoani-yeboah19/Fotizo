@@ -14,6 +14,7 @@ import { useMessages } from "@/contexts/MessagesContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Star, Heart, MessageSquare, ChevronRight, Minus, Plus, Truck, ShieldCheck } from "lucide-react";
+import { ReviewsSection } from "@/features/reviews/ReviewsSection";
 
 export default function ProductDetail() {
   const [, params] = useRoute("/products/:id");
@@ -24,7 +25,10 @@ export default function ProductDetail() {
   const wishlist = useWishlistToggle();
   const { data: related = [] } = useRelatedProducts(id);
   const [quantity, setQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState("description");
+  // "Write a review" links open the Reviews tab.
+  const [activeTab, setActiveTab] = useState(() =>
+    typeof window !== "undefined" && window.location.hash === "#reviews" ? "reviews" : "description",
+  );
   // The photo shown large; back to the cover when moving to another product.
   const [activeImage, setActiveImage] = useState(0);
   useEffect(() => setActiveImage(0), [id]);
@@ -258,12 +262,7 @@ export default function ProductDetail() {
               </div>
             )}
 
-            {activeTab === "reviews" && (
-              <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                <Star className="w-12 h-12 text-muted-foreground/30 mb-4" />
-                <p className="text-muted-foreground">Reviews functionality coming soon.</p>
-              </div>
-            )}
+            {activeTab === "reviews" && <ReviewsSection kind="product" listingId={product.id} />}
           </div>
         </div>
 

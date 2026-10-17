@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { ORDERS_USE_MOCKS } from "@/api";
 import { ReportProblem } from "./ReportProblem";
+import { UrgentAlert } from "./UrgentAlert";
 import { purchaseStatus } from "@/features/orders/confirmation";
 export { purchaseStatusTone } from "@/features/orders/confirmation";
 import {
@@ -117,6 +118,18 @@ export function PurchaseDetailsDialog({
                 : "No tracking number is available for this item.")}
           </p>
         </div>
+        {!ORDERS_USE_MOCKS && <UrgentAlert order={order} />}
+        {order.status === "delivered" && (
+          <div className="rounded-xl bg-muted/50 p-4 text-sm">
+            <h3 className="font-semibold">How was it?</h3>
+            <p className="mt-1 text-muted-foreground">Your review helps other buyers.</p>
+            <Link href={`${order.needsConfirmation ? "/shop" : "/products"}/${order.productId}#reviews`}>
+              <Button size="sm" variant="outline" className="mt-3">
+                Write a review
+              </Button>
+            </Link>
+          </div>
+        )}
         {decisionPending && order.orderId && (
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
             <p className="text-muted-foreground">

@@ -16,6 +16,7 @@ import {
 } from "@workspace/db";
 import { requireAuth, requireRole, type AuthenticatedRequest } from "../middlewares/requireAuth";
 import { caseReference } from "../lib/cases";
+import { urgencyFor } from "./notifications";
 import { recordUnitSaleFees } from "../lib/fees";
 import { productIdSchema } from "../lib/product-ids";
 import { ownerVisible } from "../lib/identity";
@@ -59,6 +60,8 @@ export function toPublicOrder(
 
 const orderColumns = {
   createdAt: ordersTable.createdAt,
+  acceptedAt: ordersTable.acceptedAt,
+  deliveryDaysMax: ordersTable.deliveryDaysMax,
   reference: ordersTable.reference,
   paymentStatus: ordersTable.paymentStatus,
   paymentMethod: ordersTable.paymentMethod,
@@ -75,7 +78,9 @@ router.get("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
     .where(eq(ordersTable.buyerId, req.auth!.userId))
     .orderBy(desc(ordersTable.createdAt))
     .limit(500);
-  res.json(rows.map((r) => toPublicOrder(r.item, r.order)));
+  // Buyers also see when each line is due and when they can send an urgent alert.
+  const urgency = await urgencyFor(rows.map((r) => ({ line: r.item, order: r.order })));
+  res.json(rows.map((r) => ({ ...toPublicOrder(r.item, r.order), ...urgency.get(r.item.id) })));
 });
 
 // Sales — items bought FROM the caller (their fulfilment queue), scoped by the
@@ -326,6 +331,7 @@ router.get("/orders/:id", requireAuth, async (req: AuthenticatedRequest, res) =>
     return;
   }
   const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, order.id));
+  const urgency = await urgencyFor(items.map((line) => ({ line, order })));
   res.json({
     ...confirmation(order),
     createdAt: order.createdAt.toISOString(),
@@ -338,7 +344,7 @@ router.get("/orders/:id", requireAuth, async (req: AuthenticatedRequest, res) =>
       postalCode: order.postalCode,
       country: order.country,
     },
-    items: items.map((i) => toPublicOrder(i, order)),
+    items: items.map((i) => ({ ...toPublicOrder(i, order), ...urgency.get(i.id) })),
   });
 });
 

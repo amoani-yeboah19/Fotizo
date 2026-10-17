@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import type { Order } from "@/types";
 import { SaleStatusControl } from "@/features/payments/components/SaleStatusControl";
+import { UrgentAlertsToggle } from "@/features/notifications/UrgentAlertsToggle";
 
 const statusTone = (s: string) =>
   s === "delivered" ? "success" : s === "cancelled" ? "danger" : "warning";
@@ -364,7 +365,12 @@ export default function DashboardSeller() {
 
       {section === "products" && ProductsTable}
 
-      {section === "orders" && ordersTableCard(sales, "sales")}
+      {section === "orders" && (
+        <div className="space-y-4">
+          <UrgentAlertsToggle />
+          {ordersTableCard(sales, "sales")}
+        </div>
+      )}
 
       {section === "services" && <MyServicesTable />}
 

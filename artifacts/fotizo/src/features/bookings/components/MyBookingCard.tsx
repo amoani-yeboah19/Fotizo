@@ -279,9 +279,16 @@ export function MyBookingCard({ booking, compact = false }: { booking: Booking; 
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
-            <Link href={`/services/${booking.serviceId}`} className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-              View service <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-            </Link>
+            <span className="flex flex-wrap items-center gap-4">
+              <Link href={`/services/${booking.serviceId}`} className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                View service <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
+              {booking.status === "completed" && (
+                <Link href={`/services/${booking.serviceId}#reviews`} className="text-sm font-medium text-primary hover:underline">
+                  Write a review
+                </Link>
+              )}
+            </span>
             <div className="flex flex-wrap gap-2">
               {open && (
                 <Button

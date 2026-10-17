@@ -36,6 +36,8 @@ vi.mock("@/contexts/CartContext", () => ({
 }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock("@/features/wishlist/components/WishlistButton", () => ({ WishlistButton: () => null }));
+// Reviews are tested on their own (ReviewsSection.test.tsx).
+vi.mock("@/features/reviews/ReviewsSection", () => ({ ReviewsSection: () => null }));
 vi.mock("@/components/common/Price", () => ({
   Price: ({ amount }: { amount: number }) => <span>£{amount.toFixed(2)}</span>,
 }));

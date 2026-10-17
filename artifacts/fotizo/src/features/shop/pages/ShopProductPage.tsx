@@ -34,6 +34,7 @@ import { discountPct, soldLabel } from "@/features/shop/data/shop-product";
 import { categoryLabel } from "@/features/shop/data/categories";
 import { productSizeRequest } from "../data/product-sizes";
 import { recordShopView } from "../hooks/useShopHistory";
+import { ReviewsSection } from "@/features/reviews/ReviewsSection";
 
 export default function ShopProductPage() {
   const [, params] = useRoute("/shop/:id");
@@ -432,6 +433,13 @@ export default function ShopProductPage() {
           </section>
         )}
       </section>
+
+      {/* Unpublished previews can't have been bought, so they have no reviews. */}
+      {!product.requiresPublication && (
+        <div id="reviews" className="mt-12 scroll-mt-24">
+          <ReviewsSection kind="product" listingId={product.id} />
+        </div>
+      )}
 
       {/* Related */}
       {related.length > 0 && (

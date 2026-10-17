@@ -43,6 +43,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { UrgentAlertsToggle } from "@/features/notifications/UrgentAlertsToggle";
 
 type Section =
   | "overview"
@@ -435,7 +436,10 @@ function ManagerWorkspace() {
         </div>
       )}
       {section === "orders" ? (
-        <AdminOperations />
+        <div className="space-y-4">
+          <UrgentAlertsToggle />
+          <AdminOperations />
+        </div>
       ) : section === "confirmations" ? (
         <ConfirmationQueue showHeading={false} />
       ) : section === "payments" ? (

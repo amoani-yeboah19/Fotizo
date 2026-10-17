@@ -185,6 +185,19 @@ export interface Order {
   confirmedOptions?: string | null;
   /** The estimated unit price shown at checkout; price is the confirmed one once quoted. */
   estimatedPrice?: number | null;
+  /** Buyers' view: when this line is due (ISO). */
+  deliveryDue?: string;
+  /** Buyers' view: when an urgent alert can next be sent (ISO); null once delivered or cancelled. */
+  urgentAvailableAt?: string | null;
+  lastUrgentAt?: string | null;
+}
+
+/** The result of a buyer's urgent alert on an overdue order line. */
+export interface UrgentAlertResult {
+  sentAt: string;
+  urgentAvailableAt: string;
+  /** Whether the seller (or Fotizo staff) could be reached right away. */
+  delivered: boolean;
 }
 
 /**

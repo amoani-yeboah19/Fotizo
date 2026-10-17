@@ -8,6 +8,7 @@ import type {
   Order,
   OrderDetail,
   PlaceOrderInput,
+  UrgentAlertResult,
   OrderConfirmation,
   PaymentVerification,
 } from "@/types";
@@ -42,6 +43,11 @@ export const ordersService = {
 
   async getOrder(id: string): Promise<OrderDetail> {
     return api.get<OrderDetail>(`/orders/${id}`);
+  },
+
+  /** Alerts the seller (or Fotizo staff) that an overdue order line hasn't arrived. */
+  async sendUrgent(lineId: string): Promise<UrgentAlertResult> {
+    return api.post<UrgentAlertResult>(`/orders/lines/${lineId}/urgent`);
   },
 
   async updateSaleStatus(lineId: string, status: SaleStatus, trackingNumber?: string) {
