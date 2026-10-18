@@ -3,6 +3,7 @@ import { expect, it } from "vitest";
 import rows from "./1688-textiles-accessories-products.json";
 import categoryIndex from "./1688-textiles-accessories-category-index.json";
 import { loadSourcedCatalogue } from "./sourced-catalogue";
+import culturalOffers from "./excluded-cultural-shop-offers.json";
 
 it("adds verified source records with local images and correctly estimated draft prices", () => {
   const root = "docs/sourcing/1688-textiles-accessories-2026-10-12/";
@@ -43,9 +44,12 @@ it("adds verified source records with local images and correctly estimated draft
     );
   }
 });
-it("makes all new listings available through the sourced catalogue without duplicates", async () => {
+it("makes eligible new listings available through the sourced catalogue without duplicates", async () => {
   const all = await loadSourcedCatalogue();
   const ids = new Set(all.map((p) => p.id));
   expect(ids.size).toBe(all.length);
-  for (const p of rows) expect(ids.has(p.id)).toBe(true);
+  const excluded = new Set(
+    Object.keys(culturalOffers).map((id) => `1688-${id}`),
+  );
+  for (const p of rows) expect(ids.has(p.id)).toBe(!excluded.has(p.id));
 });

@@ -4,6 +4,7 @@ import { expect, it } from "vitest";
 import rows from "./1688-home-products.json";
 import pricing from "./1688-home-pricing.json";
 import excludedOffers from "./excluded-shop-offers.json";
+import culturalOffers from "./excluded-cultural-shop-offers.json";
 import { loadSourcedCatalogue } from "./sourced-catalogue";
 import { SHOP_CATEGORIES } from "./categories";
 
@@ -48,7 +49,11 @@ it("uses the captured cost with a single 30% markup and merges without duplicate
   expect(
     catalogue.find((r) => r.id === "1688-973074422128")?.variants,
   ).toHaveLength(8);
-  const excluded = new Set(excludedOffers.map((id) => `1688-${id}`));
+  const excluded = new Set(
+    [...excludedOffers, ...Object.keys(culturalOffers)].map(
+      (id) => `1688-${id}`,
+    ),
+  );
   const visibleIds = new Set(catalogue.map((r) => r.id));
   for (const row of rows)
     expect(visibleIds.has(row.id)).toBe(!excluded.has(row.id));
