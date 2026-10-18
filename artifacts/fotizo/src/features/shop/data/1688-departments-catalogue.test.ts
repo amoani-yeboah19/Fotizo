@@ -5,6 +5,7 @@ import { expect, it } from "vitest";
 import products from "./1688-departments-products.json";
 import pricing from "./1688-departments-pricing.json";
 import { loadSourcedCatalogue } from "./sourced-catalogue";
+import culturalOffers from "./excluded-cultural-shop-offers.json";
 
 const root = "docs/sourcing/1688-departments-2026-10-07";
 
@@ -37,7 +38,10 @@ it("fills the small departments with photographed English products, without expo
   expect(all.length).toBeGreaterThanOrEqual(15000);
   expect(new Set(all.map((p) => p.id)).size).toBe(all.length);
   const ids = new Set(all.map((p) => p.id));
-  for (const p of products) expect(ids.has(p.id)).toBe(true);
+  const excluded = new Set(
+    Object.keys(culturalOffers).map((id) => `1688-${id}`),
+  );
+  for (const p of products) expect(ids.has(p.id)).toBe(!excluded.has(p.id));
 });
 
 it("applies the agreed markup once and reconciles capture, holds and exported products", () => {

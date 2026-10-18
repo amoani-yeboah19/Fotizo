@@ -1,4 +1,5 @@
 import { visibleProduct } from "@/features/catalogue/launch-policy";
+import { isShopVisible } from "../data/shop-visibility";
 import { loadSourcedCatalogue } from "../data/sourced-catalogue";
 import { api, ApiError, SHOP_USE_MOCKS } from "@/api";
 import { delay } from "@/services/mocks/delay";
@@ -66,7 +67,7 @@ export function toShopProduct(p: Product): ShopProduct {
     description: p.description,
     sourceUrl: p.sourcing?.sourceUrl ?? specs.supplierListing,
     // Supplier terms from the server: price range, minimum order and unit.
-    ...(p.sourcing && p.sourcing.priceRange
+    ...(p.sourcing
       ? {
           sourcing: {
             platform: p.sourcing.platform,
@@ -75,7 +76,7 @@ export function toShopProduct(p: Product): ShopProduct {
             sourcePage: p.sourcing.sourceUrl ?? "",
             capturedAt: p.sourcing.capturedAt ?? "",
             currency: p.sourcing.currency ?? "",
-            priceRange: p.sourcing.priceRange,
+            priceRange: p.sourcing.priceRange ?? "",
             minimumOrder: p.sourcing.minimumOrder ?? null,
             unit: p.sourcing.unit ?? null,
             originalImage: p.images?.[0] ?? "",
@@ -164,7 +165,8 @@ export const shopService = {
     }
     return (await api.get<Product[]>(`/products/${id}/related`))
       .filter((p) => p.channel === "shop" && visibleProduct(p))
-      .map(toShopProduct);
+      .map(toShopProduct)
+      .filter(isShopVisible);
   },
 
   async getProduct(id: string): Promise<ShopProduct | null> {
@@ -182,7 +184,10 @@ export const shopService = {
       if (local && offerOf(local.id) && !SHOP_USE_MOCKS) {
         try {
           const product = await api.get<Product>(`/products/${local.id}`);
-          if (product.channel === "shop") return withLocalDetails(toShopProduct(product), local);
+          if (product.channel === "shop") {
+            const presented = withLocalDetails(toShopProduct(product), local);
+            return isShopVisible(presented) ? presented : null;
+          }
         } catch {
           // Not published yet (404) or unreachable: show the preview copy.
         }
@@ -199,9 +204,9 @@ export const shopService = {
     }
     try {
       const product = await api.get<Product>(`/products/${id}`);
-      return product.channel === "shop" && visibleProduct(product)
-        ? toShopProduct(product)
-        : null;
+      if (product.channel !== "shop" || !visibleProduct(product)) return null;
+      const presented = toShopProduct(product);
+      return isShopVisible(presented) ? presented : null;
     } catch (error) {
       if (!(error instanceof ApiError) || error.status !== 404) throw error;
       // A missing or unpublished listing is a 404 — a normal outcome here, not
