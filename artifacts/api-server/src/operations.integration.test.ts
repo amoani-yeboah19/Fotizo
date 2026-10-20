@@ -965,7 +965,14 @@ it("lets China staff create, edit and publish a vehicle while rejecting buyers a
   };
   expect((await post("/operations/vehicles", input, buyer.cookie)).status).toBe(403);
   expect((await post("/operations/vehicles", { ...input, images: [] }, china.cookie)).status).toBe(400);
-  expect((await post("/operations/vehicles", { ...input, leadTimeWeeks: [12, 8] }, china.cookie)).status).toBe(400);
+  const backwards = await post("/operations/vehicles", { ...input, leadTimeWeeks: [12, 8] }, china.cookie);
+  expect(backwards.status).toBe(400);
+  // Staff are told which field to fix, not a generic refusal.
+  expect(await backwards.json()).toEqual({
+    error: "Enter lead times of 1 to 520 weeks, with the maximum at least the minimum.",
+  });
+  const longHighlight = await post("/operations/vehicles", { ...input, highlights: ["x".repeat(201)] }, china.cookie);
+  expect(((await longHighlight.json()) as { error: string }).error).toContain("highlights");
   expect((await post("/operations/vehicles", { ...input, status: "active" }, china.cookie)).status).toBe(400);
   const response = await post("/operations/vehicles", input, china.cookie);
   expect(response.status).toBe(201);

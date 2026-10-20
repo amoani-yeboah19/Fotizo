@@ -5,7 +5,7 @@ import {
   requireAuth,
   type AuthenticatedRequest,
 } from "../middlewares/requireAuth";
-import { listingImagesProblem } from "../lib/storage";
+import { imagesOnVehicles, listingImagesProblem } from "../lib/storage";
 import { consumeAuthAttempt } from "../middlewares/security";
 
 export const photoRequest = z
@@ -14,20 +14,30 @@ export const photoRequest = z
     images: z.array(z.string().url().max(2048)).min(1).max(3),
   })
   .strict();
-const short = z.string().max(200);
+const BODY_TYPES = ["", "suv", "coupe-suv", "sedan", "pickup"] as const;
+const FUELS = ["", "petrol", "hybrid", "electric"] as const;
+// The model's draft is tidied to the form's limits rather than rejected:
+// long text is cut, extra list items dropped, unknown choices left empty.
+const short = z.string().transform((v) => v.trim().slice(0, 200));
+const list = <T extends z.ZodTypeAny>(item: T) => z.array(item).transform((items) => items.slice(0, 8));
+const choice = <T extends readonly string[]>(values: T) =>
+  z.string().transform((v) => {
+    const value = v.trim().toLowerCase();
+    return (values.includes(value) ? value : "") as T[number];
+  });
 export const photoDraft = z
   .object({
     title: short,
-    description: z.string().max(4000),
-    tags: z.array(short).max(8),
-    skills: z.array(short).max(8),
-    specs: z.array(z.object({ name: short, value: short }).strict()).max(8),
+    description: z.string().transform((v) => v.trim().slice(0, 4000)),
+    tags: list(short),
+    skills: list(short),
+    specs: list(z.object({ name: short, value: short }).strict()),
     vehicle: z
       .object({
         make: short,
         model: short,
-        bodyType: z.enum(["", "suv", "coupe-suv", "sedan", "pickup"]),
-        fuel: z.enum(["", "petrol", "hybrid", "electric"]),
+        bodyType: choice(BODY_TYPES),
+        fuel: choice(FUELS),
         transmission: short,
         drivetrain: short,
         powertrain: short,
@@ -66,11 +76,13 @@ router.post("/photos", requireAuth, async (req: AuthenticatedRequest, res) => {
       });
     return;
   }
-  // Only the caller's Fotizo uploads may be sent to the vision model.
+  // Only the caller's Fotizo uploads may be sent to the vision model, plus,
+  // for vehicles, photos already on the catalogue (staff edit each other's).
   const problem = await listingImagesProblem(
     req.auth!.userId,
     kind === "service" ? "service" : "product",
     images,
+    kind === "vehicle" ? await imagesOnVehicles(images) : [],
   );
   if (problem) {
     res.status(400).json({ error: problem });
@@ -117,18 +129,15 @@ router.post("/photos", requireAuth, async (req: AuthenticatedRequest, res) => {
               vehicle: {
                 type: "object",
                 additionalProperties: false,
-                properties: Object.fromEntries(
-                  [
-                    "make",
-                    "model",
-                    "bodyType",
-                    "fuel",
-                    "transmission",
-                    "drivetrain",
-                    "powertrain",
-                    "efficiency",
-                  ].map((name) => [name, { type: "string" }]),
-                ),
+                properties: {
+                  ...Object.fromEntries(
+                    ["make", "model", "transmission", "drivetrain", "powertrain", "efficiency"].map(
+                      (name) => [name, { type: "string" }],
+                    ),
+                  ),
+                  bodyType: { type: "string", enum: [...BODY_TYPES] },
+                  fuel: { type: "string", enum: [...FUELS] },
+                },
                 required: [
                   "make",
                   "model",
@@ -169,7 +178,7 @@ router.post("/photos", requireAuth, async (req: AuthenticatedRequest, res) => {
       ],
     });
     if (response.stop_reason !== "end_turn")
-      throw new Error("Incomplete photo draft");
+      throw new Error(`Incomplete photo draft (${response.stop_reason})`);
     const block = response.content.find((block) => block.type === "text");
     if (!block || block.type !== "text") throw new Error("Missing photo draft");
     res.json(photoDraft.parse(JSON.parse(block.text)));
