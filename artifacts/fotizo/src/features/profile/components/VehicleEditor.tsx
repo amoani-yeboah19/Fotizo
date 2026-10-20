@@ -65,18 +65,13 @@ export function VehicleEditor({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const cache = useQueryClient();
+  const highlightLines = highlights
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
   const save = useMutation({
     mutationFn: () =>
-      operationsService.saveVehicle(
-        {
-          ...draft,
-          highlights: highlights
-            .split("\n")
-            .map((s) => s.trim())
-            .filter(Boolean),
-        },
-        vehicle?.id,
-      ),
+      operationsService.saveVehicle({ ...draft, highlights: highlightLines }, vehicle?.id),
     onSuccess: () => {
       cache.invalidateQueries({ queryKey: ["operations"] });
       cache.invalidateQueries({ queryKey: ["vehicles"] });
@@ -94,8 +89,25 @@ export function VehicleEditor({
       setError("Upload at least one vehicle photo.");
       return;
     }
+    // Cleared number boxes would otherwise be sent as nothing and refused.
+    if (!Number.isInteger(draft.seats) || draft.seats < 1 || draft.seats > 60) {
+      setError("Enter the number of seats (1 to 60).");
+      return;
+    }
+    if (!Number.isFinite(draft.landedPrice) || draft.landedPrice <= 0) {
+      setError("Enter an estimated landed price above zero.");
+      return;
+    }
+    if (!draft.leadTimeWeeks.every((w) => Number.isInteger(w) && w >= 1 && w <= 520)) {
+      setError("Enter lead times of 1 to 520 weeks.");
+      return;
+    }
     if (draft.leadTimeWeeks[1] < draft.leadTimeWeeks[0]) {
       setError("Maximum lead time must be at least the minimum.");
+      return;
+    }
+    if (highlightLines.length > 12 || highlightLines.some((line) => line.length > 200)) {
+      setError("Keep highlights to 12 lines of up to 200 characters each.");
       return;
     }
     setError("");
@@ -136,6 +148,12 @@ export function VehicleEditor({
                 for (const key of ["make", "model", "transmission", "drivetrain", "powertrain", "efficiency"] as const) {
                   if (!current[key].trim() && suggestion.vehicle[key]) next[key] = suggestion.vehicle[key];
                 }
+                // A new vehicle's body type and fuel start at the defaults, so
+                // take what the photos show unless they were already changed.
+                if (!vehicle && current.bodyType === empty.bodyType && suggestion.vehicle.bodyType)
+                  next.bodyType = suggestion.vehicle.bodyType;
+                if (!vehicle && current.fuel === empty.fuel && suggestion.vehicle.fuel)
+                  next.fuel = suggestion.vehicle.fuel;
                 if (!current.description.trim()) next.description = suggestion.description;
                 return next;
               });

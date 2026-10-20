@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
-import { db, mediaUploadsTable, type ImageType, type MediaPurpose } from "@workspace/db";
+import { and, arrayOverlaps, eq, inArray } from "drizzle-orm";
+import { db, mediaUploadsTable, vehiclesTable, type ImageType, type MediaPurpose } from "@workspace/db";
 
 // Images live in one public Supabase Storage bucket: anyone can read them by
 // URL, only this server (with the service-role key) can write. Configuration is
@@ -169,6 +169,17 @@ export async function listingImagesProblem(
     );
   const ownedPaths = new Set(owned.map((o) => o.path));
   return paths.every((p) => ownedPaths.has(p!)) ? null : "Use photos you uploaded to this listing.";
+}
+
+/** Which of `images` already appear on a vehicle in the catalogue. */
+export async function imagesOnVehicles(images: string[]) {
+  if (!images.length) return [];
+  const rows = await db
+    .select({ images: vehiclesTable.images })
+    .from(vehiclesTable)
+    .where(arrayOverlaps(vehiclesTable.images, images));
+  const listed = new Set(rows.flatMap((row) => row.images));
+  return images.filter((image) => listed.has(image));
 }
 
 /**

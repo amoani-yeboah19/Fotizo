@@ -213,6 +213,25 @@ describe("image uploads to Supabase Storage", () => {
     expect((await send("PATCH", `/services/${savedService.id}`, { ...service, avatar: serviceShot, details }, seller.cookie)).status).toBe(200);
   });
 
+  it("lets managers upload vehicle photos and staff reuse photos already on the catalogue", async () => {
+    const manager = await account("manager");
+    const desk = await account("china_representative");
+    // Managers add and edit vehicles, so they must be able to upload their photos.
+    const photo = await uploaded("product", manager.cookie);
+    // This stub storage serves plain http, which vehicle saving refuses, so
+    // the vehicle is added directly.
+    await database.query(
+      `INSERT INTO vehicles (slug, make, model, body_type, fuel, seats, transmission, drivetrain, powertrain, efficiency,
+         landed_price, lead_time_min_weeks, lead_time_max_weeks, images, highlights, description)
+       VALUES ('byd-atto-3-test', 'BYD', 'Atto 3', 'suv', 'electric', 5, 'Automatic', 'FWD', 'Electric motor', '420 km',
+         25000, 6, 10, $1, '{}', 'Compact electric SUV')`,
+      [[photo]],
+    );
+    const { imagesOnVehicles } = await import("./lib/storage");
+    const elsewhere = await uploaded("product", desk.cookie);
+    expect(await imagesOnVehicles([photo, elsewhere])).toEqual([photo]);
+  });
+
   it("lets the China desk publish its held listings, but not ones a manager took down", async () => {
     const desk = await account("china_representative");
     const created = await send("POST", "/products", { ...product, images: [await uploaded("product", desk.cookie)] }, desk.cookie);

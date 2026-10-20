@@ -8,10 +8,11 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-// Who may upload for which purpose: listings match who may create them;
+// Who may upload for which purpose: listings match who may create them
+// (vehicle photos are "product" uploads, and managers edit vehicles too);
 // every signed-in account can have a profile photo.
 const UPLOAD_ROLES: Record<(typeof MEDIA_PURPOSES)[number], string[] | "any"> = {
-  product: ["seller", "china_representative"],
+  product: ["seller", "china_representative", "manager"],
   service: ["seller"],
   avatar: "any",
 };

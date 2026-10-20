@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { vehicleInput } from "../lib/vehicle-input";
+import { vehicleInput, vehicleInputProblem } from "../lib/vehicle-input";
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
@@ -312,13 +312,12 @@ for (const editing of [false, true]) {
     async (req, res) => {
       const parsed = vehicleInput.safeParse(req.body);
       const id = editing ? z.string().uuid().safeParse(req.params.id) : null;
-      if (!parsed.success || (editing && !id?.success)) {
-        res
-          .status(400)
-          .json({
-            error:
-              "Enter valid vehicle details, at least one photo, and a valid delivery window.",
-          });
+      if (editing && !id?.success) {
+        res.status(404).json({ error: "Vehicle not found." });
+        return;
+      }
+      if (!parsed.success) {
+        res.status(400).json({ error: vehicleInputProblem(parsed.error) });
         return;
       }
       const { leadTimeWeeks, ...details } = parsed.data;
