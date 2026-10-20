@@ -1,5 +1,13 @@
 import { Router } from "express";
-import Anthropic from "@anthropic-ai/sdk";
+import Anthropic, {
+  APIConnectionTimeoutError,
+  APIError,
+  AuthenticationError,
+  BadRequestError,
+  NotFoundError,
+  PermissionDeniedError,
+  RateLimitError,
+} from "@anthropic-ai/sdk";
 import { z } from "zod";
 import {
   requireAuth,
@@ -46,6 +54,33 @@ export const photoDraft = z
       .strict(),
   })
   .strict();
+
+const MANUAL = "You can still enter the details manually.";
+/**
+ * Why suggestions failed, in terms the person (or an administrator) can act
+ * on. Provider error text is logged, not shown: it can mention billing.
+ */
+function photoFailure(err: unknown): { status: number; error: string; reason: string } {
+  if (err instanceof APIConnectionTimeoutError)
+    return { status: 504, reason: "timeout", error: `The AI service took too long to read the photos. Retry, or use fewer photos. ${MANUAL}` };
+  if (err instanceof AuthenticationError || err instanceof PermissionDeniedError)
+    return { status: 503, reason: "ai_key_rejected", error: `Photo suggestions are unavailable: the AI service rejected Fotizo's API key. An administrator needs to update ANTHROPIC_API_KEY. ${MANUAL}` };
+  if (err instanceof NotFoundError)
+    return { status: 503, reason: "ai_model_unavailable", error: `Photo suggestions are unavailable: the configured AI model was not found. An administrator needs to check ANTHROPIC_VISION_MODEL. ${MANUAL}` };
+  if (err instanceof RateLimitError)
+    return { status: 429, reason: "ai_rate_limited", error: `The AI service is busy. Please retry in a minute. ${MANUAL}` };
+  if (err instanceof BadRequestError) {
+    // Billing problems arrive as 400s; only the message tells them apart.
+    if (/credit balance|billing/i.test(err.message))
+      return { status: 503, reason: "ai_billing", error: `Photo suggestions are unavailable: the AI account has run out of credit. An administrator needs to add credit. ${MANUAL}` };
+    if (/image|url|download|fetch/i.test(err.message))
+      return { status: 422, reason: "photo_unreadable", error: `The AI service could not open one of the photos. Try a different JPEG or PNG photo. ${MANUAL}` };
+    return { status: 502, reason: "ai_bad_request", error: `The AI service refused the request. ${MANUAL}` };
+  }
+  if (err instanceof APIError && (err.status ?? 0) >= 500)
+    return { status: 503, reason: "ai_unavailable", error: `The AI service is temporarily unavailable. Please retry shortly. ${MANUAL}` };
+  return { status: 502, reason: "unreadable_draft", error: `The photos could not be analysed. Retry or enter the details manually.` };
+}
 
 const router = Router();
 router.post("/photos", requireAuth, async (req: AuthenticatedRequest, res) => {
@@ -177,19 +212,22 @@ router.post("/photos", requireAuth, async (req: AuthenticatedRequest, res) => {
         },
       ],
     });
+    if (response.stop_reason === "refusal") {
+      res.status(422).json({ error: `The AI service declined to describe these photos. ${MANUAL}`, reason: "ai_declined" });
+      return;
+    }
     if (response.stop_reason !== "end_turn")
       throw new Error(`Incomplete photo draft (${response.stop_reason})`);
     const block = response.content.find((block) => block.type === "text");
     if (!block || block.type !== "text") throw new Error("Missing photo draft");
     res.json(photoDraft.parse(JSON.parse(block.text)));
   } catch (err) {
-    req.log?.error({ err }, "Photo suggestions failed");
-    res
-      .status(502)
-      .json({
-        error:
-          "The photos could not be analysed. Retry or enter the details manually.",
-      });
+    const failure = photoFailure(err);
+    req.log?.error(
+      { err, reason: failure.reason, status: err instanceof APIError ? err.status : undefined, requestId: err instanceof APIError ? err.requestID : undefined },
+      "Photo suggestions failed",
+    );
+    res.status(failure.status).json({ error: failure.error, reason: failure.reason });
   }
 });
 export default router;
