@@ -7,7 +7,9 @@ const mocks = vi.hoisted(() => ({
   onVehicles: vi.fn(),
   limit: vi.fn(),
 }));
-vi.mock("@anthropic-ai/sdk", () => ({
+// The client is faked; the SDK's error classes stay real.
+vi.mock("@anthropic-ai/sdk", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@anthropic-ai/sdk")>()),
   default: class {
     messages = { create: mocks.create };
   },
@@ -25,6 +27,7 @@ vi.mock("./middlewares/requireAuth", () => ({
 vi.mock("./lib/storage", () => ({ listingImagesProblem: mocks.images, imagesOnVehicles: mocks.onVehicles }));
 vi.mock("./middlewares/security", () => ({ consumeAuthAttempt: mocks.limit }));
 import router from "./routes/ai-photos";
+import { APIConnectionTimeoutError, APIError } from "@anthropic-ai/sdk";
 let server: Server, base: string;
 const draft = {
   title: "Blue car",
@@ -160,4 +163,28 @@ it("lets staff analyse photos already on a catalogue vehicle that someone else u
   // Products and services never borrow catalogue photos.
   await post({ ...input, kind: "product" }, "seller");
   expect(mocks.onVehicles).toHaveBeenCalledTimes(1);
+});
+it("tells staff why suggestions failed instead of a bare 502", async () => {
+  const apiError = (status: number, message: string) =>
+    APIError.generate(status, { type: "error", error: { type: "x", message } }, message, new Headers());
+  const cases: [unknown, number, string][] = [
+    [apiError(401, "invalid x-api-key"), 503, "ai_key_rejected"],
+    [apiError(404, "model: claude-x"), 503, "ai_model_unavailable"],
+    [apiError(400, "Your credit balance is too low to access the Anthropic API."), 503, "ai_billing"],
+    [apiError(400, "Unable to download the file. Please verify the URL and try again."), 422, "photo_unreadable"],
+    [apiError(429, "rate limited"), 429, "ai_rate_limited"],
+    [apiError(529, "Overloaded"), 503, "ai_unavailable"],
+    [new APIConnectionTimeoutError(), 504, "timeout"],
+  ];
+  for (const [error, status, reason] of cases) {
+    mocks.create.mockRejectedValueOnce(error);
+    const response = await post(input);
+    expect(response.status).toBe(status);
+    const body = (await response.json()) as { error: string; reason: string };
+    expect(body.reason).toBe(reason);
+    // Provider wording (which can mention billing) is logged, not shown.
+    expect(body.error).not.toMatch(/credit balance is too low|x-api-key/);
+  }
+  mocks.create.mockResolvedValueOnce({ stop_reason: "refusal", content: [] });
+  expect(await (await post(input)).json()).toMatchObject({ reason: "ai_declined" });
 });
