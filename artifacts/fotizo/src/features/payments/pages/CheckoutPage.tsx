@@ -14,7 +14,7 @@ import { ordersService } from "@/features/payments/services/orders.service";
 import { useToast } from "@/hooks/use-toast";
 import { apiErrorMessage } from "@/api";
 import type { DeliveryDetails, OnlinePaymentMethod, PaymentMethod } from "@/types";
-import { Loader2, CheckCircle2, Truck, Smartphone, Globe, Lock, ClipboardCheck } from "lucide-react";
+import { Loader2, CheckCircle2, Globe, Lock, ClipboardCheck } from "lucide-react";
 
 // Same rule the server applies when it prices the order.
 const FREE_DELIVERY_OVER = 50;
@@ -26,85 +26,23 @@ const COUNTRIES: { value: DeliveryDetails["country"]; label: string }[] = [
   { value: "US", label: "United States" },
 ];
 
-/** How every payment method is described, including older orders' methods. */
+/** Historical methods remain readable on existing orders. */
 export const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; detail: string }[] = [
-  {
-    value: "pay_on_delivery",
-    label: "Pay on delivery",
-    detail: "Pay in cash or by mobile money when your order arrives.",
-  },
-  {
-    value: "paystack",
-    label: "Paystack",
-    detail: "Card or mobile money on Paystack's secure page, charged in Ghana cedis at today's rate.",
-  },
-  {
-    value: "stripe",
-    label: "Stripe",
-    detail: "Visa, Mastercard or Amex on Stripe's secure page, charged in British pounds.",
-  },
-  {
-    value: "mobile_money",
-    label: "Mobile money",
-    detail: "We call you to confirm the order and share the mobile money number to pay.",
-  },
-  {
-    value: "bank_transfer",
-    label: "Bank transfer",
-    detail: "We call you to confirm the order and share bank details for the transfer.",
-  },
+  { value: "payaza", label: "Payaza", detail: "Secure local and international payments." },
+  { value: "pay_on_delivery", label: "Pay on delivery", detail: "Historical payment method" },
+  { value: "mobile_money", label: "Mobile money", detail: "Historical payment method" },
+  { value: "bank_transfer", label: "Bank transfer", detail: "Historical payment method" },
+  { value: "paystack", label: "Paystack", detail: "Historical payment method" },
+  { value: "stripe", label: "Stripe", detail: "Historical payment method" },
+  { value: "dlocal", label: "dLocal", detail: "Historical payment method" },
 ];
-
-type CheckoutMethod = "pay_on_delivery" | "paystack" | "stripe";
-
-/** The three ways to pay at checkout, in the order they're shown. */
-const CHECKOUT_METHODS: {
-  value: CheckoutMethod;
-  label: string;
-  tag?: string;
-  detail: string;
-  icon: typeof Truck;
-}[] = [
-  {
-    value: "pay_on_delivery",
-    label: "Pay on delivery",
-    detail: "Pay in cash or by mobile money when your order arrives. Nothing is charged now.",
-    icon: Truck,
-  },
-  {
-    value: "paystack",
-    label: "Paystack",
-    tag: "Local · Ghana",
-    detail: "Pay now by card or mobile money (MTN, Telecel, AirtelTigo), charged in Ghana cedis.",
-    icon: Smartphone,
-  },
-  {
-    value: "stripe",
-    label: "Stripe",
-    tag: "International",
-    detail: "Pay now by Visa, Mastercard or Amex, charged in British pounds (GBP).",
-    icon: Globe,
-  },
-];
-
+type CheckoutMethod = "payaza";
+const CHECKOUT_METHODS = [{ value: "payaza" as const, label: "Payaza", tag: "Local & international", detail: "Pay securely with the methods available on Payaza. Ghana payments are charged in GHS; international payments in USD. The converted amount is shown before you pay.", icon: Globe }];
 export const isOnlinePayment = (method: PaymentMethod | null | undefined): method is OnlinePaymentMethod =>
-  method === "paystack" || method === "stripe";
-
-// Same rule the server applies: Ghana pays through Paystack, everyone else Stripe.
-const onlineProviderFor = (country: DeliveryDetails["country"]): OnlinePaymentMethod =>
-  country === "GH" ? "paystack" : "stripe";
-
-/** Whether a method can be chosen for this delivery, and why not when it can't. */
-function availability(
-  method: CheckoutMethod,
-  country: DeliveryDetails["country"],
-  providers: Partial<Record<OnlinePaymentMethod, boolean>> | undefined,
-): { enabled: boolean; reason?: string } {
-  if (method === "pay_on_delivery") return { enabled: true };
-  if (method !== onlineProviderFor(country))
-    return { enabled: false, reason: method === "paystack" ? "For deliveries in Ghana" : "For deliveries outside Ghana" };
-  if (!providers?.[method]) return { enabled: false, reason: "Not available right now" };
-  return { enabled: true };
+  ["payaza", "paystack", "stripe", "dlocal"].includes(method ?? "");
+const onlineProviderFor = (_country: DeliveryDetails["country"]): CheckoutMethod => "payaza";
+function availability(_method: CheckoutMethod, _country: DeliveryDetails["country"], providers: Partial<Record<OnlinePaymentMethod, boolean>> | undefined) {
+  return { enabled: Boolean(providers?.payaza), reason: "Payaza is temporarily unavailable. Please try again later." };
 }
 
 type Field = keyof DeliveryDetails;
@@ -145,12 +83,11 @@ export default function CheckoutPage() {
 
   const shipping = total > FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE;
   const grandTotal = total + (items.length > 0 ? shipping : 0);
-  // All three methods are always listed; ones that don't apply to this
-  // delivery are shown disabled with the reason.
+  // Payaza is the only method for new orders.
   const methods = CHECKOUT_METHODS.map((m) => ({ ...m, ...availability(m.value, delivery.country, providers) }));
   // Paying online is preselected when it's available; a choice that no longer
   // applies (for example after changing country) falls back to that default.
-  const preferred = methods.find((m) => m.value === onlineProviderFor(delivery.country) && m.enabled)?.value ?? "pay_on_delivery";
+  const preferred = methods.find((m) => m.value === onlineProviderFor(delivery.country) && m.enabled)?.value ?? "payaza";
   const paymentMethod: CheckoutMethod =
     chosenMethod && methods.some((m) => m.value === chosenMethod && m.enabled) ? chosenMethod : preferred;
   const payment = methods.find((m) => m.value === paymentMethod)!;
@@ -373,7 +310,7 @@ export default function CheckoutPage() {
                   </p>
                   <div className="pt-4 flex gap-4">
                     <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
-                    <Button onClick={() => setStep(3)}>Review Order</Button>
+                    <Button disabled={!payment.enabled} onClick={() => setStep(3)}>Review Order</Button>
                   </div>
                 </div>
               )}
@@ -461,7 +398,7 @@ export default function CheckoutPage() {
 
                   <div className="pt-4 flex gap-4">
                     <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
-                    <Button onClick={handlePlaceOrder} className="flex-1" disabled={isProcessing}>
+                    <Button onClick={handlePlaceOrder} className="flex-1" disabled={isProcessing || !payment.enabled}>
                       {isProcessing ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
                       {needsConfirmation
                         ? <>Request Confirmation - <Price amount={grandTotal} /> est.</>

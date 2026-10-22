@@ -72,14 +72,11 @@ export function needsSupplierConfirmation(p: {
 export const readyToFulfil = (order: { confirmationStatus: ConfirmationStatus | null }) =>
   order.confirmationStatus === null || order.confirmationStatus === "accepted";
 
-export const PAYMENT_METHODS = ["pay_on_delivery", "mobile_money", "bank_transfer", "paystack", "stripe"] as const;
-/**
- * What checkout offers today: pay on delivery, Paystack for Ghana, Stripe
- * internationally. Mobile money and bank transfer remain valid on older orders.
- */
-export const CHECKOUT_PAYMENT_METHODS = ["pay_on_delivery", "paystack", "stripe"] as const;
+export const PAYMENT_METHODS = ["pay_on_delivery", "mobile_money", "bank_transfer", "paystack", "stripe", "dlocal", "payaza"] as const;
+/** New checkout uses Payaza only; older methods remain valid historical records. */
+export const CHECKOUT_PAYMENT_METHODS = ["payaza"] as const;
 /** Methods settled online through a payment provider before the order is paid. */
-export const ONLINE_PAYMENT_METHODS = ["paystack", "stripe"] as const;
+export const ONLINE_PAYMENT_METHODS = ["payaza"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 // One row per product line. Title/image/seller/price are snapshotted at
@@ -111,6 +108,8 @@ export const orderItemsTable = pgTable("order_items", {
   confirmedOptions: text("confirmed_options"),
   /** The estimated unit price shown at checkout; price holds the confirmed one. */
   estimatedPrice: numeric("estimated_price", { precision: 10, scale: 2, mode: "number" }),
+  /** Set once Fotizo refunded this line (migrations/0022). */
+  refundedAt: timestamp("refunded_at", { withTimezone: true }),
 });
 
 export type OrderRow = typeof ordersTable.$inferSelect;

@@ -156,9 +156,9 @@ export interface Testimonial {
   text: string;
 }
 
-export type PaymentMethod = "pay_on_delivery" | "mobile_money" | "bank_transfer" | "paystack" | "stripe";
+export type PaymentMethod = "pay_on_delivery" | "mobile_money" | "bank_transfer" | "paystack" | "stripe" | "dlocal" | "payaza";
 /** Paid online at checkout: Paystack for Ghana (in cedis), Stripe elsewhere (in GBP). */
-export type OnlinePaymentMethod = Extract<PaymentMethod, "paystack" | "stripe">;
+export type OnlinePaymentMethod = Extract<PaymentMethod, "paystack" | "stripe" | "dlocal" | "payaza">;
 
 export interface Order {
   id: string;

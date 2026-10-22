@@ -229,7 +229,7 @@ describe("order oversight and disputes", () => {
           name: "Kwame", email: "kwame@example.com", phone: "0244000000", addressLine1: "1 Road",
           addressLine2: "", city: "Accra", postalCode: "", country: "GH",
         },
-        paymentMethod: "pay_on_delivery",
+        paymentMethod: "payaza",
         idempotencyKey: crypto.randomUUID(),
       },
       buyer.cookie,
@@ -342,7 +342,7 @@ describe("global search", () => {
 });
 
 describe("checkout payment methods", () => {
-  it("accepts pay on delivery, Paystack and Stripe, and no longer takes mobile money or bank transfer", async () => {
+  it("accepts Payaza and rejects retired payment methods", async () => {
     const seller = await account("seller");
     const buyer = await account();
     const created = await json<{ id: string }>(await post("/products", product, seller.cookie));
@@ -362,7 +362,8 @@ describe("checkout payment methods", () => {
       );
     expect((await place("mobile_money")).status).toBe(400);
     expect((await place("bank_transfer")).status).toBe(400);
-    expect((await place("pay_on_delivery")).status).toBe(201);
+    expect((await place("pay_on_delivery")).status).toBe(400);
+    expect((await place("payaza")).status).toBe(201);
   });
 });
 
@@ -406,12 +407,14 @@ describe("Fotizo fees and imported-goods pricing", () => {
       {
         items: [{ productId: own.id, quantity: 3 }, { productId: fotizo.id, quantity: 2 }],
         delivery,
-        paymentMethod: "pay_on_delivery",
+        paymentMethod: "payaza",
         idempotencyKey: crypto.randomUUID(),
       },
       buyer.cookie,
     );
     const { orderId } = await json<{ orderId: string; total: number }>(placed);
+    // Exercise manual settlement only for a historical offline order.
+    await database.query("UPDATE orders SET payment_method='pay_on_delivery' WHERE id=$1", [orderId]);
     // Nothing is owed until the order is paid; the buyer's total has no fee in it.
     expect((await earnings(seller.cookie)).totals).toEqual([]);
     expect((await post(`/operations/orders/${orderId}/payment`, { status: "paid" }, manager.cookie)).status).toBe(200);
@@ -431,7 +434,7 @@ describe("Fotizo fees and imported-goods pricing", () => {
     const second = await json<{ orderId: string }>(
       await post(
         "/orders",
-        { items: [{ productId: own.id, quantity: 2 }], delivery, paymentMethod: "pay_on_delivery", idempotencyKey: crypto.randomUUID() },
+        { items: [{ productId: own.id, quantity: 2 }], delivery, paymentMethod: "payaza", idempotencyKey: crypto.randomUUID() },
         buyer.cookie,
       ),
     );
@@ -535,7 +538,7 @@ describe("shop catalogue served by the API", () => {
           name: "Kwame", email: "kwame@example.com", phone: "0244000000", addressLine1: "1 Road",
           addressLine2: "", city: "Accra", postalCode: "", country: "GH",
         },
-        paymentMethod: "pay_on_delivery",
+        paymentMethod: "payaza",
         idempotencyKey: crypto.randomUUID(),
       },
       buyer.cookie,
