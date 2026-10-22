@@ -1,23 +1,19 @@
 import express, { Router, type IRouter } from "express";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
-import { db, ordersTable } from "@workspace/db";
+import { db, ordersTable, paymentAttemptsTable } from "@workspace/db";
 import { requireAuth, type AuthenticatedRequest } from "../middlewares/requireAuth";
 import {
   PaymentError,
   attemptByReference,
-  firstDelivery,
   isOnlineMethod,
   latestAttempt,
   orderIsOpen,
-  paystackSignatureValid,
   providersAvailable,
-  recordOutcome,
   startPayment,
-  stripeSignatureValid,
   verifyAttempt,
 } from "../lib/payments";
-import { logger } from "../lib/logger";
+import { payazaMode, payazaSignatureValid, payazaReady } from "../lib/payaza";
 
 const router: IRouter = Router();
 
@@ -94,75 +90,40 @@ router.post("/payments/orders/:id/verify", requireAuth, async (req: Authenticate
 export const paymentWebhooks: IRouter = Router();
 paymentWebhooks.use(express.raw({ type: "*/*", limit: "1mb" }));
 
-paymentWebhooks.post("/paystack", async (req, res) => {
-  const raw = req.body as Buffer;
-  if (!Buffer.isBuffer(raw) || !paystackSignatureValid(raw, req.get("x-paystack-signature"))) {
-    res.status(401).json({ error: "Invalid signature." });
-    return;
+paymentWebhooks.post("/payaza", async (req, res) => {
+  const raw = req.body;
+  if (!Buffer.isBuffer(raw) || !payazaSignatureValid(raw, req.get("x-payaza-signature"))) {
+    res.status(401).json({ error: "Invalid signature." }); return;
   }
-  const event = JSON.parse(raw.toString("utf8")) as {
-    event?: string;
-    data?: { id?: number | string; reference?: string; status?: string; amount?: number; currency?: string };
-  };
-  const data = event.data ?? {};
-  if (!event.event || !data.reference) {
-    res.sendStatus(200);
-    return;
-  }
-  if (!(await firstDelivery("paystack", `${event.event}:${data.id ?? data.reference}`, event.event))) {
-    res.sendStatus(200);
-    return;
-  }
-  const attempt = await attemptByReference("paystack", data.reference);
-  if (attempt && (event.event === "charge.success" || event.event === "charge.failed"))
-    await recordOutcome(attempt.id, {
-      succeeded: event.event === "charge.success" && data.status === "success",
-      failed: event.event === "charge.failed",
-      amountMinor: data.amount,
-      currency: data.currency,
-    });
-  else if (!attempt) logger.warn({ provider: "paystack" }, "Webhook for an unknown payment reference");
+  let event;
+  try { event = JSON.parse(raw.toString("utf8")); } catch { res.status(400).json({ error: "Invalid JSON." }); return; }
+  const reference = event?.merchant_reference;
+  if (typeof reference !== "string") { res.sendStatus(200); return; }
+  const attempt = await attemptByReference(reference);
+  // Query the provider, then commit. A failed query returns an error so delivery
+  // can be retried; recordOutcome locks the attempt and applies fees only once.
+  if (attempt) await verifyAttempt(attempt);
   res.sendStatus(200);
 });
 
-paymentWebhooks.post("/stripe", async (req, res) => {
-  const raw = req.body as Buffer;
-  if (!Buffer.isBuffer(raw) || !stripeSignatureValid(raw, req.get("stripe-signature"))) {
-    res.status(401).json({ error: "Invalid signature." });
-    return;
+router.get("/payments/orders/:id/checkout/:attemptId", requireAuth, async (req: AuthenticatedRequest, res) => {
+  const order = await ownedOrder(req);
+  const id = z.string().uuid().safeParse(req.params.attemptId);
+  if (!order || !id.success) { res.sendStatus(404); return; }
+  const [attempt] = await db.select().from(paymentAttemptsTable).where(and(eq(paymentAttemptsTable.id, id.data), eq(paymentAttemptsTable.orderId, order.id), eq(paymentAttemptsTable.provider, "payaza")));
+  if (!attempt) { res.sendStatus(404); return; }
+  if (order.paymentStatus !== "unpaid" || attempt.status !== "pending" || !(await orderIsOpen(order.id))) {
+    res.status(409).json({ error: "This payment is no longer open." }); return;
   }
-  const event = JSON.parse(raw.toString("utf8")) as {
-    id?: string;
-    type?: string;
-    data?: {
-      object?: { id?: string; payment_status?: string; amount_total?: number; currency?: string };
-    };
-  };
-  const session = event.data?.object ?? {};
-  if (!event.id || !event.type || !session.id) {
-    res.sendStatus(200);
-    return;
+  if (!payazaReady()) { res.status(503).json({ error: "Payaza is temporarily unavailable." }); return; }
+  const names = (order.contactName ?? "Fotizo customer").trim().split(/\s+/);
+  let phone = (order.contactPhone ?? "").replace(/[^0-9+]/g, "");
+  if (!phone.startsWith("+")) {
+    const prefix = order.country === "GH" ? "233" : order.country === "GB" ? "44" : "1";
+    if (!phone.startsWith(prefix)) phone = prefix + phone.replace(/^0/, "");
+    phone = "+" + phone;
   }
-  if (!(await firstDelivery("stripe", event.id, event.type))) {
-    res.sendStatus(200);
-    return;
-  }
-  const attempt = await attemptByReference("stripe", session.id);
-  const handled = [
-    "checkout.session.completed",
-    "checkout.session.async_payment_succeeded",
-    "checkout.session.async_payment_failed",
-    "checkout.session.expired",
-  ];
-  if (attempt && handled.includes(event.type))
-    await recordOutcome(attempt.id, {
-      succeeded: event.type !== "checkout.session.expired" && event.type !== "checkout.session.async_payment_failed" && session.payment_status === "paid",
-      failed: event.type === "checkout.session.expired" || event.type === "checkout.session.async_payment_failed",
-      amountMinor: session.amount_total,
-      currency: session.currency,
-    });
-  else if (!attempt) logger.warn({ provider: "stripe" }, "Webhook for an unknown checkout session");
-  res.sendStatus(200);
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ merchant_key: process.env.PAYAZA_PUBLIC_KEY, connection_mode: payazaMode(), checkout_amount: attempt.amountMinor / 100, currency_code: attempt.currency, transaction_reference: attempt.reference, email_address: order.contactEmail, first_name: names[0], last_name: names.slice(1).join(" ") || names[0], phone_number: phone });
 });
-
 export default router;

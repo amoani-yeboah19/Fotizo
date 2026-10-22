@@ -58,8 +58,8 @@ export const ordersService = {
   },
 
   /** Which online providers this deployment has configured. */
-  async paymentConfig(): Promise<Record<OnlinePaymentMethod, boolean>> {
-    if (ORDERS_USE_MOCKS) return { paystack: false, stripe: false };
+  async paymentConfig(): Promise<Partial<Record<OnlinePaymentMethod, boolean>>> {
+    if (ORDERS_USE_MOCKS) return { payaza: false };
     return api.get<Record<OnlinePaymentMethod, boolean>>("/payments/config");
   },
 

@@ -194,8 +194,8 @@ router.post("/orders", requireAuth, async (req: AuthenticatedRequest, res) => {
       res.status(400).json({ error: "Choose the online payment option offered for your country." });
       return;
     }
-    if (!providersAvailable()[input.paymentMethod]) {
-      res.status(503).json({ error: "Online payment is not available right now. Choose another payment method." });
+    if (!providersAvailable().payaza) {
+      res.status(503).json({ error: "Payaza payment is temporarily unavailable. Please try again later." });
       return;
     }
   }
@@ -434,6 +434,7 @@ router.post(
           and(
             eq(ordersTable.id, id.data),
             eq(ordersTable.paymentStatus, "unpaid"),
+            sql`${ordersTable.paymentMethod} NOT IN ('payaza', 'stripe', 'paystack', 'dlocal')`,
             // Not before the buyer has accepted the confirmed total.
             sql`(${ordersTable.confirmationStatus} IS NULL OR ${ordersTable.confirmationStatus} = 'accepted')`,
           ),

@@ -19,10 +19,8 @@ import { createTestSchema } from "./test-schema";
 // Imported goods are confirmed with the supplier (options, final price,
 // minimum order, delivery) before the buyer pays.
 let server: Server;
-let stripe: Server;
 let base: string;
 let database: import("@electric-sql/pglite").PGlite;
-const stripeSessions: Record<string, string>[] = [];
 const saved: Record<string, string | undefined> = {};
 const headers = { "Content-Type": "application/json", "X-Fotizo-Request": "1", Origin: "http://localhost:5173" };
 const post = (path: string, data: unknown, cookie?: string) =>
@@ -66,7 +64,7 @@ const delivery = (country: "GH" | "GB") => ({
   addressLine2: "", city: "Accra", postalCode: "", country,
 });
 
-async function setup(paymentMethod: "pay_on_delivery" | "stripe" = "pay_on_delivery") {
+async function setup(paymentMethod: "payaza" = "payaza") {
   const rep = await account("china_representative");
   const seller = await account("seller");
   const buyer = await account();
@@ -79,7 +77,7 @@ async function setup(paymentMethod: "pay_on_delivery" | "stripe" = "pay_on_deliv
         { productId: bag, quantity: 4, options: "Black, adjustable strap" },
         { productId: kettle, quantity: 1, options: "Colour: Silver" },
       ],
-      delivery: delivery(paymentMethod === "stripe" ? "GB" : "GH"),
+      delivery: delivery(paymentMethod === "payaza" ? "GB" : "GH"),
       paymentMethod,
       idempotencyKey: crypto.randomUUID(),
     },
@@ -113,20 +111,7 @@ async function quote(orderId: string, rep: { cookie: string }, buyer: { cookie: 
 beforeAll(async () => {
   database = ((await import("@workspace/db")) as unknown as { testDatabase: typeof database }).testDatabase;
   await createTestSchema(database);
-  stripe = createServer((req, res) => {
-    let body = "";
-    req.on("data", (c) => (body += c));
-    req.on("end", () => {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      stripeSessions.push(Object.fromEntries(new URLSearchParams(body)));
-      const id = `cs_test_${stripeSessions.length}`;
-      res.end(JSON.stringify({ id, url: `https://stripe.test/${id}` }));
-    });
-  });
-  await new Promise<void>((resolve) => stripe.listen(0, "127.0.0.1", resolve));
   const settings = {
-    STRIPE_SECRET_KEY: "sk_test_stripe",
-    STRIPE_API_URL: `http://127.0.0.1:${(stripe.address() as { port: number }).port}`,
     APP_URL: "http://localhost:5173",
   };
   for (const [key, value] of Object.entries(settings)) {
@@ -142,21 +127,19 @@ afterAll(async () => {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
-  await new Promise<void>((resolve) => stripe.close(() => resolve()));
   await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
   await database.close();
 });
 beforeEach(async () => {
-  stripeSessions.length = 0;
   await database.exec("TRUNCATE users, sessions, auth_rate_limits, orders, order_items, products CASCADE");
 });
 
 describe("supplier confirmation for imported goods", () => {
   it("holds orders with imported goods for confirmation instead of charging the estimate", async () => {
-    const { buyer, bag, kettle, placed } = await setup("stripe");
+    const { buyer, bag, kettle, placed } = await setup("payaza");
     expect(placed.confirmationStatus).toBe("awaiting");
     expect(placed.checkoutUrl).toBeUndefined();
-    expect(stripeSessions).toHaveLength(0);
+    expect((await database.query("SELECT id FROM payment_attempts")).rows).toHaveLength(0);
     const items = await lines(placed.orderId, buyer.cookie);
     expect(items.find((l) => l.productId === bag)).toMatchObject({
       needsConfirmation: true, requestedOptions: "Black, adjustable strap", estimatedPrice: 1.95,
@@ -184,7 +167,7 @@ describe("supplier confirmation for imported goods", () => {
   });
 
   it("lets Fotizo quote final prices and delivery, then the buyer accepts and pays", async () => {
-    const { rep, seller, buyer, bag, kettle, placed } = await setup("stripe");
+    const { rep, seller, buyer, bag, kettle, placed } = await setup("payaza");
     // Only staff see the queue, with the supplier's terms beside each line.
     expect((await get("/operations/confirmations", buyer.cookie)).status).toBe(403);
     const [queued] = await json<{ orderId: string; items: { productId: string; supplier: Record<string, unknown> | null }[] }[]>(
@@ -213,13 +196,13 @@ describe("supplier confirmation for imported goods", () => {
       price: 2.5, estimatedPrice: 1.95, confirmedOptions: "Black, adjustable strap (confirmed)",
     });
 
-    // Another buyer cannot accept it; the buyer accepting goes on to Stripe for the confirmed total.
+    // Another buyer cannot accept it; the buyer accepting goes on to Payaza for the confirmed total.
     const stranger = await account();
     expect((await post(`/orders/${placed.orderId}/accept`, {}, stranger.cookie)).status).toBe(409);
     const accepted = await post(`/orders/${placed.orderId}/accept`, {}, buyer.cookie);
     expect(accepted.status).toBe(200);
-    expect(await accepted.json()).toMatchObject({ confirmationStatus: "accepted", checkoutUrl: "https://stripe.test/cs_test_1" });
-    expect(stripeSessions[0]["line_items[0][price_data][unit_amount]"]).toBe("4200");
+    expect(await accepted.json()).toMatchObject({ confirmationStatus: "accepted", checkoutUrl: expect.stringContaining("/payaza-checkout?") });
+    expect((await database.query("SELECT amount_minor, currency FROM payment_attempts WHERE order_id=$1", [placed.orderId])).rows[0]).toMatchObject({ amount_minor: 5460, currency: "USD" });
     // Accepting twice, or re-quoting an accepted order, is refused.
     expect((await post(`/orders/${placed.orderId}/accept`, {}, buyer.cookie)).status).toBe(409);
     expect((await quote(placed.orderId, rep, buyer, bag)).status).toBe(409);
@@ -262,6 +245,7 @@ describe("supplier confirmation for imported goods", () => {
 
     // Pay on delivery: accepting confirms the order, after which it can be marked paid.
     const second = await setup();
+    await database.query("UPDATE orders SET payment_method='pay_on_delivery' WHERE id=$1", [second.placed.orderId]);
     await quote(second.placed.orderId, second.rep, second.buyer, second.bag);
     expect(await json(await post(`/orders/${second.placed.orderId}/accept`, {}, second.buyer.cookie))).toMatchObject({
       confirmationStatus: "accepted",
@@ -297,7 +281,7 @@ describe("cart lines with chosen options", () => {
     const order = (items: { productId: string; quantity: number; options?: string }[]) =>
       post(
         "/orders",
-        { items, delivery: delivery("GH"), paymentMethod: "pay_on_delivery", idempotencyKey: crypto.randomUUID() },
+        { items, delivery: delivery("GH"), paymentMethod: "payaza", idempotencyKey: crypto.randomUUID() },
         buyer.cookie,
       );
     // Stock (5) is shared by every option line of the product.

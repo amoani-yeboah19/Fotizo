@@ -240,7 +240,7 @@ describe("seller identity verification", () => {
       {
         items: [{ productId: created.id, quantity: 1 }],
         delivery: { name: "Kwame", email: "kwame@example.com", phone: "0244000000", addressLine1: "1 Road", addressLine2: "", city: "Accra", postalCode: "", country: "GH" },
-        paymentMethod: "pay_on_delivery",
+        paymentMethod: "payaza",
         idempotencyKey: crypto.randomUUID(),
       },
       buyer.cookie,

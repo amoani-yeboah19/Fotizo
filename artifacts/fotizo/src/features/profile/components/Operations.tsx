@@ -634,6 +634,8 @@ const PAYMENT_LABELS: Record<string, string> = {
   bank_transfer: "Bank transfer",
   paystack: "Paystack (online)",
   stripe: "Stripe (online)",
+  dlocal: "dLocal (historical)",
+  payaza: "Payaza (online)",
 };
 
 /**
@@ -723,6 +725,8 @@ export function OrderPayments() {
                   </span>
                   {first.paymentStatus === "paid" ? (
                     <StatusBadge tone="success">paid</StatusBadge>
+                  ) : ["payaza", "stripe", "paystack", "dlocal"].includes(first.paymentMethod ?? "") ? (
+                    <StatusBadge tone="neutral">Awaiting payment confirmation</StatusBadge>
                   ) : (
                     <Button
                       size="sm"

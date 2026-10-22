@@ -48,13 +48,13 @@ function fillDelivery() {
   fireEvent.change(screen.getByLabelText("Address Line 1"), { target: { value: "12 Ring Road" } });
   fireEvent.change(screen.getByLabelText("City"), { target: { value: "Accra" } });
 }
-function toReview() {
+async function toReview() {
   fireEvent.click(screen.getByRole("button", { name: "Continue to Payment" }));
-  fireEvent.click(screen.getByLabelText(/Pay on delivery/));
+  await waitFor(() => expect(screen.getByLabelText(/Payaza/)).toHaveProperty("disabled", false));
   fireEvent.click(screen.getByRole("button", { name: "Review Order" }));
 }
 
-const offlineOnly = { paystack: false, stripe: false };
+const offlineOnly = { payaza: true };
 // Orders that need no supplier confirmation (marketplace goods only).
 const unconfirmed = { confirmationStatus: null, confirmationNote: null, deliveryDaysMin: null, deliveryDaysMax: null, quoteExpiresAt: null };
 beforeEach(() => {
@@ -82,13 +82,13 @@ it("places the order with delivery, payment method and a reused retry key", asyn
       subtotal: 40,
       shipping: 5.99,
       total: 45.99,
-      paymentMethod: "pay_on_delivery",
+      paymentMethod: "payaza",
       paymentStatus: "unpaid",
       ...unconfirmed,
     });
   mount();
   fillDelivery();
-  toReview();
+  await toReview();
   expect(screen.getByText(/12 Ring Road/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: /Place Order/ }));
   await waitFor(() =>
@@ -99,7 +99,7 @@ it("places the order with delivery, payment method and a reused retry key", asyn
   const [first, second] = vi.mocked(ordersService.placeOrder).mock.calls.map((c) => c[0]);
   expect(first).toMatchObject({
     items: [{ productId: "p1", quantity: 2 }],
-    paymentMethod: "pay_on_delivery",
+    paymentMethod: "payaza",
     delivery: { name: "Kofi Boateng", email: "kofi@example.com", city: "Accra", country: "GH" },
   });
   expect(second.idempotencyKey).toBe(first.idempotencyKey);
@@ -112,7 +112,7 @@ it("shows the server's reason when stock ran out", async () => {
   );
   mount();
   fillDelivery();
-  toReview();
+  await toReview();
   fireEvent.click(screen.getByRole("button", { name: /Place Order/ }));
   await waitFor(() =>
     expect(toast).toHaveBeenCalledWith(
@@ -132,67 +132,41 @@ const placed = {
   ...unconfirmed,
 };
 
-it("offers Paystack for Ghana, Stripe elsewhere, and sends the buyer to the payment page", async () => {
-  vi.mocked(ordersService.paymentConfig).mockResolvedValue({ paystack: true, stripe: true });
-  vi.mocked(ordersService.placeOrder).mockResolvedValue({
-    ...placed,
-    paymentMethod: "stripe",
-    checkoutUrl: "https://checkout.stripe.com/c/pay/cs_test_1",
-  });
-  mount();
-  fillDelivery();
+it("offers only Payaza for Ghana and international deliveries", async () => {
+  vi.mocked(ordersService.placeOrder).mockResolvedValue({ ...placed, paymentMethod: "payaza", checkoutUrl: "/payaza-checkout?order=o2&attempt=a1" });
+  mount(); fillDelivery();
   fireEvent.click(screen.getByRole("button", { name: "Continue to Payment" }));
-  // Online payment is preselected once the providers are known.
-  await waitFor(() => expect((screen.getByLabelText(/Paystack/) as HTMLInputElement).checked).toBe(true));
-  // All three methods are listed; the one that doesn't apply says why.
-  expect((screen.getByLabelText(/Stripe/) as HTMLInputElement).disabled).toBe(true);
-  expect(screen.getByText("For deliveries outside Ghana")).toBeTruthy();
-
-  // Delivering to the UK switches the online option to Stripe.
+  await waitFor(() => expect(screen.getByLabelText(/Payaza/)).toHaveProperty("disabled", false));
+  expect(screen.getAllByRole("radio")).toHaveLength(1);
   fireEvent.click(screen.getByRole("button", { name: "Back" }));
-  fireEvent.change(screen.getByLabelText("Country"), { target: { value: "GB" } });
-  fireEvent.click(screen.getByRole("button", { name: "Continue to Payment" }));
-  expect((screen.getByLabelText(/Stripe/) as HTMLInputElement).checked).toBe(true);
-  expect((screen.getByLabelText(/Paystack/) as HTMLInputElement).disabled).toBe(true);
-  expect(screen.getByText("For deliveries in Ghana")).toBeTruthy();
-
-  fireEvent.click(screen.getByRole("button", { name: "Review Order" }));
+  fireEvent.change(screen.getByLabelText("Country"), { target: { value: "US" } });
+  await toReview();
   fireEvent.click(screen.getByRole("button", { name: /Place Order & Pay/ }));
-  await waitFor(() =>
-    expect(ordersService.openCheckout).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_test_1"),
-  );
-  expect(vi.mocked(ordersService.placeOrder).mock.calls[0][0]).toMatchObject({
-    paymentMethod: "stripe",
-    delivery: { country: "GB" },
-  });
-  expect(clearCart).toHaveBeenCalled();
-  expect(navigate).not.toHaveBeenCalled();
+  await waitFor(() => expect(ordersService.openCheckout).toHaveBeenCalledWith("/payaza-checkout?order=o2&attempt=a1"));
+  expect(vi.mocked(ordersService.placeOrder).mock.calls[0][0]).toMatchObject({ paymentMethod: "payaza", delivery: { country: "US" } });
 });
-
-it("hides online payment when it isn't configured", async () => {
-  mount();
-  fillDelivery();
+it("blocks checkout when Payaza is unavailable without an offline fallback", async () => {
+  vi.mocked(ordersService.paymentConfig).mockResolvedValue({ payaza: false });
+  mount(); fillDelivery();
   fireEvent.click(screen.getByRole("button", { name: "Continue to Payment" }));
   await waitFor(() => expect(ordersService.paymentConfig).toHaveBeenCalled());
-  expect((screen.getByLabelText(/Paystack/) as HTMLInputElement).disabled).toBe(true);
-  expect(screen.getByText("Not available right now")).toBeTruthy();
-  expect((screen.getByLabelText(/Pay on delivery/) as HTMLInputElement).checked).toBe(true);
-  // Only the three current methods are offered.
-  expect(screen.queryByLabelText(/Mobile money|Bank transfer/)).toBeNull();
+  expect(screen.getByLabelText(/Payaza/)).toHaveProperty("disabled", true);
+  expect(screen.getByRole("button", { name: "Review Order" })).toHaveProperty("disabled", true);
+  expect(screen.queryByLabelText(/Pay on delivery|Stripe|Paystack/)).toBeNull();
 });
 
 it("keeps the order and explains when the payment page couldn't be opened", async () => {
-  vi.mocked(ordersService.paymentConfig).mockResolvedValue({ paystack: true, stripe: true });
+  vi.mocked(ordersService.paymentConfig).mockResolvedValue({ payaza: true });
   vi.mocked(ordersService.placeOrder).mockResolvedValue({
     ...placed,
-    paymentMethod: "paystack",
+    paymentMethod: "payaza",
     checkoutUrl: null,
     paymentError: "The payment provider could not be reached. Try again shortly.",
   });
   mount();
   fillDelivery();
   fireEvent.click(screen.getByRole("button", { name: "Continue to Payment" }));
-  await screen.findByLabelText(/Paystack/);
+  await waitFor(() => expect(screen.getByLabelText(/Payaza/)).toHaveProperty("disabled", false));
   fireEvent.click(screen.getByRole("button", { name: "Review Order" }));
   fireEvent.click(screen.getByRole("button", { name: /Place Order & Pay/ }));
   await waitFor(() => expect(navigate).toHaveBeenCalledWith("/order-confirmation?order=o2"));
@@ -204,17 +178,17 @@ it("asks for options on imported items and requests confirmation instead of char
   cart.items = [
     { ...kettle, needsConfirmation: true, minimumOrder: "20 pieces", title: "Waist bag" },
   ];
-  vi.mocked(ordersService.paymentConfig).mockResolvedValue({ paystack: true, stripe: true });
+  vi.mocked(ordersService.paymentConfig).mockResolvedValue({ payaza: true });
   vi.mocked(ordersService.placeOrder).mockResolvedValue({
     ...placed,
-    paymentMethod: "paystack",
+    paymentMethod: "payaza",
     ...unconfirmed,
     confirmationStatus: "awaiting",
   });
   mount();
   fillDelivery();
   fireEvent.click(screen.getByRole("button", { name: "Continue to Payment" }));
-  await waitFor(() => expect(screen.getByLabelText(/Paystack/)).toHaveProperty("disabled", false));
+  await waitFor(() => expect(screen.getByLabelText(/Payaza/)).toHaveProperty("disabled", false));
   expect(screen.getByText(/once you accept the confirmed total/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Review Order" }));
   expect(screen.getByText("Imported items are confirmed before you pay")).toBeTruthy();

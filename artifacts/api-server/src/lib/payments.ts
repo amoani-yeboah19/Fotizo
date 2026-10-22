@@ -1,181 +1,49 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { and, desc, eq, inArray, lt, ne, sql } from "drizzle-orm";
-import {
-  db,
-  ordersTable,
-  orderItemsTable,
-  productsTable,
-  paymentAttemptsTable,
-  paymentEventsTable,
-  readyToFulfil,
-  type OrderRow,
-  type PaymentAttemptRow,
-  type PaymentProvider,
-} from "@workspace/db";
+import { db, ordersTable, orderItemsTable, productsTable, paymentAttemptsTable, readyToFulfil, type OrderRow, type PaymentAttemptRow } from "@workspace/db";
 import { caseReference } from "./cases";
 import { logger } from "./logger";
 import { currentRates } from "../routes/currency";
 import { recordUnitSaleFees } from "./fees";
 import { configuredOrigins } from "../middlewares/security";
-
-// Online payment: Paystack for Ghana (charged in GHS), Stripe for other
-// markets (charged in GBP, the store's base currency). Configuration is read
-// on each call so tests and deployments can change it without a restart.
-const env = {
-  paystackKey: () => process.env.PAYSTACK_SECRET_KEY ?? "",
-  stripeKey: () => process.env.STRIPE_SECRET_KEY ?? "",
-  stripeWebhookSecret: () => process.env.STRIPE_WEBHOOK_SECRET ?? "",
-  paystackApi: () => process.env.PAYSTACK_API_URL ?? "https://api.paystack.co",
-  stripeApi: () => process.env.STRIPE_API_URL ?? "https://api.stripe.com",
-  // Where customers return after paying: the storefront origin.
-  appUrl: () => (process.env.APP_URL ?? configuredOrigins()[0]).replace(/\/+$/, ""),
-};
-
-/** Unpaid online orders are released after this long. */
+import { payazaReady, queryPayaza, PayazaError } from "./payaza";
+export { PayazaError as PaymentError } from "./payaza";
 export const PAYMENT_WINDOW_MS = 60 * 60 * 1000;
-
-export class PaymentError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-  }
+export type OnlineProvider = "payaza";
+export const providersAvailable = () => ({ payaza: payazaReady() });
+export const providerForCountry = (_country: string): OnlineProvider => "payaza";
+export function isOnlineMethod(method: string | null): boolean {
+  return ["payaza", "stripe", "paystack", "dlocal"].includes(method ?? "");
 }
 
-export function providersAvailable() {
-  return { paystack: Boolean(env.paystackKey()), stripe: Boolean(env.stripeKey()) };
-}
-
-/** Ghana pays locally through Paystack; everywhere else through Stripe. */
-export function providerForCountry(country: string): PaymentProvider {
-  return country === "GH" ? "paystack" : "stripe";
-}
-
-export function isOnlineMethod(method: string | null): method is PaymentProvider {
-  return method === "paystack" || method === "stripe";
-}
-
-async function providerRequest(url: string, init: RequestInit, provider: PaymentProvider) {
-  let response: Response;
-  try {
-    response = await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
-  } catch (error) {
-    logger.warn({ provider, errorType: (error as Error)?.name }, "Payment provider unreachable");
-    throw new PaymentError(502, "The payment provider could not be reached. Please try again.");
-  }
-  const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!response.ok) {
-    logger.warn({ provider, status: response.status }, "Payment provider rejected a request");
-    throw new PaymentError(502, "The payment provider declined the request. Please try again.");
-  }
-  return body;
-}
-
-const paystackHeaders = () => ({
-  Authorization: `Bearer ${env.paystackKey()}`,
-  "Content-Type": "application/json",
-});
-const stripeHeaders = (idempotencyKey?: string) => ({
-  Authorization: `Bearer ${env.stripeKey()}`,
-  "Content-Type": "application/x-www-form-urlencoded",
-  ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
-});
-
-/**
- * Opens a hosted checkout for an unpaid online order and records the attempt.
- * The amount is the server-priced order total; for Paystack it is converted to
- * GHS at the current rate, which is locked onto the attempt.
- */
 export async function startPayment(order: OrderRow): Promise<{ checkoutUrl: string; attemptId: string }> {
-  if (!isOnlineMethod(order.paymentMethod))
-    throw new PaymentError(409, "This order is not paid online.");
-  if (order.paymentStatus === "paid") throw new PaymentError(409, "This order is already paid.");
-  if (!readyToFulfil(order))
-    throw new PaymentError(409, "Fotizo is still confirming the items in this order. You can pay once you accept the confirmed total.");
-  const provider = order.paymentMethod;
-  if (!providersAvailable()[provider])
-    throw new PaymentError(503, "Online payment is not available right now. Choose another payment method.");
-  const email = order.contactEmail;
-  if (!email) throw new PaymentError(409, "This order has no contact email for the payment receipt.");
-
-  let currency = "GBP";
-  let rate = 1;
-  if (provider === "paystack") {
-    const rates = await currentRates();
-    if (!rates) throw new PaymentError(503, "Cedi exchange rates are unavailable. Please try again shortly.");
-    currency = "GHS";
-    rate = rates.GHS;
-  }
+  if (!isOnlineMethod(order.paymentMethod)) throw new PayazaError(409, "This order is not paid online.");
+  if (order.paymentStatus === "paid") throw new PayazaError(409, "This order is already paid.");
+  if (!readyToFulfil(order)) throw new PayazaError(409, "Accept the confirmed total before paying.");
+  if (!payazaReady()) throw new PayazaError(503, "Payaza payment is temporarily unavailable. Please try again later.");
+  if (!order.contactEmail || !order.contactPhone) throw new PayazaError(409, "A contact email and phone number are required.");
+  const existing = await latestAttempt(order.id);
+  if (existing?.provider === "payaza" && existing.status === "pending" && existing.checkoutUrl)
+    return { checkoutUrl: existing.checkoutUrl, attemptId: existing.id };
+  // Payaza supports GHS collections locally and USD international card collections.
+  const currency = order.country === "GH" ? "GHS" : "USD";
+  const rates = await currentRates();
+  const rate = rates?.[currency];
+  if (!rate) throw new PayazaError(503, "Exchange rates are unavailable. Please try again shortly.");
   const amountMinor = Math.round(order.total * rate * 100);
-  const reference = caseReference("FZP");
-  const [attempt] = await db
-    .insert(paymentAttemptsTable)
-    .values({ orderId: order.id, provider, reference, amountMinor, currency, exchangeRate: rate })
-    .returning();
-  const returnUrl = `${env.appUrl()}/order-confirmation?order=${order.id}`;
-
-  try {
-    let checkoutUrl: string;
-    let sessionId: string | null = null;
-    if (provider === "paystack") {
-      const body = await providerRequest(
-        `${env.paystackApi()}/transaction/initialize`,
-        {
-          method: "POST",
-          headers: paystackHeaders(),
-          body: JSON.stringify({
-            email,
-            amount: amountMinor,
-            currency,
-            reference,
-            callback_url: returnUrl,
-            metadata: { orderId: order.id, attemptId: attempt.id, orderReference: order.reference },
-          }),
-        },
-        "paystack",
-      );
-      const data = body.data as { authorization_url?: string } | undefined;
-      if (!data?.authorization_url) throw new PaymentError(502, "Paystack did not return a payment page.");
-      checkoutUrl = data.authorization_url;
-    } else {
-      const form = new URLSearchParams({
-        mode: "payment",
-        "line_items[0][quantity]": "1",
-        "line_items[0][price_data][currency]": "gbp",
-        "line_items[0][price_data][unit_amount]": String(amountMinor),
-        "line_items[0][price_data][product_data][name]": `Fotizo order ${order.reference ?? order.id}`,
-        success_url: `${returnUrl}&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: returnUrl,
-        client_reference_id: order.id,
-        customer_email: email,
-        "metadata[orderId]": order.id,
-        "metadata[attemptId]": attempt.id,
-        "metadata[reference]": reference,
-        expires_at: String(Math.floor((Date.now() + PAYMENT_WINDOW_MS) / 1000)),
-      });
-      const body = await providerRequest(
-        `${env.stripeApi()}/v1/checkout/sessions`,
-        { method: "POST", headers: stripeHeaders(attempt.id), body: form.toString() },
-        "stripe",
-      );
-      if (typeof body.url !== "string" || typeof body.id !== "string")
-        throw new PaymentError(502, "Stripe did not return a payment page.");
-      checkoutUrl = body.url;
-      sessionId = body.id;
-    }
-    await db
-      .update(paymentAttemptsTable)
-      .set({ checkoutUrl, providerSessionId: sessionId, updatedAt: new Date() })
-      .where(eq(paymentAttemptsTable.id, attempt.id));
+  if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) throw new PayazaError(409, "Invalid payment amount.");
+  return db.transaction(async (tx) => {
+    // Serialize concurrent retry clicks for the same order.
+    const [current] = await tx.select().from(ordersTable).where(eq(ordersTable.id, order.id)).for("update");
+    if (!current || current.paymentStatus !== "unpaid") throw new PayazaError(409, "This order is already paid.");
+    const [pending] = await tx.select().from(paymentAttemptsTable).where(and(eq(paymentAttemptsTable.orderId, order.id), eq(paymentAttemptsTable.provider, "payaza"), eq(paymentAttemptsTable.status, "pending"))).orderBy(desc(paymentAttemptsTable.createdAt)).limit(1);
+    if (pending?.checkoutUrl) return { checkoutUrl: pending.checkoutUrl, attemptId: pending.id };
+    const reference = caseReference("FZP");
+    const [attempt] = await tx.insert(paymentAttemptsTable).values({ orderId: order.id, provider: "payaza", reference, amountMinor, currency, exchangeRate: rate }).returning();
+    const origin = (process.env.APP_URL ?? configuredOrigins()[0]).replace(/\/+$/, "");
+    const checkoutUrl = origin + "/payaza-checkout?order=" + order.id + "&attempt=" + attempt.id;
+    await tx.update(paymentAttemptsTable).set({ checkoutUrl, updatedAt: new Date() }).where(eq(paymentAttemptsTable.id, attempt.id));
     return { checkoutUrl, attemptId: attempt.id };
-  } catch (error) {
-    await db
-      .update(paymentAttemptsTable)
-      .set({ status: "failed", failureReason: "Could not open checkout", updatedAt: new Date() })
-      .where(eq(paymentAttemptsTable.id, attempt.id));
-    throw error;
-  }
+  });
 }
 
 type Observation = { succeeded: boolean; failed?: boolean; amountMinor?: number; currency?: string };
@@ -243,40 +111,16 @@ export async function recordOutcome(attemptId: string, observed: Observation) {
   });
 }
 
-/**
- * Asks the provider directly about an attempt (used on return from checkout).
- * Failed attempts are re-checked too: both providers let the customer retry a
- * declined card on the same payment page.
- */
+/** Only the authenticated provider query can settle a Payaza attempt. */
 export async function verifyAttempt(attempt: PaymentAttemptRow) {
-  if (attempt.status === "succeeded" || attempt.status === "expired") return attempt;
-  if (attempt.provider === "paystack") {
-    const body = await providerRequest(
-      `${env.paystackApi()}/transaction/verify/${encodeURIComponent(attempt.reference)}`,
-      { headers: paystackHeaders() },
-      "paystack",
-    );
-    const data = (body.data ?? {}) as { status?: string; amount?: number; currency?: string };
-    return recordOutcome(attempt.id, {
-      succeeded: data.status === "success",
-      // "abandoned" only means the customer has not finished yet.
-      failed: data.status === "failed",
-      amountMinor: data.amount,
-      currency: data.currency,
-    });
-  }
-  if (!attempt.providerSessionId) return attempt;
-  const body = await providerRequest(
-    `${env.stripeApi()}/v1/checkout/sessions/${encodeURIComponent(attempt.providerSessionId)}`,
-    { headers: stripeHeaders() },
-    "stripe",
-  );
-  return recordOutcome(attempt.id, {
-    succeeded: body.payment_status === "paid",
-    failed: body.status === "expired",
-    amountMinor: typeof body.amount_total === "number" ? body.amount_total : undefined,
-    currency: typeof body.currency === "string" ? body.currency : undefined,
-  });
+  if (attempt.status === "succeeded" || attempt.provider !== "payaza") return attempt;
+  const payment = await queryPayaza(attempt.reference);
+  if (!payment) return attempt;
+  return recordOutcome(attempt.id, payment);
+}
+export async function attemptByReference(reference: string) {
+  const [attempt] = await db.select().from(paymentAttemptsTable).where(and(eq(paymentAttemptsTable.provider, "payaza"), eq(paymentAttemptsTable.reference, reference)));
+  return attempt;
 }
 
 export async function latestAttempt(orderId: string) {
@@ -286,58 +130,6 @@ export async function latestAttempt(orderId: string) {
     .where(eq(paymentAttemptsTable.orderId, orderId))
     .orderBy(desc(paymentAttemptsTable.createdAt))
     .limit(1);
-  return attempt;
-}
-
-// ── Webhooks ─────────────────────────────────────────────────────────────────
-
-/** Paystack signs the raw body with HMAC-SHA512 using the secret key. */
-export function paystackSignatureValid(rawBody: Buffer, signature: string | undefined) {
-  const key = env.paystackKey();
-  if (!key || !signature) return false;
-  const expected = createHmac("sha512", key).update(rawBody).digest("hex");
-  return safeEqual(expected, signature);
-}
-
-/** Stripe signs `${timestamp}.${rawBody}` with HMAC-SHA256; reject stale events. */
-export function stripeSignatureValid(rawBody: Buffer, header: string | undefined, now = Date.now()) {
-  const secret = env.stripeWebhookSecret();
-  if (!secret || !header) return false;
-  const parts = header.split(",").map((p) => p.split("=") as [string, string]);
-  const timestamp = Number(parts.find(([k]) => k === "t")?.[1]);
-  if (!Number.isFinite(timestamp) || Math.abs(now / 1000 - timestamp) > 300) return false;
-  const expected = createHmac("sha256", secret).update(`${timestamp}.${rawBody.toString("utf8")}`).digest("hex");
-  return parts.some(([k, v]) => k === "v1" && safeEqual(expected, v));
-}
-
-function safeEqual(a: string, b: string) {
-  const left = Buffer.from(a);
-  const right = Buffer.from(b);
-  return left.length === right.length && timingSafeEqual(left, right);
-}
-
-/** Records a webhook delivery; false when it was already processed. */
-export async function firstDelivery(provider: PaymentProvider, eventId: string, eventType: string) {
-  const inserted = await db
-    .insert(paymentEventsTable)
-    .values({ provider, eventId, eventType })
-    .onConflictDoNothing()
-    .returning({ eventId: paymentEventsTable.eventId });
-  return inserted.length > 0;
-}
-
-export async function attemptByReference(provider: PaymentProvider, reference: string) {
-  const [attempt] = await db
-    .select()
-    .from(paymentAttemptsTable)
-    .where(
-      and(
-        eq(paymentAttemptsTable.provider, provider),
-        provider === "paystack"
-          ? eq(paymentAttemptsTable.reference, reference)
-          : eq(paymentAttemptsTable.providerSessionId, reference),
-      ),
-    );
   return attempt;
 }
 
@@ -376,7 +168,7 @@ export async function releaseAbandonedOrders(now = Date.now()) {
     .from(ordersTable)
     .where(
       and(
-        inArray(ordersTable.paymentMethod, ["paystack", "stripe"]),
+        inArray(ordersTable.paymentMethod, ["payaza", "paystack", "stripe", "dlocal"]),
         eq(ordersTable.paymentStatus, "unpaid"),
         sql`(${ordersTable.confirmationStatus} IS NULL OR ${ordersTable.confirmationStatus} = 'accepted')`,
         lt(sql`coalesce(${ordersTable.acceptedAt}, ${ordersTable.createdAt})`, cutoff),

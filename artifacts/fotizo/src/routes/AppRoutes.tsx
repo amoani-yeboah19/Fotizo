@@ -43,6 +43,7 @@ const CartPage = lazy(() => import("@/features/payments/pages/CartPage"));
 const CheckoutPage = lazy(
   () => import("@/features/payments/pages/CheckoutPage"),
 );
+const PayazaCheckoutPage = lazy(() => import("@/features/payments/pages/PayazaCheckoutPage"));
 const OrderConfirmation = lazy(
   () => import("@/features/payments/pages/OrderConfirmationPage"),
 );
@@ -173,6 +174,7 @@ export function AppRoutes() {
             </RequireSession>
           )}
         </Route>
+        <Route path="/payaza-checkout">{() => <RequireSession><PayazaCheckoutPage /></RequireSession>}</Route>
         <Route path="/order-confirmation">
           {() => (
             <RequireSession>
